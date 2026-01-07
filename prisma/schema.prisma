@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Class {
+  id   Int     @id @default(autoincrement())
+  name String? @map("name")
+
+  @@map("class")
+}
+
+model Project {
+  id              Int       @id @default(autoincrement())
+  projectName     String?   @map("project_name")
+  projectDescribe String?   @map("project_describe")
+  createTime      DateTime? @map("create_time")
+  updateTime      DateTime? @map("update_time")
+  areaName        String?   @map("area_name")
+  sort            Int?
+  classId         Int?      @map("class_id")
+
+  @@map("project")
+}
+
+model Module {
+  id             Int       @id @default(autoincrement())
+  moduleName     String?   @map("module_name")
+  moduleUrl      String?   @map("module_url")
+  typeName       String?   @map("type_name")
+  projectId      Int?      @map("project_id")
+  createTime     DateTime? @map("create_time")
+  updateTime     DateTime? @map("update_time")
+  moduleDescribe String?   @map("module_describe")
+  remark         String?
+  areaName       String?   @map("area_name")
+
+  @@map("module")
+}
+
+model Account {
+  id       Int     @id @default(autoincrement())
+  account  String?
+  password String?
+  remark   String?
+  moduleId Int?    @map("module_id")
+
+  @@map("account")
+}
+
+model NounName {
+  id          Int       @id @default(autoincrement())
+  name        String?
+  aliasName   String?   @map("alias_name")
+  description String?
+  createTime  DateTime? @map("create_time")
+  updateTime  DateTime? @map("update_time")
+  operateUser String?   @map("operate_user")
+  classId     Int?      @map("class_id")
+  englishName String?   @map("english_name")
+  remark      String?
+
+  @@map("noun_name")
+}
+
+model ObjectInfo {
+  id      Int       @id @default(autoincrement())
+  objName String?   @map("obj_name")
+  objKey  String?   @map("obj_key")
+  remark  String?
+  addTime DateTime? @map("add_time")
+
+  @@map("object_info")
+}
+
+model ObjAttrDefine {
+  id       Int       @id @default(autoincrement())
+  objId    Int?      @map("obj_id")
+  attrName String?   @map("attr_name")
+  attrKey  String?   @map("attr_key")
+  attrType String?   @map("attr_type")
+  required Boolean?
+  remark   String?
+  addTime  DateTime? @map("add_time")
+
+  @@map("obj_attr_define")
+}
+
+model Label {
+  id         Int     @id @default(autoincrement())
+  name       String?
+  nounNameId Int?    @map("noun_name_id")
+
+  @@map("label")
+}
