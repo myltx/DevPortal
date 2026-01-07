@@ -1,36 +1,112 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 项目导航系统 (Next.js 版)
 
-## Getting Started
+本项目是原 Java Spring Boot 后端的重构版本，基于 Next.js 16 (App Router) 构建，旨在提供更高性能的后端服务及更好的开发体验。
 
-First, run the development server:
+## 🛠️ 技术栈
+
+- **框架**: [Next.js 16](https://nextjs.org/) (App Router)
+- **语言**: TypeScript
+- **数据库 ORM**: [Prisma](https://www.prisma.io/) (MySQL)
+- **文档**: Swagger UI / OpenAPI 3.0
+- **工具库**: `xlsx` (Excel 导入导出), `lodash`, `clsx`
+
+## ✨ 功能模块
+
+本项目已完全迁移了原有 Java 后端的所有 Controller 接口，保持 API 100% 兼容：
+
+- **📚 分类管理 (`Class`)**
+  - 获取分类信息
+- **🚀 项目管理 (`Project`)**
+
+  - 项目增删改查
+  - 模块管理 (`Module`)
+  - 账号管理 (`Account`)
+  - 区域列表
+
+- **🏷️ 项目命名 (`NounName`)**
+
+  - 项目名称管理
+  - 标签 (`Label`) 关联管理
+
+- **⚙️ 对象属性定义 (`ObjAttrDefine`)**
+  - 对象信息 (`ObjectInfo`) 管理
+  - 动态属性定义
+  - **Excel 导入/导出** 支持
+
+## 🚀 快速开始
+
+### 1. 环境准备
+
+确保本地已安装：
+
+- Node.js >= 18
+- MySQL 数据库
+
+### 2. 安装依赖
+
+```bash
+npm install
+```
+
+### 3. 因为配置数据库连接
+
+复制 `.env.example` (如有) 或直接在 `.env` 中配置数据库连接：
+
+```env
+DATABASE_URL="mysql://root:Yunweng@2023@192.168.60.212:3306/project_nav"
+```
+
+### 4. 生成 Prisma Client
+
+如果修改了数据库结构或初次拉取代码：
+
+```bash
+npx prisma generate
+```
+
+### 5. 启动开发服务器
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+打开 [http://localhost:3000](http://localhost:3000) 查看应用。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📖 API 文档
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+本项目集成了 Swagger UI，启动服务后访问：
 
-## Learn More
+👉 [http://localhost:3000/doc](http://localhost:3000/doc)
 
-To learn more about Next.js, take a look at the following resources:
+可在此页面查看所有接口定义并进行在线调试。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 📂 项目结构
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+web/
+├── app/
+│   ├── api/            # API 路由 (Route Handlers)
+│   │   ├── class/
+│   │   ├── project/
+│   │   ├── nounName/
+│   │   ├── objAttrDefine/
+│   │   └── doc/        # Swagger JSON
+│   └── doc/            # Swagger UI 页面
+├── lib/
+│   ├── prisma.ts       # Prisma Client 单例
+│   └── swagger.ts      # Swagger 配置
+├── prisma/
+│   └── schema.prisma   # 数据库模型定义
+├── services/           # 业务逻辑层 (Service Layer)
+├── types/              # TypeScript 类型定义 (DTO/VO)
+└── ...
+```
 
-## Deploy on Vercel
+## ⚠️ 注意事项
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- 本项目严格遵循原 Java 项目的数据库表结构，使用 Prisma `@map` 映射字段，**未修改**任何数据库 Schema。
+- 接口返回值均统一封装为 `{ code: 200, msg: "success", data: ... }` 格式。
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+Powered by Next.js & Prisma
