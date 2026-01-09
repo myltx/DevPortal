@@ -15,11 +15,8 @@ import {
   Tooltip,
   Drawer,
   Popconfirm,
-  List,
-  Modal,
   Table,
   Space,
-  App,
   message,
 } from "antd";
 import {
@@ -29,14 +26,14 @@ import {
   DeleteOutlined,
   InfoCircleOutlined,
   CopyOutlined,
-  LinkOutlined,
 } from "@ant-design/icons";
+
 import * as API from "@/lib/api/project";
 import { useSearchParams } from "next/navigation";
 
 const { Option } = Select;
 
-const WebNavContent: React.FC = () => {
+const ProjectSiteContent: React.FC = () => {
   const searchParams = useSearchParams();
   const classIdParam = searchParams.get("id"); // from query id
 
@@ -66,11 +63,6 @@ const WebNavContent: React.FC = () => {
   const [accountList, setAccountList] = useState<any[]>([]);
   const [editingKey, setEditingKey] = useState<string>("");
 
-  useEffect(() => {
-    fetchProjectNames();
-    fetchAreaList();
-  }, [classIdParam]);
-
   const fetchProjectNames = async () => {
     const res = await API.getProjectNameList(
       classIdParam ? Number(classIdParam) : undefined
@@ -89,6 +81,11 @@ const WebNavContent: React.FC = () => {
       setAreaList(res.data);
     }
   };
+
+  useEffect(() => {
+    fetchProjectNames();
+    fetchAreaList();
+  }, [classIdParam]);
 
   const fetchProjectList = async () => {
     if (!activeProjectId) return;
@@ -124,7 +121,10 @@ const WebNavContent: React.FC = () => {
     setCurrentModule(data);
     setDrawerVisible(true);
     if (type === "edit" && data) {
-      editForm.setFieldsValue(data);
+      editForm.setFieldsValue({
+        ...data,
+        moduleDescribe: data.describe, // Map 'describe' from list to 'moduleDescribe' for form
+      });
     } else {
       editForm.resetFields();
       editForm.setFieldValue(
@@ -136,10 +136,9 @@ const WebNavContent: React.FC = () => {
 
   const onSubmit = async () => {
     const values = await editForm.validateFields();
-    const payload = { ...values, id: currentModule?.id };
-    // Map 'moduleDescribe'
+    const payload = { ...values, id: currentModule?.moduleId };
     let res;
-    if (currentModule?.id) {
+    if (currentModule?.moduleId) {
       res = await API.editProject(payload);
     } else {
       res = await API.createProject(payload);
@@ -163,7 +162,7 @@ const WebNavContent: React.FC = () => {
   const handleShowAccount = async (moduleData: any) => {
     setCurrentAccountModule(moduleData);
     setAccountModalVisible(true);
-    fetchAccounts(moduleData.id);
+    fetchAccounts(moduleData.moduleId);
   };
 
   const fetchAccounts = async (moduleId: number) => {
@@ -186,13 +185,13 @@ const WebNavContent: React.FC = () => {
       id: record.id === -1 ? null : record.id,
       account: record.account,
       password: record.password,
-      moduleId: currentAccountModule.id,
+      moduleId: currentAccountModule.moduleId,
     };
     const res = await API.addOrUpdateAccount(payload);
     if (res.success) {
       message.success("Saved");
       setEditingKey("");
-      fetchAccounts(currentAccountModule.id);
+      fetchAccounts(currentAccountModule.moduleId);
     }
   };
 
@@ -200,7 +199,7 @@ const WebNavContent: React.FC = () => {
     const res = await API.deleteAccount([id]);
     if (res.success) {
       message.success("Deleted");
-      fetchAccounts(currentAccountModule.id);
+      fetchAccounts(currentAccountModule.moduleId);
     }
   };
 
@@ -292,40 +291,51 @@ const WebNavContent: React.FC = () => {
 
   return (
     <div style={{ padding: 24, height: "100%" }}>
-      <Form form={formInline} layout="inline" style={{ marginBottom: 16 }}>
-        <Form.Item name="typeName" label="环境">
-          <Select style={{ width: 120 }} allowClear placeholder="请选择">
-            {envOption.map((env) => (
-              <Option key={env.value} value={env.value}>
-                {env.label}
-              </Option>
-            ))}
-          </Select>
-        </Form.Item>
-        <Form.Item name="moduleName" label="模块名称">
-          <Input placeholder="模块名称" />
-        </Form.Item>
-        <Form.Item>
-          <Button
-            type="primary"
-            onClick={handleSearch}
-            icon={<SearchOutlined />}>
-            查询
-          </Button>
-          <Button
-            onClick={() => formInline.resetFields()}
-            style={{ marginLeft: 8 }}>
-            重置
-          </Button>
-          <Button
-            type="primary"
-            style={{ marginLeft: 8, background: "#67C23A" }}
-            icon={<PlusOutlined />}
-            onClick={() => handleShow("add")}>
-            新增
-          </Button>
-        </Form.Item>
-      </Form>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 16,
+        }}>
+        <Form form={formInline} layout="inline">
+          <Form.Item name="typeName" label="环境">
+            <Select style={{ width: 120 }} allowClear placeholder="请选择">
+              {envOption.map((env) => (
+                <Option key={env.value} value={env.value}>
+                  {env.label}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item name="moduleName" label="模块名称">
+            <Input placeholder="模块名称" />
+          </Form.Item>
+          <Form.Item>
+            <Button
+              type="primary"
+              onClick={handleSearch}
+              icon={<SearchOutlined />}>
+              查询
+            </Button>
+            <Button
+              onClick={() => formInline.resetFields()}
+              style={{ marginLeft: 8 }}>
+              重置
+            </Button>
+            <Button
+              type="primary"
+              style={{ marginLeft: 8, background: "#67C23A" }}
+              icon={<PlusOutlined />}
+              onClick={() => handleShow("add")}>
+              新增
+            </Button>
+          </Form.Item>
+        </Form>
+        <Button type="link" onClick={() => (window.location.href = "/login")}>
+          后台管理 &gt;
+        </Button>
+      </div>
 
       {/* Color Legend */}
       <div style={{ display: "flex", marginBottom: 16 }}>
@@ -376,7 +386,7 @@ const WebNavContent: React.FC = () => {
                 envOption.find((e) => e.value === card.typeName)?.color ||
                 "#909399";
               return (
-                <Col span={6} key={card.id}>
+                <Col span={6} key={card.moduleId}>
                   <Card
                     hoverable
                     style={{ borderTop: `4px solid ${envColor}` }}
@@ -390,9 +400,10 @@ const WebNavContent: React.FC = () => {
                         onClick={() => handleShow("edit", card)}
                       />,
                       <Popconfirm
+                        key="delete"
                         title="Delete?"
-                        onConfirm={() => handleDelete(card.id)}>
-                        <DeleteOutlined key="delete" style={{ color: "red" }} />
+                        onConfirm={() => handleDelete(card.moduleId)}>
+                        <DeleteOutlined style={{ color: "red" }} />
                       </Popconfirm>,
                     ]}>
                     <Card.Meta
@@ -516,34 +527,52 @@ const WebNavContent: React.FC = () => {
         </Form>
       </Drawer>
 
-      <Modal
+      <Drawer
         title={`账号信息: ${currentAccountModule?.moduleName}`}
+        width={800}
         open={accountModalVisible}
-        onCancel={() => setAccountModalVisible(false)}
-        footer={null}
-        width={800}>
-        <div style={{ marginBottom: 16 }}>
-          <Button type="primary" onClick={handleAddAccount}>
-            新增账号
-          </Button>
-        </div>
-        <Table
-          dataSource={accountList}
-          columns={columns}
-          rowKey="id"
-          pagination={false}
-        />
-      </Modal>
+        onClose={() => setAccountModalVisible(false)}
+        footer={null}>
+        <Tabs defaultActiveKey="text">
+          <Tabs.TabPane tab="文本" key="text">
+            <div style={{ minHeight: "200px", whiteSpace: "pre-wrap" }}>
+              {currentAccountModule?.describe || (
+                <div
+                  style={{
+                    color: "#999",
+                    textAlign: "center",
+                    padding: "20px",
+                  }}>
+                  暂无账号信息
+                </div>
+              )}
+            </div>
+          </Tabs.TabPane>
+          <Tabs.TabPane tab="列表" key="table">
+            <div style={{ marginBottom: 16 }}>
+              <Button type="primary" onClick={handleAddAccount}>
+                新增账号
+              </Button>
+            </div>
+            <Table
+              dataSource={accountList}
+              columns={columns}
+              rowKey="id"
+              pagination={false}
+            />
+          </Tabs.TabPane>
+        </Tabs>
+      </Drawer>
     </div>
   );
 };
 
-const WebNavPage = () => {
+const ProjectSitePage = () => {
   return (
     <React.Suspense fallback={<div>Loading...</div>}>
-      <WebNavContent />
+      <ProjectSiteContent />
     </React.Suspense>
   );
 };
 
-export default WebNavPage;
+export default ProjectSitePage;

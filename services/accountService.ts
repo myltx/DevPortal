@@ -3,6 +3,9 @@ import { AccountDTO, AccountListDTO, AccountListVO } from "@/types";
 
 export const accountService = {
   accountList: async (dto: AccountListDTO): Promise<AccountListVO[]> => {
+    if (!dto.moduleId) {
+      return [];
+    }
     const accounts = await prisma.account.findMany({
       where: {
         moduleId: dto.moduleId,
