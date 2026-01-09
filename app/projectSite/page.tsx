@@ -4,24 +4,18 @@ import React, { useEffect, useState } from "react";
 import {
   Card,
   Form,
-  Input,
-  Select,
-  Button,
   Row,
   Col,
   Tabs,
   Menu,
   Avatar,
   Tooltip,
-  Drawer,
   Popconfirm,
-  Table,
-  Space,
   message,
+  Spin,
+  Empty,
 } from "antd";
 import {
-  SearchOutlined,
-  PlusOutlined,
   EditOutlined,
   DeleteOutlined,
   InfoCircleOutlined,
@@ -29,19 +23,26 @@ import {
 } from "@ant-design/icons";
 
 import * as API from "@/lib/api/project";
-import { useSearchParams } from "next/navigation";
-
-const { Option } = Select;
+import ProjectSiteHeader from "./components/ProjectSiteHeader";
+import EditProjectDrawer from "./components/EditProjectDrawer";
+import AccountDrawer from "./components/AccountDrawer";
 
 const ProjectSiteContent: React.FC = () => {
-  const searchParams = useSearchParams();
-  const classIdParam = searchParams.get("id"); // from query id
-
   const [formInline] = Form.useForm();
+
+  // State
+  const [activeClassId, setActiveClassId] = useState<string>("");
   const [activeProjectId, setActiveProjectId] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+
+  // Data State
   const [projectIdOptions, setProjectIdOptions] = useState<any[]>([]);
   const [cardList, setCardList] = useState<any[]>([]);
   const [selectedAreaIndex, setSelectedAreaIndex] = useState("0");
+  const [areaList, setAreaList] = useState<string[]>([]);
+  const [classInfoList, setClassInfoList] = useState<any[]>([]);
+
+  // Constant Options
   const [envOption] = useState([
     { label: "测试环境", value: "test", color: "#409EFF" },
     { label: "生产环境", value: "prod", color: "#67C23A" },
@@ -49,29 +50,29 @@ const ProjectSiteContent: React.FC = () => {
     { label: "灰度环境", value: "gray", color: "#909399" },
     { label: "演示环境", value: "demo", color: "#F56C6C" },
   ]);
-  const [areaList, setAreaList] = useState<string[]>([]);
 
-  // Drawer
-  const [drawerVisible, setDrawerVisible] = useState(false);
-  const [formTitle, setFormTitle] = useState("");
-  const [editForm] = Form.useForm();
-  const [currentModule, setCurrentModule] = useState<any>(null);
+  // Drawer States
+  const [projectDrawerVisible, setProjectDrawerVisible] = useState(false);
+  const [currentModule, setCurrentModule] = useState<any>(null); // For Edit Project
 
-  // Account Modal
-  const [accountModalVisible, setAccountModalVisible] = useState(false);
-  const [currentAccountModule, setCurrentAccountModule] = useState<any>(null);
-  const [accountList, setAccountList] = useState<any[]>([]);
-  const [editingKey, setEditingKey] = useState<string>("");
+  const [accountDrawerVisible, setAccountDrawerVisible] = useState(false);
+  const [currentAccountModule, setCurrentAccountModule] = useState<any>(null); // For Account Drawer
 
-  const fetchProjectNames = async () => {
-    const res = await API.getProjectNameList(
-      classIdParam ? Number(classIdParam) : undefined
-    );
+  // --- Fetch Logic ---
+
+  const fetchProjectNames = async (classId?: string) => {
+    const idToUse = classId || activeClassId;
+    if (!idToUse) return;
+
+    const res = await API.getProjectNameList(Number(idToUse));
     if (res.success && res.data && res.data.length > 0) {
       setProjectIdOptions(res.data);
-      if (!activeProjectId) {
-        setActiveProjectId(String(res.data[0].id));
-      }
+      // Always reset active project when class changes
+      setActiveProjectId(String(res.data[0].id));
+    } else {
+      setProjectIdOptions([]);
+      setActiveProjectId("");
+      setCardList([]);
     }
   };
 
@@ -82,75 +83,89 @@ const ProjectSiteContent: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    fetchProjectNames();
-    fetchAreaList();
-  }, [classIdParam]);
-
-  const fetchProjectList = async () => {
-    if (!activeProjectId) return;
-    const values = await formInline.validateFields();
-    const payload = {
-      ...values,
-      projectId: Number(activeProjectId),
-      classId: classIdParam ? Number(classIdParam) : undefined,
-    };
-    const res = await API.projectList(payload);
+  const fetchClassInfoList = async () => {
+    const res = await API.getClassInfo();
     if (res.success) {
-      // Sort logic from vue
-      const list = res.data
-        .map((item: any, index: number) => ({
-          ...item,
-          sort: item.areaName === "其他" ? res.data.length : index,
-        }))
-        .sort((a: any, b: any) => a.sort - b.sort);
-      setCardList(list);
+      setClassInfoList(res.data);
+      if (!activeClassId && res.data.length > 0) {
+        setActiveClassId(String(res.data[0].id));
+      }
     }
   };
+
+  const fetchProjectList = async () => {
+    if (!activeProjectId) {
+      setCardList([]);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const values = await formInline.validateFields();
+      const payload = {
+        ...values,
+        projectId: Number(activeProjectId),
+        classId: activeClassId ? Number(activeClassId) : undefined,
+      };
+      const res = await API.projectList(payload);
+      if (res.success) {
+        const list = res.data
+          .map((item: any, index: number) => ({
+            ...item,
+            sort: item.areaName === "其他" ? res.data.length : index,
+          }))
+          .sort((a: any, b: any) => a.sort - b.sort);
+        setCardList(list);
+      } else {
+        setCardList([]);
+      }
+    } catch (e) {
+      console.error(e);
+      setCardList([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- Effects ---
+
+  useEffect(() => {
+    fetchAreaList();
+    fetchClassInfoList();
+  }, []);
+
+  useEffect(() => {
+    if (activeClassId) {
+      fetchProjectNames(activeClassId);
+    }
+  }, [activeClassId]);
 
   useEffect(() => {
     fetchProjectList();
   }, [activeProjectId]);
 
+  // --- Handlers ---
+
   const handleSearch = () => {
     fetchProjectList();
   };
 
-  const handleShow = (type: "add" | "edit", data?: any) => {
-    setFormTitle(type === "add" ? "新增" : "编辑");
-    setCurrentModule(data);
-    setDrawerVisible(true);
-    if (type === "edit" && data) {
-      editForm.setFieldsValue({
-        ...data,
-        moduleDescribe: data.describe, // Map 'describe' from list to 'moduleDescribe' for form
-      });
-    } else {
-      editForm.resetFields();
-      editForm.setFieldValue(
-        "projectId",
-        activeProjectId ? Number(activeProjectId) : undefined
-      );
-    }
+  const handleReset = () => {
+    formInline.resetFields();
+    fetchProjectList();
   };
 
-  const onSubmit = async () => {
-    const values = await editForm.validateFields();
-    const payload = { ...values, id: currentModule?.moduleId };
-    let res;
-    if (currentModule?.moduleId) {
-      res = await API.editProject(payload);
-    } else {
-      res = await API.createProject(payload);
-    }
-    if (res.success) {
-      message.success("Success");
-      setDrawerVisible(false);
-      fetchProjectList();
-    }
+  const handleShowProjectDrawer = (data?: any) => {
+    setCurrentModule(data || null);
+    setProjectDrawerVisible(true);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleShowAccountDrawer = (moduleData: any) => {
+    setCurrentAccountModule(moduleData);
+    setAccountDrawerVisible(true);
+  };
+
+  const handleDeleteProject = async (id: number) => {
     const res = await API.removeProject(id);
     if (res.success) {
       message.success("Deleted");
@@ -158,186 +173,21 @@ const ProjectSiteContent: React.FC = () => {
     }
   };
 
-  // Account Logic
-  const handleShowAccount = async (moduleData: any) => {
-    setCurrentAccountModule(moduleData);
-    setAccountModalVisible(true);
-    fetchAccounts(moduleData.moduleId);
-  };
-
-  const fetchAccounts = async (moduleId: number) => {
-    const res = await API.accountList({ moduleId });
-    if (res.success) {
-      setAccountList(res.data);
-    }
-  };
-
-  const handleAddAccount = () => {
-    setAccountList([
-      { id: -1, account: "", password: "", isNew: true },
-      ...accountList,
-    ]);
-    setEditingKey("-1");
-  };
-
-  const handleSaveAccount = async (record: any) => {
-    const payload = {
-      id: record.id === -1 ? null : record.id,
-      account: record.account,
-      password: record.password,
-      moduleId: currentAccountModule.moduleId,
-    };
-    const res = await API.addOrUpdateAccount(payload);
-    if (res.success) {
-      message.success("Saved");
-      setEditingKey("");
-      fetchAccounts(currentAccountModule.moduleId);
-    }
-  };
-
-  const handleDeleteAccount = async (id: number) => {
-    const res = await API.deleteAccount([id]);
-    if (res.success) {
-      message.success("Deleted");
-      fetchAccounts(currentAccountModule.moduleId);
-    }
-  };
-
-  const columns = [
-    {
-      title: "Account",
-      dataIndex: "account",
-      render: (text: string, record: any) => {
-        if (editingKey === String(record.id)) {
-          return (
-            <Input
-              value={text}
-              onChange={(e) => {
-                const newList = [...accountList];
-                const index = newList.findIndex(
-                  (item) => item.id === record.id
-                );
-                newList[index].account = e.target.value;
-                setAccountList(newList);
-              }}
-            />
-          );
-        }
-        return (
-          <Space>
-            {text}
-            <CopyOutlined onClick={() => navigator.clipboard.writeText(text)} />
-          </Space>
-        );
-      },
-    },
-    {
-      title: "Password",
-      dataIndex: "password",
-      render: (text: string, record: any) => {
-        if (editingKey === String(record.id)) {
-          return (
-            <Input
-              value={text}
-              onChange={(e) => {
-                const newList = [...accountList];
-                const index = newList.findIndex(
-                  (item) => item.id === record.id
-                );
-                newList[index].password = e.target.value;
-                setAccountList(newList);
-              }}
-            />
-          );
-        }
-        return (
-          <Space>
-            {text}
-            <CopyOutlined onClick={() => navigator.clipboard.writeText(text)} />
-          </Space>
-        );
-      },
-    },
-    {
-      title: "Action",
-      render: (_: any, record: any) => {
-        const editable = editingKey === String(record.id);
-        return editable ? (
-          <Space>
-            <a onClick={() => handleSaveAccount(record)}>Save</a>
-            <a
-              onClick={() => {
-                setEditingKey("");
-                if (record.isNew) {
-                  setAccountList(accountList.filter((item) => item.id !== -1));
-                }
-              }}>
-              Cancel
-            </a>
-          </Space>
-        ) : (
-          <Space>
-            <a onClick={() => setEditingKey(String(record.id))}>Edit</a>
-            <Popconfirm
-              title="Delete?"
-              onConfirm={() => handleDeleteAccount(record.id)}>
-              <a style={{ color: "red" }}>Delete</a>
-            </Popconfirm>
-          </Space>
-        );
-      },
-    },
-  ];
-
   return (
     <div style={{ padding: 24, height: "100%" }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 16,
-        }}>
-        <Form form={formInline} layout="inline">
-          <Form.Item name="typeName" label="环境">
-            <Select style={{ width: 120 }} allowClear placeholder="请选择">
-              {envOption.map((env) => (
-                <Option key={env.value} value={env.value}>
-                  {env.label}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item name="moduleName" label="模块名称">
-            <Input placeholder="模块名称" />
-          </Form.Item>
-          <Form.Item>
-            <Button
-              type="primary"
-              onClick={handleSearch}
-              icon={<SearchOutlined />}>
-              查询
-            </Button>
-            <Button
-              onClick={() => formInline.resetFields()}
-              style={{ marginLeft: 8 }}>
-              重置
-            </Button>
-            <Button
-              type="primary"
-              style={{ marginLeft: 8, background: "#67C23A" }}
-              icon={<PlusOutlined />}
-              onClick={() => handleShow("add")}>
-              新增
-            </Button>
-          </Form.Item>
-        </Form>
-        <Button type="link" onClick={() => (window.location.href = "/login")}>
-          后台管理 &gt;
-        </Button>
-      </div>
+      {/* 1. Header & Filter */}
+      <ProjectSiteHeader
+        activeClassId={activeClassId}
+        classInfoList={classInfoList}
+        onClassChange={setActiveClassId}
+        form={formInline}
+        envOption={envOption}
+        onSearch={handleSearch}
+        onReset={handleReset}
+        onAdd={() => handleShowProjectDrawer(null)}
+      />
 
-      {/* Color Legend */}
+      {/* 2. Color Legend */}
       <div style={{ display: "flex", marginBottom: 16 }}>
         {envOption.map((env) => (
           <div
@@ -356,6 +206,7 @@ const ProjectSiteContent: React.FC = () => {
         ))}
       </div>
 
+      {/* 3. Project Tabs */}
       <Tabs
         activeKey={activeProjectId}
         onChange={setActiveProjectId}
@@ -365,6 +216,7 @@ const ProjectSiteContent: React.FC = () => {
         }))}
       />
 
+      {/* 4. Main Content (Menu + Grid) */}
       <div style={{ display: "flex", height: "calc(100vh - 250px)" }}>
         {cardList.length > 0 && (
           <Menu
@@ -380,199 +232,109 @@ const ProjectSiteContent: React.FC = () => {
         )}
 
         <div style={{ flex: 1, padding: "0 16px", overflowY: "auto" }}>
-          <Row gutter={[16, 16]}>
-            {cardList[Number(selectedAreaIndex)]?.list?.map((card: any) => {
-              const envColor =
-                envOption.find((e) => e.value === card.typeName)?.color ||
-                "#909399";
-              return (
-                <Col span={6} key={card.moduleId}>
-                  <Card
-                    hoverable
-                    style={{ borderTop: `4px solid ${envColor}` }}
-                    actions={[
-                      <InfoCircleOutlined
-                        key="info"
-                        onClick={() => handleShowAccount(card)}
-                      />,
-                      <EditOutlined
-                        key="edit"
-                        onClick={() => handleShow("edit", card)}
-                      />,
-                      <Popconfirm
-                        key="delete"
-                        title="Delete?"
-                        onConfirm={() => handleDelete(card.moduleId)}>
-                        <DeleteOutlined style={{ color: "red" }} />
-                      </Popconfirm>,
-                    ]}>
-                    <Card.Meta
-                      avatar={
-                        <Avatar style={{ backgroundColor: envColor }}>
-                          {card.typeName?.charAt(0).toUpperCase()}
-                        </Avatar>
-                      }
-                      title={
-                        <Tooltip title={card.moduleName}>
-                          {card.moduleName}
-                        </Tooltip>
-                      }
-                      description={
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                          }}>
-                          <a
-                            href={card.moduleUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              maxWidth: "80%",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}>
-                            跳转
-                          </a>
-                          <CopyOutlined
-                            onClick={() =>
-                              navigator.clipboard.writeText(card.moduleUrl)
-                            }
-                          />
-                        </div>
-                      }
-                    />
-                  </Card>
-                </Col>
-              );
-            })}
-          </Row>
+          <Spin spinning={loading} tip="加载中...">
+            {!loading && cardList.length === 0 ? (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="暂无项目数据"
+                style={{ marginTop: 100 }}
+              />
+            ) : (
+              <Row gutter={[16, 16]}>
+                {cardList[Number(selectedAreaIndex)]?.list?.map((card: any) => {
+                  const envColor =
+                    envOption.find((e) => e.value === card.typeName)?.color ||
+                    "#909399";
+                  return (
+                    <Col span={6} key={card.moduleId}>
+                      <Card
+                        hoverable
+                        style={{ borderTop: `4px solid ${envColor}` }}
+                        actions={[
+                          <InfoCircleOutlined
+                            key="info"
+                            onClick={() => handleShowAccountDrawer(card)}
+                          />,
+                          <EditOutlined
+                            key="edit"
+                            onClick={() => handleShowProjectDrawer(card)}
+                          />,
+                          <Popconfirm
+                            key="delete"
+                            title="Delete?"
+                            onConfirm={() =>
+                              handleDeleteProject(card.moduleId)
+                            }>
+                            <DeleteOutlined style={{ color: "red" }} />
+                          </Popconfirm>,
+                        ]}>
+                        <Card.Meta
+                          avatar={
+                            <Avatar style={{ backgroundColor: envColor }}>
+                              {card.typeName?.charAt(0).toUpperCase()}
+                            </Avatar>
+                          }
+                          title={
+                            <Tooltip title={card.moduleName}>
+                              {card.moduleName}
+                            </Tooltip>
+                          }
+                          description={
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                              }}>
+                              <a
+                                href={card.moduleUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  maxWidth: "80%",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                }}>
+                                跳转
+                              </a>
+                              <CopyOutlined
+                                onClick={() =>
+                                  navigator.clipboard.writeText(card.moduleUrl)
+                                }
+                              />
+                            </div>
+                          }
+                        />
+                      </Card>
+                    </Col>
+                  );
+                })}
+              </Row>
+            )}
+          </Spin>
         </div>
       </div>
 
-      <Drawer
-        title={formTitle}
-        width={500}
-        open={drawerVisible}
-        onClose={() => setDrawerVisible(false)}
-        footer={
-          <div style={{ textAlign: "right" }}>
-            <Button
-              onClick={() => setDrawerVisible(false)}
-              style={{ marginRight: 8 }}>
-              取消
-            </Button>
-            <Button type="primary" onClick={onSubmit}>
-              确定
-            </Button>
-          </div>
-        }>
-        <Form form={editForm} layout="vertical">
-          <Form.Item
-            name="moduleName"
-            label="模块名称"
-            rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="projectId"
-            label="所属项目"
-            rules={[{ required: true }]}>
-            <Select>
-              {projectIdOptions.map((p) => (
-                <Option key={p.id} value={p.id}>
-                  {p.projectName}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item
-            name="areaName"
-            label="所属区划"
-            rules={[{ required: true }]}>
-            <Select showSearch allowClear mode="tags">
-              {areaList.map((a) => (
-                <Option key={a} value={a}>
-                  {a}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item
-            name="moduleUrl"
-            label="访问地址"
-            rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="typeName"
-            label="所属环境"
-            rules={[{ required: true }]}>
-            <Select>
-              {envOption.map((e) => (
-                <Option key={e.value} value={e.value}>
-                  {e.label}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item name="remark" label="备注">
-            <Input.TextArea />
-          </Form.Item>
-          <Form.Item name="moduleDescribe" label="账号信息(描述)">
-            <Input.TextArea rows={4} />
-          </Form.Item>
-        </Form>
-      </Drawer>
+      {/* 5. Drawers */}
+      <EditProjectDrawer
+        open={projectDrawerVisible}
+        onClose={() => setProjectDrawerVisible(false)}
+        onSuccess={() => fetchProjectList()}
+        initialData={currentModule}
+        projectIdOptions={projectIdOptions}
+        areaList={areaList}
+        envOption={envOption}
+        activeProjectId={activeProjectId}
+      />
 
-      <Drawer
-        title={`账号信息: ${currentAccountModule?.moduleName}`}
-        width={800}
-        open={accountModalVisible}
-        onClose={() => setAccountModalVisible(false)}
-        footer={null}>
-        <Tabs defaultActiveKey="text">
-          <Tabs.TabPane tab="文本" key="text">
-            <div style={{ minHeight: "200px", whiteSpace: "pre-wrap" }}>
-              {currentAccountModule?.describe || (
-                <div
-                  style={{
-                    color: "#999",
-                    textAlign: "center",
-                    padding: "20px",
-                  }}>
-                  暂无账号信息
-                </div>
-              )}
-            </div>
-          </Tabs.TabPane>
-          <Tabs.TabPane tab="列表" key="table">
-            <div style={{ marginBottom: 16 }}>
-              <Button type="primary" onClick={handleAddAccount}>
-                新增账号
-              </Button>
-            </div>
-            <Table
-              dataSource={accountList}
-              columns={columns}
-              rowKey="id"
-              pagination={false}
-            />
-          </Tabs.TabPane>
-        </Tabs>
-      </Drawer>
+      <AccountDrawer
+        open={accountDrawerVisible}
+        onClose={() => setAccountDrawerVisible(false)}
+        moduleData={currentAccountModule}
+      />
     </div>
   );
 };
 
-const ProjectSitePage = () => {
-  return (
-    <React.Suspense fallback={<div>Loading...</div>}>
-      <ProjectSiteContent />
-    </React.Suspense>
-  );
-};
-
-export default ProjectSitePage;
+export default ProjectSiteContent;
