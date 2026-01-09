@@ -58,3 +58,28 @@ docker compose version
   # 拉取/更新代码后
   docker compose up -d --build
   ```
+
+## 4. (可选) 清理无效的 NVM 环境
+
+由于我们已切换到 Docker 部署，宿主机上之前安装的 NVM 和 Node (因 Glibc 版本过低无法使用) 可以安全清理。
+
+**清理步骤**:
+
+1.  **删除 NVM 目录**:
+
+    ```bash
+    rm -rf ~/.nvm
+    ```
+
+2.  **清理 Shell 配置**:
+    编辑 `~/.bashrc` (或 `~/.zshrc`)，删除以下 NVM 初始化代码：
+
+    ```bash
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    ```
+
+3.  **生效**:
+    ```bash
+    source ~/.bashrc
+    ```
