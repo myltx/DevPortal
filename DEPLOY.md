@@ -83,3 +83,87 @@ docker compose version
     ```bash
     source ~/.bashrc
     ```
+
+## 5. (故障排除) Docker 镜像拉取超时
+
+如果构建时卡在 `load metadata for docker.io/library/node:20-alpine`，说明服务器无法连接 Docker Hub。
+请配置国内镜像加速器。
+
+**操作步骤**:
+
+1.  **编辑配置**:
+
+    ```bash
+    mkdir -p /etc/docker
+    vim /etc/docker/daemon.json
+    ```
+
+2.  **写入以下内容** (使用国内可用源):
+
+    ```json
+    {
+      "registry-mirrors": [
+        "https://docker.m.daocloud.io",
+        "https://huecker.io",
+        "https://dockerhub.timeweb.cloud",
+        "https://noohub.ru"
+      ]
+    }
+    ```
+
+3.  **重启 Docker**:
+
+    ```bash
+    systemctl daemon-reload
+    systemctl restart docker
+    ```
+
+## 6. (替代方案) 本地构建并上传 (离线部署)
+
+如果服务器网络实在太差，您可以在 **本地电脑** 构建好镜像，然后上传到服务器。
+_(注意：需要本地也安装 Docker)_
+
+1.  **本地构建 (指定 x86 架构)**:
+
+    ```bash
+    # 在项目根目录执行
+    docker buildx build --platform linux/amd64 -t nextjs-nav:latest .
+    ```
+
+2.  **导出镜像**:
+
+    ```bash
+    docker save -o nextjs-nav.tar nextjs-nav:latest
+    ```
+
+3.  **上传到服务器**:
+
+    ```bash
+    # 使用 scp 或其他工具
+    scp nextjs-nav.tar root@your-server-ip:/root/
+    ```
+
+4.  **服务器导入**:
+
+    ```bash
+    docker load -i nextjs-nav.tar
+    ```
+
+5.  **修改配置启动**:
+    编辑服务器上的 `docker-compose.yml`，注释掉 `build` 部分，直接使用镜像：
+    ```yaml
+    version: "3"
+    services:
+      nextjs-nav:
+        image: nextjs-nav:latest # <--- 使用导入的镜像
+        # build:                  # <--- 注释掉构建配置
+        #   context: .            # <--- 注释掉
+        #   dockerfile: Dockerfile # <--- 注释掉
+        container_name: nextjs-nav
+        restart: always
+        ports:
+          - "3001:3001"
+        environment:
+          - NODE_ENV=production
+    ```
+    然后运行 `docker compose up -d` 即可。
