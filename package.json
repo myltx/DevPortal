@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "docker:build:server": "docker buildx build --platform linux/amd64 -t nextjs-nav:latest .",
+    "docker:save": "docker save -o nextjs-nav.tar nextjs-nav:latest",
+    "docker:pack": "npm run docker:build:server && npm run docker:save",
+    "docker:dev": "docker compose up -d --build",
+    "docker:stop": "docker compose down"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",

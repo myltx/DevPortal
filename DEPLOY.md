@@ -123,7 +123,28 @@ docker compose version
 如果服务器网络实在太差，您可以在 **本地电脑** 构建好镜像，然后上传到服务器。
 _(注意：需要本地也安装 Docker)_
 
+### 方式 A: 使用 NPM 快捷命令 (推荐)
+
+我们在 `package.json` 中配置了快捷脚本，您只需运行：
+
+1.  **一键构建并打包**:
+
+    ```bash
+    npm run docker:pack
+    # 等待完成后，当前目录会生成 nextjs-nav.tar
+    ```
+
+2.  **上传**:
+    ```bash
+    scp nextjs-nav.tar root@your-server-ip:/root/
+    ```
+
+### 方式 B: 手动执行命令
+
 1.  **本地构建 (指定 x86 架构)**:
+
+    > [!IMPORTANT] > **Mac M1/M2/M3 (Apple Silicon) 用户必须保留 `--platform linux/amd64` 参数**。
+    > 否则构建出的镜像（ARM 架构）将无法在普通 Linux 服务器（通常是 x86/AMD64 架构）上运行。
 
     ```bash
     # 在项目根目录执行
