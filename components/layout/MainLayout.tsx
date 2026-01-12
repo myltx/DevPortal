@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { Layout, Menu, theme } from "antd";
+import { Layout, Menu, theme, Tooltip } from "antd";
 import {
+  AppstoreOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   UserOutlined,
@@ -99,6 +100,30 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             onClick={() => setCollapsed(!collapsed)}>
             {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
           </div>
+
+          <Tooltip title="工作台">
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 32,
+                height: 32,
+                cursor: "pointer",
+                borderRadius: 6,
+                marginRight: 16,
+                transition: "background 0.2s",
+              }}
+              onClick={() => router.push("/middle")}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.backgroundColor = "var(--bg-hover)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.backgroundColor = "transparent")
+              }>
+              <AppstoreOutlined style={{ fontSize: "18px" }} />
+            </div>
+          </Tooltip>
           <div style={{ flex: 1 }} />
           <ThemeSwitch />
           <div style={{ width: 16 }} />
