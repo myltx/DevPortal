@@ -259,22 +259,31 @@ const ProjectSiteContent: React.FC = () => {
       <div
         style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden" }}>
         {cardList.length > 0 && (
-          <Menu
-            mode="inline"
-            selectedKeys={[selectedAreaIndex]}
-            onClick={(e) => setSelectedAreaIndex(e.key)}
+          <div
             style={{
-              width: 200,
+              width: 220,
               height: "100%",
               overflowY: "auto",
-              background: "transparent",
-              borderRight: "none", // Optional: remove border for cleaner look
-            }}
-            items={cardList.map((area, index) => ({
-              label: area.areaName || "其他",
-              key: String(index),
-            }))}
-          />
+              borderRadius: 12,
+              border: "1px solid var(--border-color, rgba(0,0,0,0.06))",
+              background: "var(--card-bg, rgba(255,255,255,0.5))", // Semi-transparent or just card bg
+              marginRight: 24, // Explicit spacing
+            }}>
+            <Menu
+              mode="inline"
+              selectedKeys={[selectedAreaIndex]}
+              onClick={(e) => setSelectedAreaIndex(e.key)}
+              style={{
+                height: "100%",
+                borderRight: "none",
+                background: "transparent",
+              }}
+              items={cardList.map((area, index) => ({
+                label: area.areaName || "其他",
+                key: String(index),
+              }))}
+            />
+          </div>
         )}
 
         <div
@@ -283,7 +292,8 @@ const ProjectSiteContent: React.FC = () => {
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
-            marginLeft: cardList.length > 0 ? 16 : 0,
+            // Remove marginLeft since we used marginRight on the menu container
+            // marginLeft: cardList.length > 0 ? 16 : 0,
           }}>
           <Spin spinning={loading} wrapperClassName="full-height-spin">
             <div
@@ -383,21 +393,6 @@ const ProjectSiteContent: React.FC = () => {
                                   flex: 1,
                                   minWidth: 0,
                                 }}>
-                                <div
-                                  style={{
-                                    width: 40,
-                                    height: 40,
-                                    borderRadius: 8,
-                                    background: envColor + "20", // 10% opacity
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    color: envColor,
-                                    fontWeight: "bold",
-                                    fontSize: 18,
-                                  }}>
-                                  {card.moduleName ? card.moduleName[0] : "P"}
-                                </div>
                                 <div
                                   style={{
                                     flex: 1,
