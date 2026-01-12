@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "docker:build:server": "npm run build && docker buildx build --platform linux/amd64 -t nextjs-nav:latest .",
