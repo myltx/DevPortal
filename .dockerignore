@@ -3,5 +3,13 @@ Dockerfile
 node_modules
 npm-debug.log
 README.md
-.next
+!.next/standalone
+!.next/static
+!.next/server
+!.next/BUILD_ID
+!.next/routes-manifest.json
+!.next/prerender-manifest.json
+!.next/required-server-files.json
+!.next/trace
+
 .git

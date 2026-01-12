@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "docker:build:server": "docker buildx build --platform linux/amd64 -t nextjs-nav:latest .",
+    "docker:build:server": "npm run build && docker buildx build --platform linux/amd64 -t nextjs-nav:latest .",
     "docker:save": "docker save -o nextjs-nav.tar nextjs-nav:latest",
     "docker:pack": "npm run docker:build:server && npm run docker:save",
     "docker:dev": "docker compose up -d --build",
