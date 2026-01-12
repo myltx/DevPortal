@@ -273,14 +273,17 @@ const ProjectSiteContent: React.FC = () => {
       />
 
       {/* 3. Project Tabs */}
-      <Tabs
-        activeKey={activeProjectId}
-        onChange={setActiveProjectId}
-        items={projectIdOptions.map((p) => ({
-          label: p.projectName,
-          key: String(p.id),
-        }))}
-      />
+      <div style={{ width: "calc(100vw - 48px)", overflow: "hidden" }}>
+        <Tabs
+          activeKey={activeProjectId}
+          onChange={setActiveProjectId}
+          tabBarStyle={{ marginBottom: 16 }}
+          items={projectIdOptions.map((p) => ({
+            label: p.projectName,
+            key: String(p.id),
+          }))}
+        />
+      </div>
 
       {/* 4. Main Content (Menu + Grid) */}
       <div
