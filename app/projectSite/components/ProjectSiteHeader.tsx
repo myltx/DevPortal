@@ -156,14 +156,6 @@ const ProjectSiteHeader: React.FC<ProjectSiteHeaderProps> = ({
               type="primary" // Keep primary for Add
               style={{
                 marginLeft: 16,
-                background: "#000",
-                borderColor: "#000",
-              }} // Modern Black for "Create" (or keep green if user prefers, but black is trendy) -> Let's stick to a solid color or standard theme color. User had Green. Let's try standard Primary (blue) or custom. User had #67C23A (Green). I will keep Green but genericize styles. Actually, let's use a Ghost button or just distinct.
-              // Let's stick to the previous Green but bigger.
-              // "style={{ marginLeft: 8, background: "#67C23A" }}"
-              // I'll increase margin to 16 to separate "Filter" actions from "Create" action.
-              style={{
-                marginLeft: 16,
                 background: "#52c41a",
                 borderColor: "#52c41a",
               }}
