@@ -34,6 +34,7 @@ const EditProjectDrawer: React.FC<EditProjectDrawerProps> = ({
       if (initialData) {
         form.setFieldsValue({
           ...initialData,
+          areaName: initialData.areaName ? initialData.areaName.split(",") : [],
           moduleDescribe: initialData.describe,
         });
       } else {

@@ -11,7 +11,9 @@ export const moduleService = {
         typeName: dto.typeName,
         moduleDescribe: dto.moduleDescribe,
         remark: dto.remark,
-        areaName: dto.areaName,
+        areaName: Array.isArray(dto.areaName)
+          ? (dto.areaName as string[]).join(",")
+          : (dto.areaName as string),
         createTime: new Date(),
         updateTime: new Date(),
         // classId? Module schema didn't have classId but DTO did.
@@ -36,7 +38,9 @@ export const moduleService = {
         typeName: dto.typeName,
         moduleDescribe: dto.moduleDescribe,
         remark: dto.remark,
-        areaName: dto.areaName,
+        areaName: Array.isArray(dto.areaName)
+          ? (dto.areaName as string[]).join(",")
+          : (dto.areaName as string),
         updateTime: new Date(),
       },
     });
