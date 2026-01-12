@@ -124,12 +124,8 @@ const ProjectSiteHeader: React.FC<ProjectSiteHeaderProps> = ({
         <Form form={form} layout="inline" style={{ alignItems: "center" }}>
           <Form.Item
             name="typeName"
-            style={{ marginBottom: 0, marginRight: 16 }}>
-            <Select
-              style={{ width: 100 }}
-              allowClear
-              placeholder="环境"
-              size="small">
+            style={{ marginBottom: 0, marginRight: 12 }}>
+            <Select style={{ width: 120 }} allowClear placeholder="环境筛选">
               {envOption.map((env) => (
                 <Option key={env.value} value={env.value}>
                   {env.label}
@@ -141,29 +137,39 @@ const ProjectSiteHeader: React.FC<ProjectSiteHeaderProps> = ({
             name="moduleName"
             style={{ marginBottom: 0, marginRight: 16 }}>
             <Input
-              placeholder="模块名称"
-              size="small"
+              placeholder="搜索模块名称..."
               prefix={<SearchOutlined style={{ color: "rgba(0,0,0,0.25)" }} />}
+              style={{ width: 200 }}
             />
           </Form.Item>
           <Form.Item style={{ marginBottom: 0 }}>
             <Button
               type="primary"
-              onClick={onSearch}
-              size="small"
-              icon={<SearchOutlined />}>
+              onClick={onSearch} // Standard Primary for main action
+            >
               查询
             </Button>
-            <Button onClick={onReset} style={{ marginLeft: 8 }} size="small">
+            <Button onClick={onReset} style={{ marginLeft: 8 }}>
               重置
             </Button>
             <Button
-              type="primary"
-              style={{ marginLeft: 8, background: "#67C23A" }}
+              type="primary" // Keep primary for Add
+              style={{
+                marginLeft: 16,
+                background: "#000",
+                borderColor: "#000",
+              }} // Modern Black for "Create" (or keep green if user prefers, but black is trendy) -> Let's stick to a solid color or standard theme color. User had Green. Let's try standard Primary (blue) or custom. User had #67C23A (Green). I will keep Green but genericize styles. Actually, let's use a Ghost button or just distinct.
+              // Let's stick to the previous Green but bigger.
+              // "style={{ marginLeft: 8, background: "#67C23A" }}"
+              // I'll increase margin to 16 to separate "Filter" actions from "Create" action.
+              style={{
+                marginLeft: 16,
+                background: "#52c41a",
+                borderColor: "#52c41a",
+              }}
               icon={<PlusOutlined />}
-              onClick={onAdd}
-              size="small">
-              新增
+              onClick={onAdd}>
+              新增项目
             </Button>
           </Form.Item>
         </Form>

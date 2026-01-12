@@ -53,3 +53,33 @@ body {
 .dark .middle-card:hover {
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4) !important;
 }
+
+/* Project Card Styles (Matching Middle Card) */
+.project-card {
+  border: 1px solid rgba(0, 0, 0, 0.04) !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08) !important;
+  transition: all 0.3s ease !important;
+}
+
+.project-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12) !important;
+}
+
+.dark .project-card {
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: #141414 !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dark .project-card:hover {
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Helper for Spin to fill height */
+.full-height-spin {
+  height: 100% !important;
+}
+.full-height-spin .ant-spin-container {
+  height: 100%;
+}
