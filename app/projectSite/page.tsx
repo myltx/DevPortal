@@ -14,12 +14,17 @@ import {
   message,
   Spin,
   Empty,
+  Tag,
+  Button,
+  Dropdown,
 } from "antd";
 import {
   EditOutlined,
   DeleteOutlined,
   InfoCircleOutlined,
   CopyOutlined,
+  MoreOutlined,
+  GlobalOutlined,
 } from "@ant-design/icons";
 
 import * as API from "@/lib/api/project";
@@ -173,6 +178,31 @@ const ProjectSiteContent: React.FC = () => {
     }
   };
 
+  const handleCopyUrl = (text: string) => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard
+        .writeText(text)
+        .then(() => message.success("复制成功"))
+        .catch(() => fallbackCopy(text));
+    } else {
+      fallbackCopy(text);
+    }
+  };
+
+  const fallbackCopy = (text: string) => {
+    const input = document.createElement("textarea");
+    input.value = text;
+    document.body.appendChild(input);
+    input.select();
+    try {
+      document.execCommand("copy");
+      message.success("复制成功");
+    } catch (err) {
+      message.error("复制失败");
+    }
+    document.body.removeChild(input);
+  };
+
   return (
     <div
       style={{
@@ -257,104 +287,191 @@ const ProjectSiteContent: React.FC = () => {
                   const envColor =
                     envOption.find((e) => e.value === card.typeName)?.color ||
                     "#909399";
+
+                  const menuItems = [
+                    {
+                      key: "edit",
+                      label: "编辑项目",
+                      icon: <EditOutlined />,
+                      onClick: () => handleShowProjectDrawer(card),
+                    },
+                    {
+                      key: "info",
+                      label: "账号信息",
+                      icon: <InfoCircleOutlined />,
+                      onClick: () => handleShowAccountDrawer(card),
+                    },
+                    {
+                      key: "delete",
+                      label: (
+                        <Popconfirm
+                          title="确认删除该项目?"
+                          onConfirm={() => handleDeleteProject(card.moduleId)}
+                          okText="删除"
+                          cancelText="取消"
+                          placement="left">
+                          <span style={{ color: "#ff4d4f" }}>删除项目</span>
+                        </Popconfirm>
+                      ),
+                      icon: <DeleteOutlined style={{ color: "#ff4d4f" }} />,
+                    },
+                  ];
+
                   return (
-                    <Col span={6} key={card.moduleId}>
+                    <Col
+                      span={6}
+                      key={card.moduleId}
+                      xs={24}
+                      sm={12}
+                      md={8}
+                      lg={6}
+                      xl={6}>
                       <Card
                         hoverable
-                        style={{ borderTop: `4px solid ${envColor}` }}
-                        actions={[
-                          <InfoCircleOutlined
-                            key="info"
-                            onClick={() => handleShowAccountDrawer(card)}
-                          />,
-                          <EditOutlined
-                            key="edit"
-                            onClick={() => handleShowProjectDrawer(card)}
-                          />,
-                          <Popconfirm
-                            key="delete"
-                            title="Delete?"
-                            onConfirm={() =>
-                              handleDeleteProject(card.moduleId)
-                            }>
-                            <DeleteOutlined style={{ color: "red" }} />
-                          </Popconfirm>,
-                        ]}>
-                        <Card.Meta
-                          avatar={
-                            <Avatar style={{ backgroundColor: envColor }}>
+                        size="small"
+                        className="project-card" // For potential global css tweaks
+                        style={{
+                          height: "100%",
+                          borderRadius: 12,
+                          border: "1px solid var(--border-color, #f0f0f0)", // subtle border
+                          transition: "all 0.2s",
+                        }}
+                        // Remove default body padding for total control or keep small
+                        styles={{
+                          body: {
+                            padding: "16px",
+                            height: "100%",
+                            display: "flex",
+                            flexDirection: "column",
+                          },
+                        }}>
+                        {/* 1. Header: Icon + Title + Menu */}
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "flex-start",
+                            marginBottom: 12,
+                          }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: 12,
+                              alignItems: "center",
+                              flex: 1,
+                              overflow: "hidden",
+                            }}>
+                            <Avatar
+                              shape="square"
+                              size={40}
+                              style={{
+                                backgroundColor: envColor,
+                                verticalAlign: "middle",
+                                flexShrink: 0,
+                              }}>
                               {card.typeName?.charAt(0).toUpperCase()}
                             </Avatar>
-                          }
-                          title={
-                            <Tooltip title={card.moduleName}>
-                              {card.moduleName}
-                            </Tooltip>
-                          }
-                          description={
+                            <div style={{ flex: 1, overflow: "hidden" }}>
+                              <Tooltip title={card.moduleName}>
+                                <div
+                                  style={{
+                                    fontWeight: 600,
+                                    fontSize: 16,
+                                    whiteSpace: "nowrap",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    color: "var(--foreground)",
+                                  }}>
+                                  {card.moduleName}
+                                </div>
+                              </Tooltip>
+                              <div style={{ marginTop: 2 }}>
+                                <Tag
+                                  bordered={false}
+                                  color={envColor}
+                                  style={{ marginRight: 0 }}>
+                                  {envOption.find(
+                                    (e) => e.value === card.typeName
+                                  )?.label || card.typeName}
+                                </Tag>
+                              </div>
+                            </div>
+                          </div>
+
+                          <Dropdown
+                            menu={{
+                              items: menuItems,
+                            }}
+                            trigger={["click"]}>
                             <div
                               style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
+                                cursor: "pointer",
+                                padding: 4,
+                                color: "var(--foreground)",
+                                opacity: 0.5,
+                                fontSize: 18,
+                              }}
+                              className="more-btn">
+                              <MoreOutlined />
+                            </div>
+                          </Dropdown>
+                        </div>
+
+                        {/* 2. URL Action Area */}
+                        <div style={{ marginTop: "auto" }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              background: "var(--bg-hover)",
+                              padding: "8px 12px",
+                              borderRadius: 8,
+                              gap: 8,
+                            }}>
+                            <div
+                              style={{
+                                flex: 1,
+                                overflow: "hidden",
+                                fontSize: 13,
+                                color: "var(--foreground)",
+                                opacity: 0.8,
                               }}>
-                              <a
-                                href={card.moduleUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                              <div
                                 style={{
-                                  maxWidth: "80%",
+                                  whiteSpace: "nowrap",
                                   overflow: "hidden",
                                   textOverflow: "ellipsis",
-                                  whiteSpace: "nowrap",
                                 }}>
-                                跳转
-                              </a>
-                              <CopyOutlined
-                                onClick={() => {
-                                  const text = card.moduleUrl;
-                                  if (
-                                    navigator.clipboard &&
-                                    navigator.clipboard.writeText
-                                  ) {
-                                    navigator.clipboard
-                                      .writeText(text)
-                                      .then(() => message.success("复制成功"))
-                                      .catch(() => {
-                                        // Fallback if promise rejects
-                                        const input =
-                                          document.createElement("textarea");
-                                        input.value = text;
-                                        document.body.appendChild(input);
-                                        input.select();
-                                        try {
-                                          document.execCommand("copy");
-                                          message.success("复制成功");
-                                        } catch (err) {
-                                          message.error("复制失败");
-                                        }
-                                        document.body.removeChild(input);
-                                      });
-                                  } else {
-                                    // Fallback for insecure context
-                                    const input =
-                                      document.createElement("textarea");
-                                    input.value = text;
-                                    document.body.appendChild(input);
-                                    input.select();
-                                    try {
-                                      document.execCommand("copy");
-                                      message.success("复制成功");
-                                    } catch (err) {
-                                      message.error("复制失败");
-                                    }
-                                    document.body.removeChild(input);
-                                  }
-                                }}
-                              />
+                                {card.moduleUrl}
+                              </div>
                             </div>
-                          }
-                        />
+
+                            <div style={{ display: "flex", gap: 4 }}>
+                              <Tooltip title="复制链接">
+                                <Button
+                                  type="text"
+                                  size="small"
+                                  icon={<CopyOutlined />}
+                                  onClick={() => handleCopyUrl(card.moduleUrl)}
+                                  style={{
+                                    color: "var(--foreground)",
+                                    opacity: 0.6,
+                                  }}
+                                />
+                              </Tooltip>
+                              <Tooltip title="跳转">
+                                <Button
+                                  type="text"
+                                  size="small"
+                                  icon={<GlobalOutlined />}
+                                  href={card.moduleUrl}
+                                  target="_blank"
+                                  style={{ color: envColor }} // Use enviroment color for the main action
+                                />
+                              </Tooltip>
+                            </div>
+                          </div>
+                        </div>
                       </Card>
                     </Col>
                   );
