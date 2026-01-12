@@ -40,7 +40,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <NextThemesProvider
       attribute="class" // Use class mode for Tailwind (.dark class)
-      defaultTheme="system"
+      defaultTheme="light"
       enableSystem>
       <AntdAdapter>{children}</AntdAdapter>
     </NextThemesProvider>

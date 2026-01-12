@@ -54,6 +54,8 @@ const ProjectSiteHeader: React.FC<ProjectSiteHeaderProps> = ({
       }}>
       {/* Navigation Part */}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <ThemeSwitch />
+
         <Tooltip title="工作台">
           <div
             style={{
@@ -168,7 +170,25 @@ const ProjectSiteHeader: React.FC<ProjectSiteHeaderProps> = ({
       </div>
 
       <div style={{ flex: 1 }} />
-      <ThemeSwitch />
+
+      {/* Legend Part (moved here) */}
+      <div style={{ display: "flex", alignItems: "center", fontSize: 12 }}>
+        {envOption.map((env) => (
+          <div
+            key={env.value}
+            style={{ display: "flex", alignItems: "center", marginLeft: 16 }}>
+            <div
+              style={{
+                width: 10,
+                height: 10,
+                background: env.color,
+                marginRight: 6,
+                borderRadius: 2,
+              }}></div>
+            <span style={{ opacity: 0.8 }}>{env.label}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

@@ -116,8 +116,8 @@ const ProjectSiteContent: React.FC = () => {
       if (res.success) {
         const list = res.data
           .map((item: any, index: number) => {
-            // Sort inner list by environment
-            const sortedList = item.list?.sort((a: any, b: any) => {
+            // Sort inner list by environment (case-insensitive)
+            const sortedList = [...(item.list || [])].sort((a: any, b: any) => {
               const envOrder: Record<string, number> = {
                 prod: 1,
                 gray: 2,
@@ -125,8 +125,10 @@ const ProjectSiteContent: React.FC = () => {
                 dev: 4,
                 demo: 5,
               };
-              const orderA = envOrder[a.typeName] || 99;
-              const orderB = envOrder[b.typeName] || 99;
+              const typeA = String(a.typeName || "").toLowerCase();
+              const typeB = String(b.typeName || "").toLowerCase();
+              const orderA = envOrder[typeA] || 99;
+              const orderB = envOrder[typeB] || 99;
               return orderA - orderB;
             });
 
@@ -239,31 +241,6 @@ const ProjectSiteContent: React.FC = () => {
         onReset={handleReset}
         onAdd={() => handleShowProjectDrawer(null)}
       />
-
-      {/* 2. Color Legend (Compact) */}
-      <div
-        style={{
-          display: "flex",
-          marginBottom: 16,
-          justifyContent: "flex-end",
-          fontSize: 12,
-        }}>
-        {envOption.map((env) => (
-          <div
-            key={env.value}
-            style={{ display: "flex", alignItems: "center", marginLeft: 16 }}>
-            <div
-              style={{
-                width: 10,
-                height: 10,
-                background: env.color,
-                marginRight: 6,
-                borderRadius: 2,
-              }}></div>
-            <span style={{ opacity: 0.8 }}>{env.label}</span>
-          </div>
-        ))}
-      </div>
 
       {/* 3. Project Tabs */}
       <Tabs

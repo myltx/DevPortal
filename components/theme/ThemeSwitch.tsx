@@ -2,7 +2,7 @@
 
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import { Select } from "antd";
+import { Button, Dropdown, Tooltip } from "antd";
 import { SunOutlined, MoonOutlined, DesktopOutlined } from "@ant-design/icons";
 
 export function ThemeSwitch() {
@@ -14,45 +14,62 @@ export function ThemeSwitch() {
   }, []);
 
   if (!mounted) {
-    // Placeholder to prevent layout shift during hydration
-    return <div style={{ width: 100, height: 32 }} />;
+    return (
+      <Button
+        type="text"
+        icon={<DesktopOutlined />}
+        size="small"
+        style={{ width: 28, height: 28 }}
+      />
+    );
   }
 
-  const options = [
+  const getIcon = () => {
+    if (theme === "light") return <SunOutlined />;
+    if (theme === "dark") return <MoonOutlined />;
+    return <DesktopOutlined />;
+  };
+
+  const items = [
     {
-      value: "light",
-      label: (
-        <>
-          <SunOutlined /> 浅色
-        </>
-      ),
+      key: "light",
+      label: "浅色模式",
+      icon: <SunOutlined />,
     },
     {
-      value: "dark",
-      label: (
-        <>
-          <MoonOutlined /> 深色
-        </>
-      ),
+      key: "dark",
+      label: "深色模式",
+      icon: <MoonOutlined />,
     },
     {
-      value: "system",
-      label: (
-        <>
-          <DesktopOutlined /> 跟随系统
-        </>
-      ),
+      key: "system",
+      label: "跟随系统",
+      icon: <DesktopOutlined />,
     },
   ];
 
   return (
-    <Select
-      value={theme}
-      onChange={setTheme}
-      options={options}
-      style={{ width: 110 }}
-      variant="filled" // Cleaner look for header
-      size="small"
-    />
+    <Dropdown
+      menu={{
+        items,
+        selectedKeys: [theme || "system"],
+        onClick: (e) => setTheme(e.key),
+      }}
+      trigger={["click"]}>
+      <Tooltip title="切换主题">
+        <Button
+          type="text"
+          icon={getIcon()}
+          className="theme-switch-btn"
+          style={{
+            width: 28,
+            height: 28,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        />
+      </Tooltip>
+    </Dropdown>
   );
 }

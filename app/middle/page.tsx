@@ -71,8 +71,9 @@ export default function MiddlePage() {
           {apps.map((app) => (
             <Col xs={24} sm={12} md={12} lg={6} key={app.title}>
               <Card
+                className="middle-card"
                 hoverable
-                style={{ height: "100%", borderRadius: 12, border: "none" }}
+                style={{ height: "100%", borderRadius: 16 }}
                 bodyStyle={{
                   padding: 32,
                   display: "flex",

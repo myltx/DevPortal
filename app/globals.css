@@ -31,3 +31,25 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
 }
+
+/* Middle Page Card Styles */
+.middle-card {
+  border: 1px solid rgba(0, 0, 0, 0.04) !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08) !important;
+  transition: all 0.3s ease !important;
+}
+
+.middle-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12) !important;
+}
+
+.dark .middle-card {
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: #141414 !important; /* Slightly lighter than pure black bg */
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dark .middle-card:hover {
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4) !important;
+}
