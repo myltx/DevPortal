@@ -115,10 +115,27 @@ const ProjectSiteContent: React.FC = () => {
       const res = await API.projectList(payload);
       if (res.success) {
         const list = res.data
-          .map((item: any, index: number) => ({
-            ...item,
-            sort: item.areaName === "其他" ? res.data.length : index,
-          }))
+          .map((item: any, index: number) => {
+            // Sort inner list by environment
+            const sortedList = item.list?.sort((a: any, b: any) => {
+              const envOrder: Record<string, number> = {
+                prod: 1,
+                gray: 2,
+                test: 3,
+                dev: 4,
+                demo: 5,
+              };
+              const orderA = envOrder[a.typeName] || 99;
+              const orderB = envOrder[b.typeName] || 99;
+              return orderA - orderB;
+            });
+
+            return {
+              ...item,
+              list: sortedList,
+              sort: item.areaName === "其他" ? res.data.length : index,
+            };
+          })
           .sort((a: any, b: any) => a.sort - b.sort);
         setCardList(list);
       } else {
@@ -223,21 +240,27 @@ const ProjectSiteContent: React.FC = () => {
         onAdd={() => handleShowProjectDrawer(null)}
       />
 
-      {/* 2. Color Legend */}
-      <div style={{ display: "flex", marginBottom: 16 }}>
+      {/* 2. Color Legend (Compact) */}
+      <div
+        style={{
+          display: "flex",
+          marginBottom: 16,
+          justifyContent: "flex-end",
+          fontSize: 12,
+        }}>
         {envOption.map((env) => (
           <div
             key={env.value}
-            style={{ display: "flex", alignItems: "center", marginRight: 16 }}>
+            style={{ display: "flex", alignItems: "center", marginLeft: 16 }}>
             <div
               style={{
-                width: 16,
-                height: 16,
+                width: 10,
+                height: 10,
                 background: env.color,
-                marginRight: 8,
+                marginRight: 6,
                 borderRadius: 2,
               }}></div>
-            <span>{env.label}</span>
+            <span style={{ opacity: 0.8 }}>{env.label}</span>
           </div>
         ))}
       </div>
