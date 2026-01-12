@@ -14,6 +14,7 @@ import {
   FunctionOutlined,
 } from "@ant-design/icons";
 import { useRouter, usePathname } from "next/navigation";
+import { ThemeSwitch } from "@/components/theme/ThemeSwitch";
 
 const { Header, Sider, Content } = Layout;
 
@@ -99,6 +100,8 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
           </div>
           <div style={{ flex: 1 }} />
+          <ThemeSwitch />
+          <div style={{ width: 16 }} />
           <div>Username</div>
           <div style={{ width: 24 }} />
         </Header>

@@ -15,7 +15,9 @@ import {
   SearchOutlined,
   PlusOutlined,
 } from "@ant-design/icons";
+
 import { useRouter } from "next/navigation";
+import { ThemeSwitch } from "@/components/theme/ThemeSwitch";
 
 const { Option } = Select;
 
@@ -66,16 +68,16 @@ const ProjectSiteHeader: React.FC<ProjectSiteHeaderProps> = ({
             }}
             onClick={() => router.replace("/middle")}
             onMouseEnter={(e) =>
-              (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.04)")
+              (e.currentTarget.style.backgroundColor = "var(--bg-hover)")
             }
             onMouseLeave={(e) =>
               (e.currentTarget.style.backgroundColor = "transparent")
             }>
-            <AppstoreOutlined style={{ fontSize: "16px", color: "#666" }} />
+            <AppstoreOutlined style={{ fontSize: "16px" }} />
           </div>
         </Tooltip>
 
-        <span style={{ color: "rgba(0,0,0,0.25)", fontSize: 14 }}>/</span>
+        <span style={{ opacity: 0.45, fontSize: 14 }}>/</span>
 
         <Dropdown
           menu={{
@@ -96,22 +98,19 @@ const ProjectSiteHeader: React.FC<ProjectSiteHeaderProps> = ({
               display: "flex",
               alignItems: "center",
               gap: 4,
-              color: "#000",
               padding: "2px 6px",
               borderRadius: "4px",
               transition: "background 0.2s",
             }}
             onMouseEnter={(e) =>
-              (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.04)")
+              (e.currentTarget.style.backgroundColor = "var(--bg-hover)")
             }
             onMouseLeave={(e) =>
               (e.currentTarget.style.backgroundColor = "transparent")
             }>
             {classInfoList.find((c) => String(c.id) === String(activeClassId))
               ?.name || "当前行业"}
-            <CaretDownOutlined
-              style={{ fontSize: "10px", color: "rgba(0,0,0,0.45)" }}
-            />
+            <CaretDownOutlined style={{ fontSize: "10px", opacity: 0.45 }} />
           </span>
         </Dropdown>
       </div>
@@ -167,6 +166,9 @@ const ProjectSiteHeader: React.FC<ProjectSiteHeaderProps> = ({
           </Form.Item>
         </Form>
       </div>
+
+      <div style={{ flex: 1 }} />
+      <ThemeSwitch />
     </div>
   );
 };

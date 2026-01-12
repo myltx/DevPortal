@@ -51,7 +51,8 @@ export default function MiddlePage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#f5f7fa",
+        background: "var(--background)",
+        color: "var(--foreground)",
         padding: "48px 24px",
         display: "flex",
         justifyContent: "center",

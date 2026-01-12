@@ -174,7 +174,13 @@ const ProjectSiteContent: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: 24, height: "100%" }}>
+    <div
+      style={{
+        padding: 24,
+        minHeight: "100vh",
+        background: "var(--background)",
+        color: "var(--foreground)",
+      }}>
       {/* 1. Header & Filter */}
       <ProjectSiteHeader
         activeClassId={activeClassId}
@@ -223,7 +229,13 @@ const ProjectSiteContent: React.FC = () => {
             mode="inline"
             selectedKeys={[selectedAreaIndex]}
             onClick={(e) => setSelectedAreaIndex(e.key)}
-            style={{ width: 200, height: "100%", overflowY: "auto" }}
+            style={{
+              width: 200,
+              height: "100%",
+              overflowY: "auto",
+              background: "transparent",
+              borderRight: "none", // Optional: remove border for cleaner look
+            }}
             items={cardList.map((area, index) => ({
               label: area.areaName || "其他",
               key: String(index),

@@ -7,6 +7,7 @@
     Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
   --font-geist-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     "Liberation Mono", "Courier New", monospace;
+  --bg-hover: rgba(0, 0, 0, 0.04);
 }
 
 @theme inline {
@@ -16,12 +17,14 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --bg-hover: rgba(255, 255, 255, 0.1);
 }
+
 
 body {
   background: var(--background);
