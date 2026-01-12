@@ -34,7 +34,7 @@ const EditProjectDrawer: React.FC<EditProjectDrawerProps> = ({
       if (initialData) {
         form.setFieldsValue({
           ...initialData,
-          areaName: initialData.areaName ? initialData.areaName.split(",") : [],
+          areaName: initialData.areaName, // Use distinct string value
           moduleDescribe: initialData.describe,
         });
       } else {
@@ -108,7 +108,7 @@ const EditProjectDrawer: React.FC<EditProjectDrawerProps> = ({
           name="areaName"
           label="所属区划"
           rules={[{ required: true }]}>
-          <Select showSearch allowClear mode="tags">
+          <Select showSearch allowClear placeholder="请选择区划">
             {areaList.map((a) => (
               <Option key={a} value={a}>
                 {a}
