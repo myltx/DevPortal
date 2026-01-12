@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   Card,
   Form,
@@ -34,6 +34,8 @@ import AccountDrawer from "./components/AccountDrawer";
 
 const ProjectSiteContent: React.FC = () => {
   const [formInline] = Form.useForm();
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // State
   const [activeClassId, setActiveClassId] = useState<string>("");
@@ -132,10 +134,18 @@ const ProjectSiteContent: React.FC = () => {
               return orderA - orderB;
             });
 
+            let sortIndex = index;
+            const nameLower = (item.areaName || "").toLowerCase();
+            if (nameLower.includes("doc")) {
+              sortIndex = res.data.length + 2; // Bottom-most
+            } else if (item.areaName === "其他") {
+              sortIndex = res.data.length + 1; // Second to bottom
+            }
+
             return {
               ...item,
               list: sortedList,
-              sort: item.areaName === "其他" ? res.data.length : index,
+              sort: sortIndex,
             };
           })
           .sort((a: any, b: any) => a.sort - b.sort);
@@ -166,6 +176,14 @@ const ProjectSiteContent: React.FC = () => {
 
   useEffect(() => {
     fetchProjectList();
+  }, [activeProjectId]);
+
+  // Reset scroll and selection when project changes
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+    setSelectedAreaIndex("0");
   }, [activeProjectId]);
 
   // --- Handlers ---
@@ -222,6 +240,15 @@ const ProjectSiteContent: React.FC = () => {
     document.body.removeChild(input);
   };
 
+  // Scroll to specific area
+  const scrollToArea = (index: number) => {
+    setSelectedAreaIndex(String(index));
+    const element = document.getElementById(`area-${index}`);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   return (
     <div
       style={{
@@ -268,18 +295,36 @@ const ProjectSiteContent: React.FC = () => {
               border: "1px solid var(--border-color, rgba(0,0,0,0.06))",
               background: "var(--card-bg, rgba(255,255,255,0.5))", // Semi-transparent or just card bg
               marginRight: 24, // Explicit spacing
+              flexShrink: 0,
             }}>
             <Menu
               mode="inline"
               selectedKeys={[selectedAreaIndex]}
-              onClick={(e) => setSelectedAreaIndex(e.key)}
+              onClick={(e) => scrollToArea(Number(e.key))}
               style={{
                 height: "100%",
                 borderRight: "none",
                 background: "transparent",
               }}
               items={cardList.map((area, index) => ({
-                label: area.areaName || "其他",
+                label: (
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}>
+                    <span>{area.areaName || "其他"}</span>
+                    <span
+                      style={{
+                        fontSize: 12,
+                        color: "var(--foreground)",
+                        opacity: 0.4,
+                      }}>
+                      {area.list?.length || 0}
+                    </span>
+                  </div>
+                ),
                 key: String(index),
               }))}
             />
@@ -297,217 +342,248 @@ const ProjectSiteContent: React.FC = () => {
           }}>
           <Spin spinning={loading} wrapperClassName="full-height-spin">
             <div
+              ref={scrollContainerRef}
               style={{
                 height: "100%",
                 overflowY: "auto",
                 paddingRight: 4,
                 paddingBottom: 16,
+                paddingLeft: 4,
+                scrollBehavior: "smooth",
               }}>
               {cardList.length === 0 ? (
                 <Empty description="暂无项目" style={{ marginTop: 64 }} />
               ) : (
-                <Row gutter={[16, 16]}>
-                  {(() => {
-                    let projects = [];
-                    if (selectedAreaIndex === "0") {
-                      projects = cardList.flatMap(
-                        (item: any) => item.list || []
-                      );
-                    } else {
-                      const idx = Number(selectedAreaIndex) - 1;
-                      projects = cardList[idx]?.list || [];
-                    }
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+                  {cardList.map((areaGroup, groupIndex) => {
+                    const projects = areaGroup.list || [];
+                    if (projects.length === 0) return null; // Skip empty groups to save space
 
-                    // Apply local search filter if needed? (There is activeProjectId/classId but search is mostly backend?)
-                    // The Header has onSearch which calls API. So cardList is already filtered by query.
-                    // We just display what is in cardList.
-
-                    return projects.map((card: any) => {
-                      const env = envOption.find(
-                        (e) => e.value === card.typeName
-                      );
-                      const envColor = env ? env.color : "#1890ff";
-
-                      const menuItems = [
-                        {
-                          key: "edit",
-                          label: "编辑项目",
-                          icon: <EditOutlined />,
-                          onClick: () => handleShowProjectDrawer(card),
-                        },
-                        {
-                          key: "info",
-                          label: "账号信息",
-                          icon: <InfoCircleOutlined />,
-                          onClick: () => handleShowAccountDrawer(card),
-                        },
-                        {
-                          key: "delete",
-                          label: (
-                            <Popconfirm
-                              title="确认删除该项目?"
-                              onConfirm={() =>
-                                handleDeleteProject(card.moduleId)
-                              }
-                              okText="删除"
-                              cancelText="取消"
-                              placement="left">
-                              <span style={{ color: "#ff4d4f" }}>删除项目</span>
-                            </Popconfirm>
-                          ),
-                          icon: <DeleteOutlined style={{ color: "#ff4d4f" }} />,
-                        },
-                      ];
-
-                      return (
-                        <Col
-                          xs={24}
-                          sm={12}
-                          md={12}
-                          lg={12}
-                          xl={8}
-                          xxl={6}
-                          key={card.id || card.moduleId}>
-                          <Card
-                            hoverable
-                            className="project-card"
-                            bodyStyle={{ padding: "16px" }}
+                    return (
+                      <div key={groupIndex} id={`area-${groupIndex}`}>
+                        {/* Group Title */}
+                        <div
+                          style={{
+                            fontSize: 18,
+                            fontWeight: 600,
+                            marginBottom: 16,
+                            paddingLeft: 12,
+                            borderLeft: "4px solid #1890ff",
+                            lineHeight: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            color: "var(--foreground)",
+                          }}>
+                          {areaGroup.areaName || "其他"}
+                          <span
                             style={{
-                              borderRadius: 12,
-                              border: "1px solid var(--border-color)",
-                              transition: "all 0.2s",
-                              height: "100%",
-                              display: "flex",
-                              flexDirection: "column",
+                              fontSize: 13,
+                              color: "var(--foreground)",
+                              opacity: 0.5,
+                              marginLeft: 8,
+                              fontWeight: 400,
                             }}>
-                            <div
-                              style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                marginBottom: 12,
-                              }}>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  gap: 8,
-                                  flex: 1,
-                                  minWidth: 0,
-                                }}>
-                                <div
+                            ({projects.length})
+                          </span>
+                        </div>
+
+                        <Row gutter={[16, 16]}>
+                          {projects.map((card: any) => {
+                            const env = envOption.find(
+                              (e) => e.value === card.typeName
+                            );
+                            const envColor = env ? env.color : "#1890ff";
+
+                            const menuItems = [
+                              {
+                                key: "edit",
+                                label: "编辑项目",
+                                icon: <EditOutlined />,
+                                onClick: () => handleShowProjectDrawer(card),
+                              },
+                              {
+                                key: "info",
+                                label: "账号信息",
+                                icon: <InfoCircleOutlined />,
+                                onClick: () => handleShowAccountDrawer(card),
+                              },
+                              {
+                                key: "delete",
+                                label: (
+                                  <Popconfirm
+                                    title="确认删除该项目?"
+                                    onConfirm={() =>
+                                      handleDeleteProject(card.moduleId)
+                                    }
+                                    okText="删除"
+                                    cancelText="取消"
+                                    placement="left">
+                                    <span style={{ color: "#ff4d4f" }}>
+                                      删除项目
+                                    </span>
+                                  </Popconfirm>
+                                ),
+                                icon: (
+                                  <DeleteOutlined
+                                    style={{ color: "#ff4d4f" }}
+                                  />
+                                ),
+                              },
+                            ];
+
+                            return (
+                              <Col
+                                xs={24}
+                                sm={12}
+                                md={12}
+                                lg={12}
+                                xl={8}
+                                xxl={6}
+                                key={card.id || card.moduleId}>
+                                <Card
+                                  hoverable
+                                  className="project-card"
+                                  bodyStyle={{ padding: "16px" }}
                                   style={{
-                                    flex: 1,
-                                    overflow: "hidden",
-                                    minWidth: 0,
+                                    borderRadius: 12,
+                                    border: "1px solid var(--border-color)",
+                                    transition: "all 0.2s",
+                                    height: "100%",
+                                    display: "flex",
+                                    flexDirection: "column",
                                   }}>
                                   <div
                                     style={{
-                                      fontSize: 16,
-                                      fontWeight: 600,
-                                      whiteSpace: "nowrap",
-                                      overflow: "hidden",
-                                      textOverflow: "ellipsis",
-                                      marginBottom: 2,
-                                    }}
-                                    title={card.moduleName}>
-                                    {card.moduleName}
-                                  </div>
-                                  <Tag
-                                    color={envColor}
-                                    style={{
-                                      marginRight: 0,
-                                      border: "none",
-                                      padding: "0 6px",
-                                      fontSize: 10,
-                                      lineHeight: "18px",
-                                      height: 18,
+                                      display: "flex",
+                                      justifyContent: "space-between",
+                                      marginBottom: 12,
                                     }}>
-                                    {env?.label || card.typeName}
-                                  </Tag>
-                                </div>
-                              </div>
-
-                              <Dropdown
-                                menu={{
-                                  items: menuItems,
-                                }}
-                                trigger={["click"]}>
-                                <div
-                                  style={{
-                                    cursor: "pointer",
-                                    padding: 4,
-                                    color: "var(--foreground)",
-                                    opacity: 0.5,
-                                    fontSize: 18,
-                                  }}
-                                  className="more-btn">
-                                  <MoreOutlined />
-                                </div>
-                              </Dropdown>
-                            </div>
-
-                            {/* 2. URL Action Area */}
-                            <div style={{ marginTop: "auto" }}>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  background: "var(--bg-hover)",
-                                  padding: "8px 12px",
-                                  borderRadius: 8,
-                                  gap: 8,
-                                }}>
-                                <div
-                                  style={{
-                                    flex: 1,
-                                    overflow: "hidden",
-                                    fontSize: 13,
-                                    color: "var(--foreground)",
-                                    opacity: 0.8,
-                                  }}>
-                                  <div
-                                    style={{
-                                      whiteSpace: "nowrap",
-                                      overflow: "hidden",
-                                      textOverflow: "ellipsis",
-                                    }}>
-                                    {card.moduleUrl}
-                                  </div>
-                                </div>
-
-                                <div style={{ display: "flex", gap: 4 }}>
-                                  <Tooltip title="复制链接">
-                                    <Button
-                                      type="text"
-                                      size="small"
-                                      icon={<CopyOutlined />}
-                                      onClick={() =>
-                                        handleCopyUrl(card.moduleUrl)
-                                      }
+                                    <div
                                       style={{
-                                        color: "var(--foreground)",
-                                        opacity: 0.6,
+                                        display: "flex",
+                                        gap: 8,
+                                        flex: 1,
+                                        minWidth: 0,
+                                      }}>
+                                      <div
+                                        style={{
+                                          flex: 1,
+                                          overflow: "hidden",
+                                          minWidth: 0,
+                                        }}>
+                                        <div
+                                          style={{
+                                            fontSize: 16,
+                                            fontWeight: 600,
+                                            whiteSpace: "nowrap",
+                                            overflow: "hidden",
+                                            textOverflow: "ellipsis",
+                                            marginBottom: 2,
+                                          }}
+                                          title={card.moduleName}>
+                                          {card.moduleName}
+                                        </div>
+                                        <Tag
+                                          color={envColor}
+                                          style={{
+                                            marginRight: 0,
+                                            border: "none",
+                                            padding: "0 6px",
+                                            fontSize: 10,
+                                            lineHeight: "18px",
+                                            height: 18,
+                                          }}>
+                                          {env?.label || card.typeName}
+                                        </Tag>
+                                      </div>
+                                    </div>
+
+                                    <Dropdown
+                                      menu={{
+                                        items: menuItems,
                                       }}
-                                    />
-                                  </Tooltip>
-                                  <Tooltip title="跳转">
-                                    <Button
-                                      type="text"
-                                      size="small"
-                                      icon={<GlobalOutlined />}
-                                      href={card.moduleUrl}
-                                      target="_blank"
-                                      style={{ color: envColor }} // Use enviroment color for the main action
-                                    />
-                                  </Tooltip>
-                                </div>
-                              </div>
-                            </div>
-                          </Card>
-                        </Col>
-                      );
-                    });
-                  })()}
-                </Row>
+                                      trigger={["click"]}>
+                                      <div
+                                        style={{
+                                          cursor: "pointer",
+                                          padding: 4,
+                                          color: "var(--foreground)",
+                                          opacity: 0.5,
+                                          fontSize: 18,
+                                        }}
+                                        className="more-btn">
+                                        <MoreOutlined />
+                                      </div>
+                                    </Dropdown>
+                                  </div>
+
+                                  {/* 2. URL Action Area */}
+                                  <div style={{ marginTop: "auto" }}>
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        background: "var(--bg-hover)",
+                                        padding: "8px 12px",
+                                        borderRadius: 8,
+                                        gap: 8,
+                                      }}>
+                                      <div
+                                        style={{
+                                          flex: 1,
+                                          overflow: "hidden",
+                                          fontSize: 13,
+                                          color: "var(--foreground)",
+                                          opacity: 0.8,
+                                        }}>
+                                        <div
+                                          style={{
+                                            whiteSpace: "nowrap",
+                                            overflow: "hidden",
+                                            textOverflow: "ellipsis",
+                                          }}>
+                                          {card.moduleUrl}
+                                        </div>
+                                      </div>
+
+                                      <div style={{ display: "flex", gap: 4 }}>
+                                        <Tooltip title="复制链接">
+                                          <Button
+                                            type="text"
+                                            size="small"
+                                            icon={<CopyOutlined />}
+                                            onClick={() =>
+                                              handleCopyUrl(card.moduleUrl)
+                                            }
+                                            style={{
+                                              color: "var(--foreground)",
+                                              opacity: 0.6,
+                                            }}
+                                          />
+                                        </Tooltip>
+                                        <Tooltip title="跳转">
+                                          <Button
+                                            type="text"
+                                            size="small"
+                                            icon={<GlobalOutlined />}
+                                            href={card.moduleUrl}
+                                            target="_blank"
+                                            style={{ color: envColor }} // Use enviroment color for the main action
+                                          />
+                                        </Tooltip>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </Card>
+                              </Col>
+                            );
+                          })}
+                        </Row>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           </Spin>
