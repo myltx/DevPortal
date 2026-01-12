@@ -11,9 +11,9 @@ services:
     ports:
       - "3001:3001"
 
-    # Optional: Uncomment if you upload a .env file to the server
-    # env_file:
-    #   - .env
+    # Required: Load environment variables (DATABASE_URL etc.)
+    env_file:
+      - .env
 
     environment:
       - NODE_ENV=production
