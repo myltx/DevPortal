@@ -1,0 +1,19 @@
+version: "3"
+
+services:
+  nextjs-nav:
+    container_name: nextjs-nav
+    # Server Deployment Config
+    # Uses the image loaded from nextjs-nav.tar (no build step required)
+    image: nextjs-nav:latest
+
+    restart: always
+    ports:
+      - "3001:3001"
+
+    # Optional: Uncomment if you upload a .env file to the server
+    # env_file:
+    #   - .env
+
+    environment:
+      - NODE_ENV=production

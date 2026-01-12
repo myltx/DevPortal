@@ -26,16 +26,17 @@ docker compose version
 
     - 推荐：在本地执行 `npm run build` 后，将包含 `.next` 的 `web` 目录上传至服务器。
     - 或者：使用下方第 6 节“本地构建并上传 (离线部署)”直接上传镜像包（更稳定，不依赖服务器网络）。
+
 2.  **构建并启动**:
     进入目录并运行：
 
     ```bash
     cd web
-    # 使用 V2 命令 (推荐)
-    docker compose up -d --build
+    # 方式 1: 如果文件名是 docker-compose.yml (标准)
+    docker compose up -d
 
-    # 如果 V2 不可用，尝试旧版：
-    # docker-compose up -d --build
+    # 方式 2: 如果文件名是 docker-compose.prod.yml (未重命名)
+    docker compose -f docker-compose.prod.yml up -d
     ```
 
     _(如果是第一次运行，构建过程可能需要几分钟)_
@@ -141,9 +142,15 @@ _(注意：需要本地也安装 Docker)_
     # 等待完成后，当前目录会生成 nextjs-nav.tar
     ```
 
-2.  **上传**:
+2.  **上传文件**:
+    您需要上传可以通过离线部署的 **两个核心文件**：
+
+    - `nextjs-nav.tar` (镜像包)
+    - `docker-compose.prod.yml` (**生产环境专用配置**，请在服务器上重命名为 `docker-compose.yml`)
+
     ```bash
-    scp nextjs-nav.tar root@your-server-ip:/root/
+    scp nextjs-nav.tar root@your-server-ip:/root/project/
+    scp docker-compose.prod.yml root@your-server-ip:/root/project/docker-compose.yml
     ```
 
 ### 方式 B: 手动执行命令
@@ -195,3 +202,61 @@ _(注意：需要本地也安装 Docker)_
           - NODE_ENV=production
     ```
     然后运行 `docker compose up -d` 即可。
+
+## 7. (附录) 技术原理：为什么这样快且稳？
+
+为了解决 Mac Apple Silicon (ARM) 模拟 Linux (x86) 构建慢且易崩溃的问题，我们采用了 **“本地构建 + 注入 (Native Injection)”** 策略。
+
+### 核心流程可视化
+
+```mermaid
+graph TD
+    %% Define Styles
+    classDef local fill:#e6f7ff,stroke:#1890ff,stroke-width:2px;
+    classDef server fill:#f6ffed,stroke:#52c41a,stroke-width:2px;
+    classDef artifact fill:#fff7e6,stroke:#fa8c16,stroke-width:2px,stroke-dasharray: 5 5;
+
+    subgraph Local ["💻 本地环境 (Mac M-Chip)"]
+        direction TB
+        Code[Source Code] --> |1. npm run build| NextDist[.next 文件夹]:::artifact
+        NextDist --> |2. COPY| DockerBuild[Docker Build (x86)]
+        Pkg[package.json] --> |3. npm ci --prod| DockerBuild
+        DockerBuild --> |4. docker save| TarFile[nextjs-nav.tar]:::artifact
+    end
+
+    TarFile --> |5. scp 上传| ServerEnv
+    Config[docker-compose.prod.yml] --> |5. scp 上传| ServerEnv
+
+    subgraph ServerEnv ["☁️ 生产服务器 (Linux)"]
+        direction TB
+        LoadedImage[Loaded Image]
+        RunningContainer[🟢 Running Container]
+
+        TarFile --> |6. docker load| LoadedImage
+        Config --> |7. docker compose up| RunningContainer
+        LoadedImage -.-> RunningContainer
+    end
+
+    class Local local
+    class ServerEnv server
+```
+
+### 构建流程图解
+
+1.  **本地编译 (Local Build)**:
+
+    - 在您的 Mac 上利用原生 CPU 性能执行 `npm run build`。
+    - **产出**: `.next` 文件夹（包含通用的 JS/CSS/HTML 产物）。
+    - _注意：此时本地的 `node_modules` 是 Mac 版的，不会被打包。_
+
+2.  **Docker 依赖安装 (Container Install)**:
+
+    - Docker 构建时，会自动忽略本地的 `node_modules`。
+    - 在容器内部（Linux x86 环境）执行 `npm ci --only=production`。
+    - **产出**: 纯正的 Linux 版 `node_modules`（完美支持 Sharp, Prisma 等原生库）。
+
+3.  **产物注入 (Injection)**:
+    - 最后将第 1 步生成的 `.next` 文件夹复制进容器。
+    - 结果：获得了一个既包含最新代码，又拥有正确底层依赖的完美镜像。
+
+通过这种“移花接木”的方式，我们既享受了 Mac 的编译速度，又保证了服务器的运行稳定性。

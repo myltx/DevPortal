@@ -1,8 +1,8 @@
 # Strategy: Pre-build on Host (Native Speed), Package in Docker (x86 Compatibility)
 # This avoids QEMU crashing during 'next build' on Mac Silicon
 
-# Use full Bullseye image for maximum compatibility
-FROM node:20-bullseye
+# Use slim Bullseye image (much smaller) since we don't compile in Docker anymore
+FROM node:20-bullseye-slim
 
 WORKDIR /app
 

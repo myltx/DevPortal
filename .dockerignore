@@ -14,4 +14,13 @@ README.md
 !.next/required-server-files.json
 !.next/trace
 
+# Explicitly ensure cache is ignored (redundant but safe)
+.next/cache
+
+
+# Explicitly ensure cache is ignored (redundant but safe)
+.next/cache
+.next/dev
+
+
 .git
