@@ -311,9 +311,46 @@ const ProjectSiteContent: React.FC = () => {
                                 跳转
                               </a>
                               <CopyOutlined
-                                onClick={() =>
-                                  navigator.clipboard.writeText(card.moduleUrl)
-                                }
+                                onClick={() => {
+                                  const text = card.moduleUrl;
+                                  if (
+                                    navigator.clipboard &&
+                                    navigator.clipboard.writeText
+                                  ) {
+                                    navigator.clipboard
+                                      .writeText(text)
+                                      .then(() => message.success("复制成功"))
+                                      .catch(() => {
+                                        // Fallback if promise rejects
+                                        const input =
+                                          document.createElement("textarea");
+                                        input.value = text;
+                                        document.body.appendChild(input);
+                                        input.select();
+                                        try {
+                                          document.execCommand("copy");
+                                          message.success("复制成功");
+                                        } catch (err) {
+                                          message.error("复制失败");
+                                        }
+                                        document.body.removeChild(input);
+                                      });
+                                  } else {
+                                    // Fallback for insecure context
+                                    const input =
+                                      document.createElement("textarea");
+                                    input.value = text;
+                                    document.body.appendChild(input);
+                                    input.select();
+                                    try {
+                                      document.execCommand("copy");
+                                      message.success("复制成功");
+                                    } catch (err) {
+                                      message.error("复制失败");
+                                    }
+                                    document.body.removeChild(input);
+                                  }
+                                }}
                               />
                             </div>
                           }
