@@ -406,12 +406,6 @@ const ProjectSiteContent: React.FC = () => {
                                 onClick: () => handleShowProjectDrawer(card),
                               },
                               {
-                                key: "info",
-                                label: "账号信息",
-                                icon: <InfoCircleOutlined />,
-                                onClick: () => handleShowAccountDrawer(card),
-                              },
-                              {
                                 key: "delete",
                                 label: (
                                   <Popconfirm
@@ -522,60 +516,54 @@ const ProjectSiteContent: React.FC = () => {
                                   </div>
 
                                   {/* 2. URL Action Area */}
-                                  <div style={{ marginTop: "auto" }}>
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        background: "var(--bg-hover)",
-                                        padding: "8px 12px",
-                                        borderRadius: 8,
-                                        gap: 8,
-                                      }}>
-                                      <div
-                                        style={{
-                                          flex: 1,
-                                          overflow: "hidden",
-                                          fontSize: 13,
-                                          color: "var(--foreground)",
-                                          opacity: 0.8,
-                                        }}>
-                                        <div
+                                  <div
+                                    style={{
+                                      marginTop: "auto",
+                                      paddingTop: 12,
+                                      display: "flex",
+                                      justifyContent: "flex-end",
+                                      alignItems: "center",
+                                    }}>
+                                    <div style={{ display: "flex", gap: 8 }}>
+                                      <Tooltip title="账号信息">
+                                        <Button
+                                          type="text"
+                                          size="small"
+                                          icon={<InfoCircleOutlined />}
+                                          onClick={() =>
+                                            handleShowAccountDrawer(card)
+                                          }
                                           style={{
-                                            whiteSpace: "nowrap",
-                                            overflow: "hidden",
-                                            textOverflow: "ellipsis",
-                                          }}>
-                                          {card.moduleUrl}
-                                        </div>
-                                      </div>
-
-                                      <div style={{ display: "flex", gap: 4 }}>
-                                        <Tooltip title="复制链接">
-                                          <Button
-                                            type="text"
-                                            size="small"
-                                            icon={<CopyOutlined />}
-                                            onClick={() =>
-                                              handleCopyUrl(card.moduleUrl)
-                                            }
-                                            style={{
-                                              color: "var(--foreground)",
-                                              opacity: 0.6,
-                                            }}
-                                          />
-                                        </Tooltip>
-                                        <Tooltip title="跳转">
-                                          <Button
-                                            type="text"
-                                            size="small"
-                                            icon={<GlobalOutlined />}
-                                            href={card.moduleUrl}
-                                            target="_blank"
-                                            style={{ color: envColor }} // Use enviroment color for the main action
-                                          />
-                                        </Tooltip>
-                                      </div>
+                                            color: "var(--foreground)",
+                                            opacity: 0.6,
+                                          }}
+                                        />
+                                      </Tooltip>
+                                      <Tooltip
+                                        title={card.moduleUrl || "复制链接"}>
+                                        <Button
+                                          type="text"
+                                          size="small"
+                                          icon={<CopyOutlined />}
+                                          onClick={() =>
+                                            handleCopyUrl(card.moduleUrl)
+                                          }
+                                          style={{
+                                            color: "var(--foreground)",
+                                            opacity: 0.6,
+                                          }}
+                                        />
+                                      </Tooltip>
+                                      <Tooltip title="跳转">
+                                        <Button
+                                          type="text"
+                                          size="small"
+                                          icon={<GlobalOutlined />}
+                                          href={card.moduleUrl}
+                                          target="_blank"
+                                          style={{ color: envColor }} // Use enviroment color for the main action
+                                        />
+                                      </Tooltip>
                                     </div>
                                   </div>
                                 </Card>

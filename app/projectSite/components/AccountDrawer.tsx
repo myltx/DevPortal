@@ -34,14 +34,27 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
     }
   };
 
+  // Preference Key (Matches PreferenceModal)
+  const STORAGE_KEY = "account_default_view_preference";
+
   useEffect(() => {
     if (open && moduleData?.moduleId) {
       // Default reset
       setEditingKey("");
-      setActiveTab("text");
+
+      // Load preference or default to "text"
+      // Explicitly Load from the "Preference" key, NOT updating it on change
+      const savedTab = localStorage.getItem(STORAGE_KEY);
+      setActiveTab(savedTab === "table" ? "table" : "text");
+
       fetchAccounts(moduleData.moduleId);
     }
   }, [open, moduleData]);
+
+  const handleTabChange = (key: string) => {
+    setActiveTab(key);
+    // DO NOT save to localStorage here. User wants explicit control.
+  };
 
   const handleAddAccount = () => {
     setAccountList([
@@ -209,7 +222,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
       open={open}
       onClose={onClose}
       footer={null}>
-      <Tabs activeKey={activeTab} onChange={setActiveTab}>
+      <Tabs activeKey={activeTab} onChange={handleTabChange}>
         <Tabs.TabPane tab="文本" key="text">
           <div style={{ minHeight: "200px", whiteSpace: "pre-wrap" }}>
             {moduleData?.describe || (

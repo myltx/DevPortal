@@ -20,7 +20,8 @@ import {
 import { useRouter } from "next/navigation";
 import { ThemeSwitch } from "@/components/theme/ThemeSwitch";
 import AreaManagerDrawer from "./AreaManagerDrawer";
-import ProjectManagerDrawer from "./ProjectManagerDrawer"; // Added
+import ProjectManagerDrawer from "./ProjectManagerDrawer";
+import PreferenceModal from "./PreferenceModal";
 
 const { Option } = Select;
 
@@ -47,7 +48,8 @@ const ProjectSiteHeader: React.FC<ProjectSiteHeaderProps> = ({
 }) => {
   const router = useRouter();
   const [areaDrawerOpen, setAreaDrawerOpen] = useState(false);
-  const [projectTabDrawerOpen, setProjectTabDrawerOpen] = useState(false); // Added State
+  const [projectTabDrawerOpen, setProjectTabDrawerOpen] = useState(false);
+  const [preferenceModalOpen, setPreferenceModalOpen] = useState(false); // Added State
 
   return (
     <div
@@ -168,6 +170,15 @@ const ProjectSiteHeader: React.FC<ProjectSiteHeaderProps> = ({
                     label: "地区管理",
                     onClick: () => setAreaDrawerOpen(true),
                   },
+                  {
+                    type: "divider",
+                  },
+                  {
+                    key: "preference",
+                    label: "个人偏好",
+                    icon: <SettingOutlined />, // Reusing icon or new one
+                    onClick: () => setPreferenceModalOpen(true),
+                  },
                 ],
               }}>
               <Button style={{ marginLeft: 8 }} icon={<SettingOutlined />}>
@@ -201,33 +212,15 @@ const ProjectSiteHeader: React.FC<ProjectSiteHeaderProps> = ({
         onClose={() => setProjectTabDrawerOpen(false)}
         onSuccess={() => {
           onSearch(); // Refresh list
-          // Also might need to refresh Tabs?
-          // The tabs are passed as props `classInfoList` (Actually `projectIdOptions` comes from parent).
-          // Parent's `fetchProjectNames` needs to run.
-          // `onSearch` refreshes list, but maybe we need callback to refresh Project Options.
-          // Current `onSearch` calls `fetchProjectList`. `fetchProjectNames` is separate in Page.
-          // But `activeClassId` change triggers `fetchProjectNames`.
-          // Ideally `onSuccess` here should propagate to parent to reload EVERYTHING.
-          // Current `onSearch` only reloads cards.
-          // I'll rely on user refreshing or I can assume `onSearch` is enough for now,
-          // BUT: if I add a tab, it won't show up in tabs until I refresh page.
-          // I should ask user to refresh or fix parent.
-          // `onSearch` prop in Header -> `handleSearch` in Page -> `fetchProjectList`.
-          // I need a way to trigger `fetchProjectNames`.
-          // Let's assume on search only reloads list.
-          // I'll leave it for now, but explicit refresh might be needed for tabs.
-          window.location.reload(); // Simplest way to ensure Tabs and Class lists update?
-          // Or just rely on parent. Let's try to just call onSearch and let user refresh if needed,
-          // OR cleaner: passing a `onProjectChange` prop?
-          // Header doesn't have `onProjectChange`.
-          // I will use `window.location.reload()` inside the onSuccess callback passed to Drawer if passing `onSuccess={onSearch}` isn't enough.
-          // Actually, in `ProjectSiteHeader`, `onSuccess` calls `onSearch`.
-          // I will modify `onSuccess` logic within Header to just `onSearch`?
-          // No, `onSearch` is passed from parent.
-          // I'll just reload page for Tab changes to keep it simple and robust.
+          window.location.reload();
         }}
         classInfoList={classInfoList}
         activeClassId={activeClassId}
+      />
+
+      <PreferenceModal // Added
+        open={preferenceModalOpen}
+        onClose={() => setPreferenceModalOpen(false)}
       />
 
       <div style={{ flex: 1 }} />
