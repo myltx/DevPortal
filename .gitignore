@@ -45,3 +45,6 @@ next-env.d.ts
 # Docker artifacts
 *.tar
 .docker_temp*
+
+# Generated OpenAPI spec
+/public/openapi.json
