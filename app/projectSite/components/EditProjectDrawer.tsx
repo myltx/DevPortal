@@ -27,7 +27,7 @@ const EditProjectDrawer: React.FC<EditProjectDrawerProps> = ({
 }) => {
   const [form] = Form.useForm();
   const isEdit = !!initialData;
-  const title = isEdit ? "编辑" : "新增";
+  const title = isEdit ? "编辑模块" : "新增模块";
 
   useEffect(() => {
     if (open) {

@@ -401,7 +401,7 @@ const ProjectSiteContent: React.FC = () => {
                             const menuItems = [
                               {
                                 key: "edit",
-                                label: "编辑项目",
+                                label: "编辑模块",
                                 icon: <EditOutlined />,
                                 onClick: () => handleShowProjectDrawer(card),
                               },
