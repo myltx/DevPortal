@@ -74,6 +74,32 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
     }
   };
 
+  const handleCopy = (text: string) => {
+    if (!text) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard
+        .writeText(text)
+        .then(() => message.success("复制成功"))
+        .catch(() => fallbackCopy(text));
+    } else {
+      fallbackCopy(text);
+    }
+  };
+
+  const fallbackCopy = (text: string) => {
+    const input = document.createElement("textarea");
+    input.value = text;
+    document.body.appendChild(input);
+    input.select();
+    try {
+      document.execCommand("copy");
+      message.success("复制成功");
+    } catch (err) {
+      message.error("复制失败");
+    }
+    document.body.removeChild(input);
+  };
+
   const columns = [
     {
       title: "Account",
@@ -102,7 +128,10 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
         return (
           <Space>
             {text}
-            <CopyOutlined onClick={() => navigator.clipboard.writeText(text)} />
+            <CopyOutlined
+              style={{ cursor: "pointer", color: "#1890ff" }}
+              onClick={() => handleCopy(text)}
+            />
           </Space>
         );
       },
@@ -134,7 +163,10 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
         return (
           <Space>
             {text}
-            <CopyOutlined onClick={() => navigator.clipboard.writeText(text)} />
+            <CopyOutlined
+              style={{ cursor: "pointer", color: "#1890ff" }}
+              onClick={() => handleCopy(text)}
+            />
           </Space>
         );
       },
