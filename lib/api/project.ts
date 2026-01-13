@@ -105,6 +105,30 @@ export function deleteArea(id: number) {
   });
 }
 
+// --- Project Tab Management ---
+export function addProjectTab(projectName: string, classId: number, sort: number, projectDescribe: string = "") {
+  return request({
+    url: "/project_tab/add",
+    method: "post",
+    data: { projectName, classId, sort, projectDescribe },
+  });
+}
+
+export function updateProjectTab(id: number, projectName: string, sort: number, projectDescribe: string = "") {
+  return request({
+    url: "/project_tab/update",
+    method: "post",
+    data: { id, projectName, sort, projectDescribe },
+  });
+}
+
+export function deleteProjectTab(id: number) {
+  return request({
+    url: `/project_tab/delete?id=${id}`,
+    method: "post",
+  });
+}
+
 export function createProject(data: any) {
   return request({
     url: "/project/add",

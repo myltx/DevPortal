@@ -19,7 +19,8 @@ import {
 
 import { useRouter } from "next/navigation";
 import { ThemeSwitch } from "@/components/theme/ThemeSwitch";
-import AreaManagerDrawer from "./AreaManagerDrawer"; // Added
+import AreaManagerDrawer from "./AreaManagerDrawer";
+import ProjectManagerDrawer from "./ProjectManagerDrawer"; // Added
 
 const { Option } = Select;
 
@@ -45,7 +46,8 @@ const ProjectSiteHeader: React.FC<ProjectSiteHeaderProps> = ({
   onAdd,
 }) => {
   const router = useRouter();
-  const [areaDrawerOpen, setAreaDrawerOpen] = useState(false); // Added State
+  const [areaDrawerOpen, setAreaDrawerOpen] = useState(false);
+  const [projectTabDrawerOpen, setProjectTabDrawerOpen] = useState(false); // Added State
 
   return (
     <div
@@ -152,12 +154,27 @@ const ProjectSiteHeader: React.FC<ProjectSiteHeaderProps> = ({
             <Button onClick={onReset} style={{ marginLeft: 8 }}>
               重置
             </Button>
-            <Button
-              onClick={() => setAreaDrawerOpen(true)}
-              style={{ marginLeft: 8 }}
-              icon={<SettingOutlined />}>
-              地区管理
-            </Button>
+
+            <Dropdown
+              menu={{
+                items: [
+                  {
+                    key: "project",
+                    label: "项目(页签)管理",
+                    onClick: () => setProjectTabDrawerOpen(true),
+                  },
+                  {
+                    key: "area",
+                    label: "地区管理",
+                    onClick: () => setAreaDrawerOpen(true),
+                  },
+                ],
+              }}>
+              <Button style={{ marginLeft: 8 }} icon={<SettingOutlined />}>
+                配置管理 <CaretDownOutlined style={{ fontSize: 10 }} />
+              </Button>
+            </Dropdown>
+
             <Button
               type="primary"
               style={{
@@ -167,7 +184,7 @@ const ProjectSiteHeader: React.FC<ProjectSiteHeaderProps> = ({
               }}
               icon={<PlusOutlined />}
               onClick={onAdd}>
-              新增项目
+              新增模块
             </Button>
           </Form.Item>
         </Form>
@@ -176,7 +193,41 @@ const ProjectSiteHeader: React.FC<ProjectSiteHeaderProps> = ({
       <AreaManagerDrawer
         open={areaDrawerOpen}
         onClose={() => setAreaDrawerOpen(false)}
-        onSuccess={onSearch} // Refresh list after area changes
+        onSuccess={onSearch}
+      />
+
+      <ProjectManagerDrawer
+        open={projectTabDrawerOpen}
+        onClose={() => setProjectTabDrawerOpen(false)}
+        onSuccess={() => {
+          onSearch(); // Refresh list
+          // Also might need to refresh Tabs?
+          // The tabs are passed as props `classInfoList` (Actually `projectIdOptions` comes from parent).
+          // Parent's `fetchProjectNames` needs to run.
+          // `onSearch` refreshes list, but maybe we need callback to refresh Project Options.
+          // Current `onSearch` calls `fetchProjectList`. `fetchProjectNames` is separate in Page.
+          // But `activeClassId` change triggers `fetchProjectNames`.
+          // Ideally `onSuccess` here should propagate to parent to reload EVERYTHING.
+          // Current `onSearch` only reloads cards.
+          // I'll rely on user refreshing or I can assume `onSearch` is enough for now,
+          // BUT: if I add a tab, it won't show up in tabs until I refresh page.
+          // I should ask user to refresh or fix parent.
+          // `onSearch` prop in Header -> `handleSearch` in Page -> `fetchProjectList`.
+          // I need a way to trigger `fetchProjectNames`.
+          // Let's assume on search only reloads list.
+          // I'll leave it for now, but explicit refresh might be needed for tabs.
+          window.location.reload(); // Simplest way to ensure Tabs and Class lists update?
+          // Or just rely on parent. Let's try to just call onSearch and let user refresh if needed,
+          // OR cleaner: passing a `onProjectChange` prop?
+          // Header doesn't have `onProjectChange`.
+          // I will use `window.location.reload()` inside the onSuccess callback passed to Drawer if passing `onSuccess={onSearch}` isn't enough.
+          // Actually, in `ProjectSiteHeader`, `onSuccess` calls `onSearch`.
+          // I will modify `onSuccess` logic within Header to just `onSearch`?
+          // No, `onSearch` is passed from parent.
+          // I'll just reload page for Tab changes to keep it simple and robust.
+        }}
+        classInfoList={classInfoList}
+        activeClassId={activeClassId}
       />
 
       <div style={{ flex: 1 }} />

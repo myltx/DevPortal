@@ -129,4 +129,36 @@ export const projectService = {
     });
     return projects.map(p => p.areaName || "").filter(Boolean);
   },
+  // --- Project (Tab) Management ---
+
+  add: async (projectName: string, classId: number, sort: number = 0, describe: string = "") => {
+    return await prisma.project.create({
+      data: {
+        projectName,
+        classId,
+        sort,
+        projectDescribe: describe,
+        createTime: new Date(),
+        updateTime: new Date(),
+      },
+    });
+  },
+
+  update: async (id: number, projectName: string, sort: number, describe: string) => {
+    return await prisma.project.update({
+      where: { id },
+      data: {
+        projectName,
+        sort,
+        projectDescribe: describe,
+        updateTime: new Date(),
+      },
+    });
+  },
+
+  remove: async (id: number) => {
+    return await prisma.project.delete({
+      where: { id },
+    });
+  },
 };
