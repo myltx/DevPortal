@@ -1,5 +1,7 @@
 const nextConfig = {
-  // output: "standalone",
+  output: "standalone",
+  productionBrowserSourceMaps: false,
+  swcMinify: true,
   /* config options here */
   turbopack: {
     root: __dirname,

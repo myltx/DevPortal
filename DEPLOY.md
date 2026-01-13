@@ -203,6 +203,26 @@ _(注意：需要本地也安装 Docker)_
     ```
     然后运行 `docker compose up -d` 即可。
 
+### 🔄 服务器端如何更新 (重启)?
+
+当您上传了新的 `nextjs-nav.tar` 到服务器后，请按以下步骤更新服务：
+
+1.  **导入新镜像**:
+    ```bash
+    docker load -i nextjs-nav.tar
+    ```
+2.  **重启服务 (加载新镜像)**:
+
+    ```bash
+    # 停止并删除旧容器
+    docker compose down
+
+    # 启动新容器
+    docker compose up -d
+    ```
+
+    _(注：必须执行 down 再 up，或者使用 `docker compose up -d --force-recreate`，否则 Docker 可能会认为容器没变而不更新)_
+
 ## 7. (附录) 技术原理：为什么这样快且稳？
 
 为了解决 Mac Apple Silicon (ARM) 模拟 Linux (x86) 构建慢且易崩溃的问题，我们采用了 **“本地构建 + 注入 (Native Injection)”** 策略。
