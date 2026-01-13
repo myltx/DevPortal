@@ -46,7 +46,7 @@ const ProjectSiteContent: React.FC = () => {
   const [projectIdOptions, setProjectIdOptions] = useState<any[]>([]);
   const [cardList, setCardList] = useState<any[]>([]);
   const [selectedAreaIndex, setSelectedAreaIndex] = useState("0");
-  const [areaList, setAreaList] = useState<string[]>([]);
+  const [areaList, setAreaList] = useState<any[]>([]); // Changed to any[] for Area objects
   const [classInfoList, setClassInfoList] = useState<any[]>([]);
 
   // Constant Options

@@ -42,6 +42,7 @@ export interface ProjectListVO {
   describe: string; // 描述
   remark: string; // 备注
   areaName: string; // 所属区划
+  areaId?: number; // 地区ID (New key for Edit Binding)
 }
 
 export interface ProjectAreaList {
@@ -58,6 +59,7 @@ export interface ModuleSaveDTO {
   remark: string; // 备注
   classId: number; // 所属行业
   areaName: string; // 所属区划
+  areaId?: number; // 地区ID (New for Hard Link)
 }
 
 export interface ModuleUpdateDTO {
@@ -69,6 +71,7 @@ export interface ModuleUpdateDTO {
   moduleDescribe: string; // 描述
   remark: string; // 备注
   areaName: string; // 所属区划
+  areaId?: number; // 地区ID
 }
 
 export interface Account {

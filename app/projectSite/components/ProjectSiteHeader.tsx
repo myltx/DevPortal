@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Form,
   Select,
@@ -14,10 +14,12 @@ import {
   CaretDownOutlined,
   SearchOutlined,
   PlusOutlined,
+  SettingOutlined, // Added
 } from "@ant-design/icons";
 
 import { useRouter } from "next/navigation";
 import { ThemeSwitch } from "@/components/theme/ThemeSwitch";
+import AreaManagerDrawer from "./AreaManagerDrawer"; // Added
 
 const { Option } = Select;
 
@@ -43,6 +45,7 @@ const ProjectSiteHeader: React.FC<ProjectSiteHeaderProps> = ({
   onAdd,
 }) => {
   const router = useRouter();
+  const [areaDrawerOpen, setAreaDrawerOpen] = useState(false); // Added State
 
   return (
     <div
@@ -143,17 +146,20 @@ const ProjectSiteHeader: React.FC<ProjectSiteHeaderProps> = ({
             />
           </Form.Item>
           <Form.Item style={{ marginBottom: 0 }}>
-            <Button
-              type="primary"
-              onClick={onSearch} // Standard Primary for main action
-            >
+            <Button type="primary" onClick={onSearch}>
               查询
             </Button>
             <Button onClick={onReset} style={{ marginLeft: 8 }}>
               重置
             </Button>
             <Button
-              type="primary" // Keep primary for Add
+              onClick={() => setAreaDrawerOpen(true)}
+              style={{ marginLeft: 8 }}
+              icon={<SettingOutlined />}>
+              地区管理
+            </Button>
+            <Button
+              type="primary"
               style={{
                 marginLeft: 16,
                 background: "#52c41a",
@@ -166,6 +172,12 @@ const ProjectSiteHeader: React.FC<ProjectSiteHeaderProps> = ({
           </Form.Item>
         </Form>
       </div>
+
+      <AreaManagerDrawer
+        open={areaDrawerOpen}
+        onClose={() => setAreaDrawerOpen(false)}
+        onSuccess={onSearch} // Refresh list after area changes
+      />
 
       <div style={{ flex: 1 }} />
 

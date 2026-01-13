@@ -10,7 +10,7 @@ interface EditProjectDrawerProps {
   onSuccess: () => void;
   initialData?: any; // If null, it's add mode
   projectIdOptions: any[];
-  areaList: string[];
+  areaList: any[]; // Changed from string[] to any[] (Object list)
   envOption: any[];
   activeProjectId?: string; // Pre-fill for add mode
 }
@@ -32,9 +32,18 @@ const EditProjectDrawer: React.FC<EditProjectDrawerProps> = ({
   useEffect(() => {
     if (open) {
       if (initialData) {
+        // Try to resolve areaId if missing (for legacy data compatibility on frontend)
+        let resolvedAreaId = initialData.areaId;
+        if (!resolvedAreaId && initialData.areaName) {
+          const found = areaList.find(
+            (a: any) => a.name === initialData.areaName
+          );
+          if (found) resolvedAreaId = found.id;
+        }
+
         form.setFieldsValue({
           ...initialData,
-          areaName: initialData.areaName, // Use distinct string value
+          areaId: resolvedAreaId, // Bind to ID
           moduleDescribe: initialData.describe,
         });
       } else {
@@ -45,12 +54,21 @@ const EditProjectDrawer: React.FC<EditProjectDrawerProps> = ({
         );
       }
     }
-  }, [open, initialData, form, activeProjectId]);
+  }, [open, initialData, form, activeProjectId, areaList]);
 
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-      const payload = { ...values, id: initialData?.moduleId };
+
+      // Resolve areaName from selected areaId for Dual Write requirement
+      const selectedArea = areaList.find((a: any) => a.id === values.areaId);
+      const resolvedAreaName = selectedArea ? selectedArea.name : "";
+
+      const payload = {
+        ...values,
+        areaName: resolvedAreaName, // Explicitly send Name
+        id: initialData?.moduleId,
+      };
 
       let res;
       if (isEdit) {
@@ -105,13 +123,17 @@ const EditProjectDrawer: React.FC<EditProjectDrawerProps> = ({
           </Select>
         </Form.Item>
         <Form.Item
-          name="areaName"
+          name="areaId" // Changed to areaId
           label="所属区划"
-          rules={[{ required: true }]}>
-          <Select showSearch allowClear placeholder="请选择区划">
-            {areaList.map((a) => (
-              <Option key={a} value={a}>
-                {a}
+          rules={[{ required: true, message: "请选择区划" }]}>
+          <Select
+            showSearch
+            allowClear
+            placeholder="请选择区划"
+            optionFilterProp="children">
+            {areaList.map((a: any) => (
+              <Option key={a.id} value={a.id}>
+                {a.name}
               </Option>
             ))}
           </Select>

@@ -47,16 +47,7 @@ export const projectService = {
   },
 
   projectList: async (dto: ProjectListDTO): Promise<ProjectAreaList[]> => {
-    // This is a complex query in Java likely involving joins (Project + Module).
-    // DTO: projectId, moduleName, typeName.
-    // We need to return ProjectAreaList -> list of ProjectListVO.
-    // ProjectListVO has: projectId, projectName, moduleName, moduleId, moduleUrl...
-    
-    // We primarily query Module? 
-    // Java Controller: projectService.projectList(dto).
-    // Likely searching Modules and joining Projects.
-    
-    // Let's build where clause for Module.
+    // Build where clause for Module
     const where: any = {};
     if (dto.moduleName) {
       where.moduleName = { contains: dto.moduleName };
@@ -68,15 +59,12 @@ export const projectService = {
         where.projectId = Number(dto.projectId);
     }
 
-    // Need to include Project to get projectName.
-    // My schema.prisma defined references? NO. I did not define relations ( @relation ).
-    // I only defined scalar fields.
-    // So I have to do manual join or 2 queries.
-    // Prisma works best with relations. I should probably have updated schema to include relations.
-    // But for now, I can query Module then query Project map.
-    
+    // Include Area relation for sorting and grouping
     const modules = await prisma.module.findMany({
       where,
+      include: {
+        area: true, // Fetch related Area
+      }
     });
     
     // Collect project Ids
@@ -86,13 +74,24 @@ export const projectService = {
     });
     const projectMap = new Map(projects.map(p => [p.id, p]));
 
-    // Group by areaName
-    const groupByArea = new Map<string, ProjectListVO[]>();
+    // Group by Area
+    // Map key: areaId (or name for "Others"), value: { sort, name, list }
+    const groupMap = new Map<string, { sort: number, areaName: string, list: ProjectListVO[] }>();
 
     for (const m of modules) {
         const p = projectMap.get(m.projectId || 0);
-        const area = m.areaName || "Unknown";
         
+        // Determine Area Info
+        let areaName = m.area?.name || m.areaName || "其他";
+        // Ensure "其他" is grouped correctly if area is missing
+        if (!m.area && !m.areaName) areaName = "其他";
+
+        let sort = m.area?.sort ?? (areaName === "其他" ? 900 : 0);
+        // "DOC" fallback sort if no Area record found but name matches doc
+        if (!m.area && (areaName.toLowerCase().includes('doc') || areaName.includes('文档'))) {
+            sort = 999;
+        }
+
         const vo: ProjectListVO = {
             projectId: m.projectId || 0,
             projectName: p?.projectName || "",
@@ -103,19 +102,20 @@ export const projectService = {
             updateTime: m.updateTime ? m.updateTime.toISOString() : "",
             describe: m.moduleDescribe || "",
             remark: m.remark || "",
-            areaName: m.areaName || ""
+            areaName: areaName,
+            areaId: m.areaId || m.area?.id, // Populate ID
         };
         
-        if (!groupByArea.has(area)) {
-            groupByArea.set(area, []);
+        if (!groupMap.has(areaName)) {
+            groupMap.set(areaName, { sort, areaName, list: [] });
         }
-        groupByArea.get(area)?.push(vo);
+        groupMap.get(areaName)?.list.push(vo);
     }
     
-    const result: ProjectAreaList[] = [];
-    groupByArea.forEach((list, areaName) => {
-        result.push({ areaName, list });
-    });
+    // Convert to array and Sort
+    const result: ProjectAreaList[] = Array.from(groupMap.values())
+        .sort((a, b) => a.sort - b.sort) // Sort by Area.sort
+        .map(g => ({ areaName: g.areaName, list: g.list }));
     
     return result;
   },

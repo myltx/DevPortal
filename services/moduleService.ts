@@ -3,6 +3,25 @@ import { ModuleSaveDTO, ModuleUpdateDTO } from "@/types";
 
 export const moduleService = {
   add: async (dto: ModuleSaveDTO): Promise<number> => {
+    // Dual Write Logic: Resolve Area Name and ID
+    let areaId = dto.areaId;
+    let areaName = Array.isArray(dto.areaName)
+      ? (dto.areaName as string[]).join(",")
+      : (dto.areaName as string);
+
+    if (areaId) {
+       const area = await prisma.area.findUnique({ where: { id: areaId } });
+       if (area) {
+         areaName = area.name; // Sync Name from ID source of truth
+       }
+    } else if (areaName) {
+         // Try to find ID if only name provided (for robustness)
+         const area = await prisma.area.findUnique({ where: { name: areaName } });
+         if (area) {
+             areaId = area.id;
+         }
+    }
+
     const created = await prisma.module.create({
       data: {
         projectId: dto.projectId,
@@ -11,24 +30,34 @@ export const moduleService = {
         typeName: dto.typeName,
         moduleDescribe: dto.moduleDescribe,
         remark: dto.remark,
-        areaName: Array.isArray(dto.areaName)
-          ? (dto.areaName as string[]).join(",")
-          : (dto.areaName as string),
+        areaName: areaName,
+        areaId: areaId, // Save ID
         createTime: new Date(),
         updateTime: new Date(),
-        // classId? Module schema didn't have classId but DTO did.
-        // Let's check schema/Module.java. Module.java: id, moduleName... projectId...
-        // ModuleSaveDTO: private Long classId;
-        // The entity Module.java I read did NOT have classId.
-        // So I will ignore it or it belongs to Project? 
-        // User's Module.java: private Long projectId; (line 33)
-        // No classId in Module.java.
       },
     });
     return created.id;
   },
   
   update: async (dto: ModuleUpdateDTO): Promise<number> => {
+    // Dual Write Logic
+    let areaId = dto.areaId;
+    let areaName = Array.isArray(dto.areaName)
+      ? (dto.areaName as string[]).join(",")
+      : (dto.areaName as string);
+
+    if (areaId) {
+       const area = await prisma.area.findUnique({ where: { id: areaId } });
+       if (area) {
+         areaName = area.name; 
+       }
+    } else if (areaName) {
+         const area = await prisma.area.findUnique({ where: { name: areaName } });
+         if (area) {
+             areaId = area.id;
+         }
+    }
+
     const updated = await prisma.module.update({
       where: { id: dto.moduleId },
       data: {
@@ -38,9 +67,8 @@ export const moduleService = {
         typeName: dto.typeName,
         moduleDescribe: dto.moduleDescribe,
         remark: dto.remark,
-        areaName: Array.isArray(dto.areaName)
-          ? (dto.areaName as string[]).join(",")
-          : (dto.areaName as string),
+        areaName: areaName,
+        areaId: areaId, // Save ID
         updateTime: new Date(),
       },
     });

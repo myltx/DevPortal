@@ -14,15 +14,32 @@ model Class {
   @@map("class")
 }
 
+model Area {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  sort      Int      @default(0)
+  createdAt DateTime @default(now()) @map("create_time")
+  updatedAt DateTime @updatedAt @map("update_time")
+
+  projects Project[]
+  modules  Module[]
+
+  @@map("area")
+}
+
 model Project {
   id              Int       @id @default(autoincrement())
   projectName     String?   @map("project_name")
-  projectDescribe String?   @map("project_describe")
+  projectDescribe String?   @map("project_describe") @db.Text
   createTime      DateTime? @map("create_time")
   updateTime      DateTime? @map("update_time")
-  areaName        String?   @map("area_name")
+  areaName        String?   @map("area_name") // Kept for legacy compatibility (Dual Write)
   sort            Int?
   classId         Int?      @map("class_id")
+
+  // New Relation
+  areaId Int?  @map("area_id")
+  area   Area? @relation(fields: [areaId], references: [id])
 
   @@map("project")
 }
@@ -35,9 +52,13 @@ model Module {
   projectId      Int?      @map("project_id")
   createTime     DateTime? @map("create_time")
   updateTime     DateTime? @map("update_time")
-  moduleDescribe String?   @map("module_describe")
-  remark         String?
-  areaName       String?   @map("area_name")
+  moduleDescribe String?   @map("module_describe") @db.Text
+  remark         String?   @db.Text
+  areaName       String?   @map("area_name") // Kept for legacy compatibility (Dual Write)
+
+  // New Relation
+  areaId Int?  @map("area_id")
+  area   Area? @relation(fields: [areaId], references: [id])
 
   @@map("module")
 }

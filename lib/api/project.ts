@@ -74,11 +74,34 @@ export function getProjectNameList(classId?: number) {
   });
 }
 
-export function getAreaList(data = {}) {
+// 地区管理
+export function getAreaList() {
   return request({
-    url: "/project/areaList",
+    url: "/area/list",
     method: "post",
-    data,
+  });
+}
+
+export function addArea(name: string, sort: number) {
+  return request({
+    url: "/area/add",
+    method: "post",
+    data: { name, sort },
+  });
+}
+
+export function updateArea(id: number, name: string, sort: number) {
+  return request({
+    url: "/area/update",
+    method: "post",
+    data: { id, name, sort },
+  });
+}
+
+export function deleteArea(id: number) {
+  return request({
+    url: `/area/delete?id=${id}`,
+    method: "post",
   });
 }
 
