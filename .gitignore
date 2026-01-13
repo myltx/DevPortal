@@ -44,3 +44,4 @@ next-env.d.ts
 
 # Docker artifacts
 *.tar
+.docker_temp*
