@@ -73,7 +73,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
     };
     const res = await API.addOrUpdateAccount(payload);
     if (res.success) {
-      message.success("Saved");
+      message.success("保存成功");
       setEditingKey("");
       fetchAccounts(moduleData.moduleId);
     }
@@ -82,7 +82,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
   const handleDeleteAccount = async (id: number) => {
     const res = await API.deleteAccount([id]);
     if (res.success) {
-      message.success("Deleted");
+      message.success("删除成功");
       fetchAccounts(moduleData.moduleId);
     }
   };
@@ -115,7 +115,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
 
   const columns = [
     {
-      title: "Account",
+      title: "账号",
       dataIndex: "account",
       render: (text: string, record: any) => {
         if (editingKey === String(record.id)) {
@@ -150,7 +150,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
       },
     },
     {
-      title: "Password",
+      title: "密码",
       dataIndex: "password",
       render: (text: string, record: any) => {
         if (editingKey === String(record.id)) {
@@ -185,12 +185,12 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
       },
     },
     {
-      title: "Action",
+      title: "操作",
       render: (_: any, record: any) => {
         const editable = editingKey === String(record.id);
         return editable ? (
           <Space>
-            <a onClick={() => handleSaveAccount(record)}>Save</a>
+            <a onClick={() => handleSaveAccount(record)}>保存</a>
             <a
               onClick={() => {
                 setEditingKey("");
@@ -198,16 +198,16 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
                   setAccountList(accountList.filter((item) => item.id !== -1));
                 }
               }}>
-              Cancel
+              取消
             </a>
           </Space>
         ) : (
           <Space>
-            <a onClick={() => setEditingKey(String(record.id))}>Edit</a>
+            <a onClick={() => setEditingKey(String(record.id))}>编辑</a>
             <Popconfirm
-              title="Delete?"
+              title="确认删除?"
               onConfirm={() => handleDeleteAccount(record.id)}>
-              <a style={{ color: "red" }}>Delete</a>
+              <a style={{ color: "red" }}>删除</a>
             </Popconfirm>
           </Space>
         );

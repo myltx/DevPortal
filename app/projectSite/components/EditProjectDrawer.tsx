@@ -78,7 +78,7 @@ const EditProjectDrawer: React.FC<EditProjectDrawerProps> = ({
       }
 
       if (res.success) {
-        message.success("Success");
+        message.success("保存成功");
         onSuccess();
         onClose();
       }

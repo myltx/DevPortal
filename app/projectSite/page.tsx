@@ -210,7 +210,7 @@ const ProjectSiteContent: React.FC = () => {
   const handleDeleteProject = async (id: number) => {
     const res = await API.removeProject(id);
     if (res.success) {
-      message.success("Deleted");
+      message.success("删除成功");
       fetchProjectList();
     }
   };
