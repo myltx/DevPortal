@@ -1,5 +1,5 @@
 {
-  "name": "web",
+  "name": "dev-portal",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -10,8 +10,8 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "docker:build:server": "rm -rf .next && npm run build && docker buildx build --platform linux/amd64 -t nextjs-nav:latest .",
-    "docker:save": "docker save -o nextjs-nav.tar nextjs-nav:latest",
+    "docker:build:server": "rm -rf .next && npm run build && docker buildx build --platform linux/amd64 -t dev-portal:latest .",
+    "docker:save": "docker save -o dev-portal.tar dev-portal:latest",
     "docker:pack": "npm run docker:build:server && npm run docker:save",
     "docker:dev": "docker compose up -d --build",
     "docker:stop": "docker compose down"

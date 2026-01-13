@@ -1,8 +1,8 @@
 version: "3"
 
 services:
-  nextjs-nav:
-    container_name: nextjs-nav
+  dev-portal:
+    container_name: dev-portal
     build:
       context: .
       dockerfile: Dockerfile

@@ -1,0 +1,48 @@
+version: "3.8"
+
+services:
+  # Business Application
+  app:
+    container_name: dev-portal-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3000:3000" # Map host 3000 to container 3000 (Adjust as needed)
+    environment:
+      # Use the internal service name 'db' for connection
+      - DATABASE_URL=${DATABASE_URL}
+      - NODE_ENV=production
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - dev-portal-network
+
+  # Database Service
+  db:
+    image: mysql:8.0
+    container_name: dev-portal-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: project_nav
+    ports:
+      - "33060:3306" # Expose to host on 33060 to avoid conflict with local MySQL
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - dev-portal-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql_data:
+
+networks:
+  dev-portal-network:
+    driver: bridge
