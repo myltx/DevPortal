@@ -441,7 +441,7 @@ const ProjectSiteContent: React.FC = () => {
                                 <Card
                                   hoverable
                                   className="project-card"
-                                  bodyStyle={{ padding: "16px" }}
+                                  styles={{ body: { padding: "16px" } }}
                                   style={{
                                     borderRadius: 12,
                                     border: "1px solid var(--border-color)",

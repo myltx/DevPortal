@@ -6,7 +6,6 @@ import {
   Button,
   Tooltip,
   Dropdown,
-  Divider,
   FormInstance,
 } from "antd";
 import {
@@ -124,7 +123,7 @@ const ProjectSiteHeader: React.FC<ProjectSiteHeaderProps> = ({
         </Dropdown>
       </div>
 
-      <Divider type="vertical" style={{ height: 24, margin: 0 }} />
+      <div style={{ width: 1, height: 24, background: "#f0f0f0", margin: 0 }} />
 
       {/* Filter Form Part */}
       <div style={{ display: "flex", alignItems: "center" }}>

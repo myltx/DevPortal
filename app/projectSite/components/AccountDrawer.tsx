@@ -8,6 +8,8 @@ import {
   Input,
   Popconfirm,
   message,
+  Card,
+  Tooltip,
 } from "antd";
 import { CopyOutlined } from "@ant-design/icons";
 import * as API from "@/lib/api/project";
@@ -218,40 +220,179 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
   return (
     <Drawer
       title={`账号信息: ${moduleData?.moduleName || ""}`}
-      width={800}
+      size="large"
       open={open}
       onClose={onClose}
       footer={null}>
-      <Tabs activeKey={activeTab} onChange={handleTabChange}>
-        <Tabs.TabPane tab="文本" key="text">
-          <div style={{ minHeight: "200px", whiteSpace: "pre-wrap" }}>
-            {moduleData?.describe || (
-              <div
-                style={{
-                  color: "#999",
-                  textAlign: "center",
-                  padding: "20px",
-                }}>
-                暂无账号信息
+      <Tabs
+        activeKey={activeTab}
+        onChange={handleTabChange}
+        items={[
+          {
+            key: "text",
+            label: "文本",
+            children: (
+              <div style={{ minHeight: "200px", whiteSpace: "pre-wrap" }}>
+                {moduleData?.describe ? (
+                  <SmartTextDisplay text={moduleData.describe} />
+                ) : (
+                  <div
+                    style={{
+                      color: "#999",
+                      textAlign: "center",
+                      padding: "20px",
+                    }}>
+                    暂无账号信息
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </Tabs.TabPane>
-        <Tabs.TabPane tab="列表" key="table">
-          <div style={{ marginBottom: 16 }}>
-            <Button type="primary" onClick={handleAddAccount}>
-              新增账号
-            </Button>
-          </div>
-          <Table
-            dataSource={accountList}
-            columns={columns}
-            rowKey="id"
-            pagination={false}
-          />
-        </Tabs.TabPane>
-      </Tabs>
+            ),
+          },
+          {
+            key: "table",
+            label: "列表",
+            children: (
+              <Card
+                className="project-card"
+                styles={{ body: { padding: "16px" } }}>
+                <div style={{ marginBottom: 16 }}>
+                  <Button type="primary" onClick={handleAddAccount}>
+                    新增账号
+                  </Button>
+                </div>
+                <Table
+                  dataSource={accountList}
+                  columns={columns}
+                  rowKey="id"
+                  pagination={false}
+                />
+              </Card>
+            ),
+          },
+        ]}
+      />
     </Drawer>
+  );
+};
+
+const SmartTextDisplay: React.FC<{ text: string }> = ({ text }) => {
+  if (!text) return null;
+
+  const lines = text.split(/\r?\n/);
+
+  const handleCopy = (val: string) => {
+    if (navigator.clipboard) {
+      navigator.clipboard
+        .writeText(val)
+        .then(() => message.success("复制成功"));
+    } else {
+      const input = document.createElement("textarea");
+      input.value = val;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand("copy");
+      document.body.removeChild(input);
+      message.success("复制成功");
+    }
+  };
+
+  const renderCopyable = (val: string) => (
+    <Tooltip title="点击复制">
+      <span
+        onClick={() => handleCopy(val)}
+        style={{
+          fontWeight: 500,
+          margin: "0 4px",
+          color: "#1890ff",
+          cursor: "pointer",
+          textDecoration: "underline",
+          textUnderlineOffset: 4,
+        }}>
+        {val}
+      </span>
+    </Tooltip>
+  );
+
+  return (
+    <div>
+      {lines.map((line, idx) => {
+        // Pattern 1: "Label: Val1 - Val2" or "Label: Val1 / Val2"
+        // e.g. "街道账号：清波街道 - Qwer@123456"
+        // e.g. "市级账号：hangzhou/Qwer@123456"
+        const matchDouble = line.match(
+          /^(\s*.*?[:：])\s*(.*?)(\s+-\s+|\/)(.*)$/
+        );
+
+        if (matchDouble) {
+          const prefix = matchDouble[1];
+          const part1 = matchDouble[2];
+          const separator = matchDouble[3];
+          const part2 = matchDouble[4];
+
+          // Filter out false positives: if parts look like normal sentences (too long or spaces), skip?
+          // For now, assume user intent is specific structure.
+          return (
+            <div key={idx} style={{ marginBottom: 4 }}>
+              <span>{prefix}</span>
+              {renderCopyable(part1.trim())}
+              <span style={{ margin: "0 4px", color: "#ccc" }}>
+                {separator.trim()}
+              </span>
+              {renderCopyable(part2.trim())}
+            </div>
+          );
+        }
+
+        // Pattern 2: "Val1 - Val2" or "Val1/Val2" (No Label)
+        // e.g. "admin - anlan@123AL"
+        // e.g. "aladmin/anlan@123AL"
+        // e.g. "provinceAdmin/Qwer@123456"
+        // Be careful not to match simple dates like 2023/01/01 or text "A - B"
+        // We require parts to be somewhat "credential-like" (no spaces usually, or short)
+        // Let's relax for now based on user request.
+        // Pattern 2: "Val1 - Val2" or "Val1/Val2" (No Label)
+        // e.g. "admin - anlan@123AL" WITH leading spaces
+        const matchSplit = line.match(/^\s*(\S+)(\s+-\s+|\/)(\S+)\s*$/);
+        if (matchSplit) {
+          const part1 = matchSplit[1];
+          const separator = matchSplit[2];
+          const part2 = matchSplit[3];
+          return (
+            <div key={idx} style={{ marginBottom: 4 }}>
+              {renderCopyable(part1.trim())}
+              <span style={{ margin: "0 4px", color: "#ccc" }}>
+                {separator.trim()}
+              </span>
+              {renderCopyable(part2.trim())}
+            </div>
+          );
+        }
+
+        // Pattern 3: Standard "Key: Value" (Fallback)
+        const matchClassic = line.match(
+          /^(\s*(?:账号|密码|Account|Pass(?:word)?|User(?:name)?)\s*[:：])\s*(.*)$/i
+        );
+        if (matchClassic) {
+          const prefix = matchClassic[1];
+          const value = matchClassic[2];
+          if (value.trim()) {
+            return (
+              <div key={idx} style={{ marginBottom: 4 }}>
+                <span>{prefix}</span>
+                {renderCopyable(value.trim())}
+              </div>
+            );
+          }
+        }
+
+        // Plain text
+        return (
+          <div key={idx} style={{ marginBottom: 4 }}>
+            {line}
+          </div>
+        );
+      })}
+    </div>
   );
 };
 
