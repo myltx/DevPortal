@@ -13,6 +13,7 @@ import {
   Popconfirm,
   message,
   Spin,
+  Skeleton,
   Empty,
   Tag,
   Button,
@@ -357,7 +358,23 @@ const ProjectSiteContent: React.FC = () => {
             // Remove marginLeft since we used marginRight on the menu container
             // marginLeft: cardList.length > 0 ? 16 : 0,
           }}>
-          <Spin spinning={loading} wrapperClassName="full-height-spin">
+          {loading ? (
+            <div style={{ padding: "0 4px", overflow: "hidden" }}>
+              <Row gutter={[16, 16]}>
+                {[...Array(8)].map((_, i) => (
+                  <Col xs={24} sm={12} md={12} lg={12} xl={8} xxl={6} key={i}>
+                    <Card
+                      style={{
+                        borderRadius: 12,
+                        border: "1px solid var(--border-color)",
+                      }}>
+                      <Skeleton active avatar paragraph={{ rows: 2 }} />
+                    </Card>
+                  </Col>
+                ))}
+              </Row>
+            </div>
+          ) : (
             <div
               ref={scrollContainerRef}
               style={{
@@ -369,44 +386,49 @@ const ProjectSiteContent: React.FC = () => {
                 scrollBehavior: "smooth",
               }}>
               {cardList.length === 0 ? (
-                <Empty description="暂无项目" style={{ marginTop: 64 }} />
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="暂无数据"
+                  style={{ marginTop: 64 }}
+                />
               ) : (
                 <div
-                  style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-                  {cardList.map((areaGroup, groupIndex) => {
-                    const projects = areaGroup.list || [];
-                    if (projects.length === 0) return null; // Skip empty groups to save space
-
+                  style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                  {cardList.map((item, index) => {
+                    if (!item.list || item.list.length === 0) return null;
                     return (
-                      <div key={groupIndex} id={`area-${groupIndex}`}>
-                        {/* Group Title */}
+                      <div
+                        key={item.areaId || index}
+                        id={`area-${item.areaId}`}>
                         <div
                           style={{
-                            fontSize: 18,
-                            fontWeight: 600,
-                            marginBottom: 16,
-                            paddingLeft: 12,
-                            borderLeft: "4px solid #1890ff",
-                            lineHeight: 1,
                             display: "flex",
                             alignItems: "center",
-                            color: "var(--foreground)",
+                            marginBottom: 16,
+                            paddingLeft: 4,
+                            borderLeft: "4px solid #1890ff",
                           }}>
-                          {areaGroup.areaName || "其他"}
                           <span
                             style={{
-                              fontSize: 13,
+                              fontSize: 18,
+                              fontWeight: 600,
+                              color: "var(--foreground)",
+                            }}>
+                            {item.areaName || "其他"}
+                          </span>
+                          <span
+                            style={{
                               color: "var(--foreground)",
                               opacity: 0.5,
                               marginLeft: 8,
                               fontWeight: 400,
                             }}>
-                            ({projects.length})
+                            ({item.list.length})
                           </span>
                         </div>
 
                         <Row gutter={[16, 16]}>
-                          {projects.map((card: any) => {
+                          {item.list.map((card: any) => {
                             const env = envOption.find(
                               (e) => e.value === card.typeName
                             );
@@ -591,7 +613,7 @@ const ProjectSiteContent: React.FC = () => {
                 </div>
               )}
             </div>
-          </Spin>
+          )}
         </div>
       </div>
 
