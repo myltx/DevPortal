@@ -10,6 +10,8 @@ import {
   message,
   Card,
   Tooltip,
+  Empty,
+  Alert,
 } from "antd";
 import { CopyOutlined } from "@ant-design/icons";
 import * as API from "@/lib/api/project";
@@ -289,23 +291,32 @@ const SmartTextDisplay: React.FC<{ text: string }> = ({ text }) => {
   const lines = text.split(/\r?\n/);
 
   const handleCopy = (val: string) => {
-    if (navigator.clipboard) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard
         .writeText(val)
-        .then(() => message.success("复制成功"));
+        .then(() => message.success("复制成功"))
+        .catch(() => fallbackCopy(val));
     } else {
-      const input = document.createElement("textarea");
-      input.value = val;
-      document.body.appendChild(input);
-      input.select();
-      document.execCommand("copy");
-      document.body.removeChild(input);
-      message.success("复制成功");
+      fallbackCopy(val);
     }
   };
 
-  const renderCopyable = (val: string) => (
-    <Tooltip title="点击复制">
+  const fallbackCopy = (val: string) => {
+    const input = document.createElement("textarea");
+    input.value = val;
+    document.body.appendChild(input);
+    input.select();
+    try {
+      document.execCommand("copy");
+      message.success("复制成功");
+    } catch (err) {
+      message.error("复制失败");
+    }
+    document.body.removeChild(input);
+  };
+
+  const renderCopyable = (val: string, key: string | number) => (
+    <Tooltip title="点击复制" key={key}>
       <span
         onClick={() => handleCopy(val)}
         style={{
@@ -315,88 +326,186 @@ const SmartTextDisplay: React.FC<{ text: string }> = ({ text }) => {
           cursor: "pointer",
           textDecoration: "underline",
           textUnderlineOffset: 4,
+          wordBreak: "break-all",
         }}>
         {val}
       </span>
     </Tooltip>
   );
 
+  const renderLabel = (val: string, key: string | number) => (
+    <span key={key} style={{ color: "var(--foreground)", opacity: 0.8 }}>
+      {val}
+    </span>
+  );
+
+  const renderLink = (url: string, key: string | number) => (
+    <a
+      key={key}
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        margin: "0 4px",
+        color: "#1890ff",
+        textDecoration: "underline",
+      }}>
+      {url}
+    </a>
+  );
+
+  // Heuristic to check if a segment is likely a label (not a credential)
+  const isLabelLike = (segment: string) => {
+    const trimmed = segment.trim();
+
+    // 1. Contains Chinese -> Treat as Label (description/name), not copyable credential
+    if (/[\u4e00-\u9fa5]/.test(trimmed)) return true;
+
+    // 2. Is a known keyword (case insensitive)
+    const keywords = [
+      "account",
+      "username",
+      "password",
+      "pass",
+      "user",
+      "账号",
+      "帐号",
+      "密码",
+      "地址",
+      "url",
+      "link",
+      "admin",
+      "坐席",
+      "备注",
+      "desc",
+      "服务商",
+      "环境",
+      "生产环境",
+      "测试环境",
+      "开发环境",
+      "名称",
+    ];
+    // Exact match or ends with colon
+    const clean = trimmed.replace(/[:：]$/, "").toLowerCase();
+
+    if (keywords.includes(clean)) return true;
+
+    // Check if it looks very much like a label e.g. "Label:"
+    if (/^[^:：]+[:：]$/.test(trimmed)) return true;
+
+    return false;
+  };
+
+  // Heuristic to check if a segment is a URL
+  const isUrl = (segment: string) => {
+    return /^https?:\/\//i.test(segment.trim());
+  };
+
   return (
     <div>
-      {lines.map((line, idx) => {
-        // Pattern 1: "Label: Val1 - Val2" or "Label: Val1 / Val2"
-        // e.g. "街道账号：清波街道 - Qwer@123456"
-        // e.g. "市级账号：hangzhou/Qwer@123456"
-        const matchDouble = line.match(
-          /^(\s*.*?[:：])\s*(.*?)(\s+-\s+|\/)(.*)$/
-        );
+      <Alert
+        message="智能解析已启用"
+        description="蓝色文字可点击复制，黑色文字为描述标签"
+        type="info"
+        showIcon
+        style={{ marginBottom: 16, fontSize: 13 }}
+        closable
+      />
+      {lines.map((line, lineIdx) => {
+        let trimmedLine = line.trim();
+        if (!trimmedLine) return <div key={lineIdx} style={{ height: 8 }} />;
 
-        if (matchDouble) {
-          const prefix = matchDouble[1];
-          const part1 = matchDouble[2];
-          const separator = matchDouble[3];
-          const part2 = matchDouble[4];
+        // Normalize separators
+        trimmedLine = trimmedLine.replace(/[—–]/g, "-");
 
-          // Filter out false positives: if parts look like normal sentences (too long or spaces), skip?
-          // For now, assume user intent is specific structure.
-          return (
-            <div key={idx} style={{ marginBottom: 4 }}>
-              <span>{prefix}</span>
-              {renderCopyable(part1.trim())}
-              <span style={{ margin: "0 4px", color: "#ccc" }}>
-                {separator.trim()}
-              </span>
-              {renderCopyable(part2.trim())}
-            </div>
-          );
-        }
+        // Strategy: Tokenize the line using a master regex
+        // Captures: URLs, Tabs/DoubleSpaces, Hyphens (spaced or not), Slashes (spaced or not), Colons
+        // We use capturing groups so split includes the separators.
+        // Regex definitions:
+        // 1. URL: https?://[^\s]+
+        // 2. Tab/DoubleSpace: \t|\s{2,}
+        // 3. Hyphen: \s*[-–—]\s* (Handles " - ", "-", " — ")
+        // 4. Slash: \s*\/\s* (Handles " / ", "/")
+        // 5. Colon: [:：]
+        const masterRegex =
+          /((?:https?:\/\/[^\s]+)|(?:[\t]|\s{2,}|\s*[-–—]\s*|\s*\/\s*|[:：]))/;
 
-        // Pattern 2: "Val1 - Val2" or "Val1/Val2" (No Label)
-        // e.g. "admin - anlan@123AL"
-        // e.g. "aladmin/anlan@123AL"
-        // e.g. "provinceAdmin/Qwer@123456"
-        // Be careful not to match simple dates like 2023/01/01 or text "A - B"
-        // We require parts to be somewhat "credential-like" (no spaces usually, or short)
-        // Let's relax for now based on user request.
-        // Pattern 2: "Val1 - Val2" or "Val1/Val2" (No Label)
-        // e.g. "admin - anlan@123AL" WITH leading spaces
-        const matchSplit = line.match(/^\s*(\S+)(\s+-\s+|\/)(\S+)\s*$/);
-        if (matchSplit) {
-          const part1 = matchSplit[1];
-          const separator = matchSplit[2];
-          const part2 = matchSplit[3];
-          return (
-            <div key={idx} style={{ marginBottom: 4 }}>
-              {renderCopyable(part1.trim())}
-              <span style={{ margin: "0 4px", color: "#ccc" }}>
-                {separator.trim()}
-              </span>
-              {renderCopyable(part2.trim())}
-            </div>
-          );
-        }
+        const segments = trimmedLine.split(masterRegex);
 
-        // Pattern 3: Standard "Key: Value" (Fallback)
-        const matchClassic = line.match(
-          /^(\s*(?:账号|密码|Account|Pass(?:word)?|User(?:name)?)\s*[:：])\s*(.*)$/i
-        );
-        if (matchClassic) {
-          const prefix = matchClassic[1];
-          const value = matchClassic[2];
-          if (value.trim()) {
-            return (
-              <div key={idx} style={{ marginBottom: 4 }}>
-                <span>{prefix}</span>
-                {renderCopyable(value.trim())}
-              </div>
-            );
+        const tokens: { text: string; type: "text" | "separator" | "url" }[] =
+          [];
+
+        segments.forEach((seg: string) => {
+          if (!seg) return; // Skip empty splits
+
+          // Check if it's a separator or URL or text
+          if (masterRegex.test(seg)) {
+            // It matched the regex group
+            if (isUrl(seg)) {
+              tokens.push({ text: seg, type: "url" });
+            } else {
+              tokens.push({ text: seg, type: "separator" });
+            }
+          } else {
+            // It's text content
+            const trimSeg = seg.trim();
+            if (trimSeg) {
+              tokens.push({ text: trimSeg, type: "text" });
+            }
           }
-        }
+        });
 
-        // Plain text
         return (
-          <div key={idx} style={{ marginBottom: 4 }}>
-            {line}
+          <div
+            key={lineIdx}
+            style={{
+              marginBottom: 4,
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+            }}>
+            {tokens.map((token, tIdx) => {
+              if (token.type === "separator") {
+                // For tight separators like "-" or "/", we might want less margin?
+                // But sticking to a uniform look is safe.
+                return (
+                  <span
+                    key={tIdx}
+                    style={{
+                      whiteSpace: "pre",
+                      color: "#ccc",
+                      margin: "0 2px",
+                    }}>
+                    {token.text}
+                  </span>
+                );
+              }
+
+              if (token.type === "url") {
+                return [
+                  renderLink(token.text, tIdx),
+                  <CopyOutlined
+                    key={`copy-${tIdx}`}
+                    style={{
+                      marginLeft: 4,
+                      cursor: "pointer",
+                      color: "#1890ff",
+                    }}
+                    onClick={() => handleCopy(token.text)}
+                  />,
+                ];
+              }
+
+              // Text
+              const textPart = token.text;
+
+              // Decide if Label or Value
+              if (isLabelLike(textPart)) {
+                return renderLabel(textPart, tIdx);
+              } else {
+                return renderCopyable(textPart, tIdx);
+              }
+            })}
           </div>
         );
       })}

@@ -159,8 +159,14 @@ const EditProjectDrawer: React.FC<EditProjectDrawerProps> = ({
         <Form.Item name="remark" label="备注">
           <Input.TextArea />
         </Form.Item>
-        <Form.Item name="moduleDescribe" label="账号信息(描述)">
-          <Input.TextArea rows={4} />
+        <Form.Item
+          name="moduleDescribe"
+          label="账号信息(描述)"
+          extra="建议格式：标题/说明 - 账号 - 密码。支持智能识别多种分隔符（空格、Tab、连字符等）。">
+          <Input.TextArea
+            rows={4}
+            placeholder="例如：测试环境 - admin - 123456"
+          />
         </Form.Item>
       </Form>
     </Drawer>
