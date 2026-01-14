@@ -203,6 +203,21 @@ _(注意：需要本地也安装 Docker)_
     ```
     然后运行 `docker compose up -d` 即可。
 
+### 🚀 极简运维 (推荐)
+
+我们为您准备了 `server-deploy.sh` 脚本，将它与 `dev-portal.tar` 一起上传到服务器，然后执行：
+
+```bash
+chmod +x server-deploy.sh
+./server-deploy.sh
+```
+
+会出现交互式菜单，您可以选择：
+
+1. **First Time Setup**: 自动检查环境、加载镜像并启动。
+2. **Update App**: 更新镜像并自动重启。
+3. **View Logs**: 查看日志。
+
 ### 🔄 服务器端如何更新 (重启)?
 
 当您上传了新的 `dev-portal.tar` 到服务器后，请按以下步骤更新服务：
