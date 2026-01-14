@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   Drawer,
   Tabs,
@@ -13,11 +13,12 @@ import {
 } from "antd";
 import { CopyOutlined } from "@ant-design/icons";
 import * as API from "@/lib/api/project";
+import { Account, ProjectModule } from "@/lib/types";
 
 interface AccountDrawerProps {
   open: boolean;
   onClose: () => void;
-  moduleData: any; // The module we are viewing accounts for
+  moduleData: ProjectModule | null; // The module we are viewing accounts for
 }
 
 const AccountDrawer: React.FC<AccountDrawerProps> = ({
@@ -25,67 +26,74 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
   onClose,
   moduleData,
 }) => {
-  const [accountList, setAccountList] = useState<any[]>([]);
+  const [accountList, setAccountList] = useState<Account[]>([]);
   const [editingKey, setEditingKey] = useState<string>("");
   const [activeTab, setActiveTab] = useState("text");
 
-  const fetchAccounts = async (moduleId: number) => {
+  const fetchAccounts = useCallback(async (moduleId: number) => {
     const res = await API.accountList({ moduleId });
     if (res.success) {
       setAccountList(res.data);
     }
-  };
+  }, []);
 
   // Preference Key (Matches PreferenceModal)
   const STORAGE_KEY = "account_default_view_preference";
 
   useEffect(() => {
-    if (open && moduleData?.moduleId) {
+    if (open && moduleData?.id) {
       // Default reset
       setEditingKey("");
 
       // Load preference or default to "text"
-      // Explicitly Load from the "Preference" key, NOT updating it on change
       const savedTab = localStorage.getItem(STORAGE_KEY);
       setActiveTab(savedTab === "table" ? "table" : "text");
 
-      fetchAccounts(moduleData.moduleId);
+      fetchAccounts(moduleData.id);
     }
-  }, [open, moduleData]);
+  }, [open, moduleData, fetchAccounts]);
 
   const handleTabChange = (key: string) => {
     setActiveTab(key);
-    // DO NOT save to localStorage here. User wants explicit control.
   };
 
   const handleAddAccount = () => {
+    if (!moduleData?.id) return;
     setAccountList([
-      { id: -1, account: "", password: "", isNew: true },
+      {
+        id: -1,
+        account: "",
+        password: "",
+        moduleId: moduleData.id,
+        isNew: true,
+      },
       ...accountList,
     ]);
     setEditingKey("-1");
   };
 
-  const handleSaveAccount = async (record: any) => {
+  const handleSaveAccount = async (record: Account) => {
+    if (!moduleData?.id) return;
     const payload = {
       id: record.id === -1 ? null : record.id,
       account: record.account,
       password: record.password,
-      moduleId: moduleData.moduleId,
+      moduleId: moduleData.id,
     };
     const res = await API.addOrUpdateAccount(payload);
     if (res.success) {
       message.success("保存成功");
       setEditingKey("");
-      fetchAccounts(moduleData.moduleId);
+      fetchAccounts(moduleData.id);
     }
   };
 
   const handleDeleteAccount = async (id: number) => {
+    if (!moduleData?.id) return;
     const res = await API.deleteAccount([id]);
     if (res.success) {
       message.success("删除成功");
-      fetchAccounts(moduleData.moduleId);
+      fetchAccounts(moduleData.id);
     }
   };
 
@@ -119,7 +127,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
     {
       title: "账号",
       dataIndex: "account",
-      render: (text: string, record: any) => {
+      render: (text: string, record: Account) => {
         if (editingKey === String(record.id)) {
           return (
             <Input
@@ -142,7 +150,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
         }
         return (
           <Space>
-            {text}
+            <span>{text}</span>
             <CopyOutlined
               style={{ cursor: "pointer", color: "#1890ff" }}
               onClick={() => handleCopy(text)}
@@ -154,7 +162,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
     {
       title: "密码",
       dataIndex: "password",
-      render: (text: string, record: any) => {
+      render: (text: string, record: Account) => {
         if (editingKey === String(record.id)) {
           return (
             <Input
@@ -177,7 +185,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
         }
         return (
           <Space>
-            {text}
+            <span>{text}</span>
             <CopyOutlined
               style={{ cursor: "pointer", color: "#1890ff" }}
               onClick={() => handleCopy(text)}
@@ -188,7 +196,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
     },
     {
       title: "操作",
-      render: (_: any, record: any) => {
+      render: (_: any, record: Account) => {
         const editable = editingKey === String(record.id);
         return editable ? (
           <Space>

@@ -27,6 +27,14 @@ import {
   GlobalOutlined,
 } from "@ant-design/icons";
 
+import {
+  Project,
+  Area,
+  ClassInfo,
+  ProjectModule,
+  EnvOption,
+} from "@/lib/types";
+
 import * as API from "@/lib/api/project";
 import ProjectSiteHeader from "./components/ProjectSiteHeader";
 import EditProjectDrawer from "./components/EditProjectDrawer";
@@ -43,14 +51,14 @@ const ProjectSiteContent: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   // Data State
-  const [projectIdOptions, setProjectIdOptions] = useState<any[]>([]);
-  const [cardList, setCardList] = useState<any[]>([]);
+  const [projectIdOptions, setProjectIdOptions] = useState<Project[]>([]);
+  const [cardList, setCardList] = useState<ProjectModule[]>([]);
   const [selectedAreaIndex, setSelectedAreaIndex] = useState("0");
-  const [areaList, setAreaList] = useState<any[]>([]); // Changed to any[] for Area objects
-  const [classInfoList, setClassInfoList] = useState<any[]>([]);
+  const [areaList, setAreaList] = useState<Area[]>([]);
+  const [classInfoList, setClassInfoList] = useState<ClassInfo[]>([]);
 
   // Constant Options
-  const [envOption] = useState([
+  const [envOption] = useState<EnvOption[]>([
     { label: "测试环境", value: "test", color: "#409EFF" },
     { label: "生产环境", value: "prod", color: "#67C23A" },
     { label: "开发环境", value: "dev", color: "#E6A23C" },
@@ -60,37 +68,43 @@ const ProjectSiteContent: React.FC = () => {
 
   // Drawer States
   const [projectDrawerVisible, setProjectDrawerVisible] = useState(false);
-  const [currentModule, setCurrentModule] = useState<any>(null); // For Edit Project
+  const [currentModule, setCurrentModule] = useState<ProjectModule | null>(
+    null
+  ); // For Edit Project
 
   const [accountDrawerVisible, setAccountDrawerVisible] = useState(false);
-  const [currentAccountModule, setCurrentAccountModule] = useState<any>(null); // For Account Drawer
+  const [currentAccountModule, setCurrentAccountModule] =
+    useState<ProjectModule | null>(null); // For Account Drawer
 
   // --- Fetch Logic ---
 
-  const fetchProjectNames = async (classId?: string) => {
-    const idToUse = classId || activeClassId;
-    if (!idToUse) return;
+  const fetchProjectNames = React.useCallback(
+    async (classId?: string) => {
+      const idToUse = classId || activeClassId;
+      if (!idToUse) return;
 
-    const res = await API.getProjectNameList(Number(idToUse));
-    if (res.success && res.data && res.data.length > 0) {
-      setProjectIdOptions(res.data);
-      // Always reset active project when class changes
-      setActiveProjectId(String(res.data[0].id));
-    } else {
-      setProjectIdOptions([]);
-      setActiveProjectId("");
-      setCardList([]);
-    }
-  };
+      const res = await API.getProjectNameList(Number(idToUse));
+      if (res.success && res.data && res.data.length > 0) {
+        setProjectIdOptions(res.data);
+        // Always reset active project when class changes
+        setActiveProjectId(String(res.data[0].id));
+      } else {
+        setProjectIdOptions([]);
+        setActiveProjectId("");
+        setCardList([]);
+      }
+    },
+    [activeClassId]
+  );
 
-  const fetchAreaList = async () => {
+  const fetchAreaList = React.useCallback(async () => {
     const res = await API.getAreaList();
     if (res.success) {
       setAreaList(res.data);
     }
-  };
+  }, []);
 
-  const fetchClassInfoList = async () => {
+  const fetchClassInfoList = React.useCallback(async () => {
     const res = await API.getClassInfo();
     if (res.success) {
       setClassInfoList(res.data);
@@ -98,9 +112,9 @@ const ProjectSiteContent: React.FC = () => {
         setActiveClassId(String(res.data[0].id));
       }
     }
-  };
+  }, [activeClassId]);
 
-  const fetchProjectList = async () => {
+  const fetchProjectList = React.useCallback(async () => {
     if (!activeProjectId) {
       setCardList([]);
       return;
@@ -159,7 +173,7 @@ const ProjectSiteContent: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeProjectId, selectedAreaIndex, formInline]);
 
   // --- Effects ---
 
@@ -176,7 +190,7 @@ const ProjectSiteContent: React.FC = () => {
 
   useEffect(() => {
     fetchProjectList();
-  }, [activeProjectId]);
+  }, [fetchProjectList]);
 
   // Reset scroll and selection when project changes
   useEffect(() => {
