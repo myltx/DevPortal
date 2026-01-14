@@ -129,7 +129,16 @@ const AreaManagerDrawer: React.FC<AreaManagerDrawerProps> = ({
                 <Popconfirm
                   key="del"
                   title="确认删除此地区？"
-                  description="删除后，相关项目将不再显示此地区标签。"
+                  description={
+                    (item._count?.projects || 0) + (item._count?.modules || 0) >
+                    0
+                      ? `删除后，该地区下 ${
+                          item._count?.projects || 0
+                        } 个项目和 ${
+                          item._count?.modules || 0
+                        } 个模块将变为“未分类”。`
+                      : "删除后，相关项目将不再显示此地区标签。"
+                  }
                   onConfirm={() => handleDelete(item.id)}>
                   <Button type="text" danger icon={<DeleteOutlined />}>
                     删除
@@ -138,7 +147,15 @@ const AreaManagerDrawer: React.FC<AreaManagerDrawerProps> = ({
               ]}>
               <List.Item.Meta
                 title={<span>{item.name}</span>}
-                description={<span>排序值: {item.sort}</span>}
+                description={
+                  <span>
+                    排序值: {item.sort}
+                    <span style={{ marginLeft: 16, opacity: 0.6 }}>
+                      (包含: {item._count?.projects || 0} 个项目,{" "}
+                      {item._count?.modules || 0} 个模块)
+                    </span>
+                  </span>
+                }
               />
             </List.Item>
           )}

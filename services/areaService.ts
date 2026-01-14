@@ -7,7 +7,11 @@ export const areaService = {
       orderBy: {
         sort: "asc", 
       },
-      // Second sort criteria: name asc
+      include: {
+        _count: {
+          select: { projects: true, modules: true },
+        },
+      },
     });
   },
 
