@@ -1,11 +1,11 @@
 version: "3"
 
 services:
-  nextjs-nav:
-    container_name: nextjs-nav
+  dev-portal:
+    container_name: dev-portal
     # Server Deployment Config
-    # Uses the image loaded from nextjs-nav.tar (no build step required)
-    image: nextjs-nav:latest
+    # Uses the image loaded from dev-portal.tar (no build step required)
+    image: dev-portal:latest
 
     restart: always
     ports:

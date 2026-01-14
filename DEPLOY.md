@@ -139,17 +139,17 @@ _(注意：需要本地也安装 Docker)_
 
     ```bash
     npm run docker:pack
-    # 等待完成后，当前目录会生成 nextjs-nav.tar
+    # 等待完成后，当前目录会生成 dev-portal.tar
     ```
 
 2.  **上传文件**:
     您需要上传可以通过离线部署的 **两个核心文件**：
 
-    - `nextjs-nav.tar` (镜像包)
+    - `dev-portal.tar` (镜像包)
     - `docker-compose.prod.yml` (**生产环境专用配置**，请在服务器上重命名为 `docker-compose.yml`)
 
     ```bash
-    scp nextjs-nav.tar root@your-server-ip:/root/project/
+    scp dev-portal.tar root@your-server-ip:/root/project/
     scp docker-compose.prod.yml root@your-server-ip:/root/project/docker-compose.yml
     ```
 
@@ -162,26 +162,26 @@ _(注意：需要本地也安装 Docker)_
 
     ```bash
     # 在项目根目录执行
-    docker buildx build --platform linux/amd64 -t nextjs-nav:latest .
+    docker buildx build --platform linux/amd64 -t dev-portal:latest .
     ```
 
 2.  **导出镜像**:
 
     ```bash
-    docker save -o nextjs-nav.tar nextjs-nav:latest
+    docker save -o dev-portal.tar dev-portal:latest
     ```
 
 3.  **上传到服务器**:
 
     ```bash
     # 使用 scp 或其他工具
-    scp nextjs-nav.tar root@your-server-ip:/root/
+    scp dev-portal.tar root@your-server-ip:/root/
     ```
 
 4.  **服务器导入**:
 
     ```bash
-    docker load -i nextjs-nav.tar
+    docker load -i dev-portal.tar
     ```
 
 5.  **修改配置启动**:
@@ -189,12 +189,12 @@ _(注意：需要本地也安装 Docker)_
     ```yaml
     version: "3"
     services:
-      nextjs-nav:
-        image: nextjs-nav:latest # <--- 使用导入的镜像
+      dev-portal:
+        image: dev-portal:latest # <--- 使用导入的镜像
         # build:                  # <--- 注释掉构建配置
         #   context: .            # <--- 注释掉
         #   dockerfile: Dockerfile # <--- 注释掉
-        container_name: nextjs-nav
+        container_name: dev-portal
         restart: always
         ports:
           - "3001:3001"
@@ -205,11 +205,11 @@ _(注意：需要本地也安装 Docker)_
 
 ### 🔄 服务器端如何更新 (重启)?
 
-当您上传了新的 `nextjs-nav.tar` 到服务器后，请按以下步骤更新服务：
+当您上传了新的 `dev-portal.tar` 到服务器后，请按以下步骤更新服务：
 
 1.  **导入新镜像**:
     ```bash
-    docker load -i nextjs-nav.tar
+    docker load -i dev-portal.tar
     ```
 2.  **重启服务 (加载新镜像)**:
 
@@ -241,7 +241,7 @@ graph TD
         Code[Source Code] --> |1. npm run build| NextDist[.next 文件夹]:::artifact
         NextDist --> |2. COPY| DockerBuild[Docker Build (x86)]
         Pkg[package.json] --> |3. npm ci --prod| DockerBuild
-        DockerBuild --> |4. docker save| TarFile[nextjs-nav.tar]:::artifact
+        DockerBuild --> |4. docker save| TarFile[dev-portal.tar]:::artifact
     end
 
     TarFile --> |5. scp 上传| ServerEnv
