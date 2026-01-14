@@ -233,28 +233,39 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
       size="large"
       open={open}
       onClose={onClose}
-      footer={null}>
+      footer={null}
+      styles={{
+        body: { padding: 0, overflow: "hidden" },
+      }}>
       <Tabs
         activeKey={activeTab}
         onChange={handleTabChange}
+        tabBarStyle={{ padding: "0 24px", margin: 0 }}
         items={[
           {
             key: "text",
             label: "文本",
             children: (
-              <div style={{ minHeight: "200px", whiteSpace: "pre-wrap" }}>
-                {moduleData?.describe ? (
-                  <SmartTextDisplay text={moduleData.describe} />
-                ) : (
-                  <div
-                    style={{
-                      color: "#999",
-                      textAlign: "center",
-                      padding: "20px",
-                    }}>
-                    暂无账号信息
-                  </div>
-                )}
+              <div
+                style={{
+                  height: "calc(100vh - 55px - 46px)", // Screen - DrawerHeader - TabsHeader
+                  overflowY: "auto",
+                  padding: "24px",
+                }}>
+                <div style={{ minHeight: "200px", whiteSpace: "pre-wrap" }}>
+                  {moduleData?.describe ? (
+                    <SmartTextDisplay text={moduleData.describe} />
+                  ) : (
+                    <div
+                      style={{
+                        color: "#999",
+                        textAlign: "center",
+                        padding: "20px",
+                      }}>
+                      暂无账号信息
+                    </div>
+                  )}
+                </div>
               </div>
             ),
           },
@@ -262,21 +273,28 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
             key: "table",
             label: "列表",
             children: (
-              <Card
-                className="project-card"
-                styles={{ body: { padding: "16px" } }}>
-                <div style={{ marginBottom: 16 }}>
-                  <Button type="primary" onClick={handleAddAccount}>
-                    新增账号
-                  </Button>
-                </div>
-                <Table
-                  dataSource={accountList}
-                  columns={columns}
-                  rowKey="id"
-                  pagination={false}
-                />
-              </Card>
+              <div
+                style={{
+                  height: "calc(100vh - 55px - 46px)",
+                  overflowY: "auto",
+                  padding: "24px",
+                }}>
+                <Card
+                  className="project-card"
+                  styles={{ body: { padding: "16px" } }}>
+                  <div style={{ marginBottom: 16 }}>
+                    <Button type="primary" onClick={handleAddAccount}>
+                      新增账号
+                    </Button>
+                  </div>
+                  <Table
+                    dataSource={accountList}
+                    columns={columns}
+                    rowKey="id"
+                    pagination={false}
+                  />
+                </Card>
+              </div>
             ),
           },
         ]}
