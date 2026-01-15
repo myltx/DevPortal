@@ -174,7 +174,7 @@ const ProjectSiteContent: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeProjectId, selectedAreaIndex, formInline]);
+  }, [activeProjectId, formInline]);
 
   // --- Effects ---
 
@@ -258,9 +258,14 @@ const ProjectSiteContent: React.FC = () => {
   // Scroll to specific area
   const scrollToArea = (index: number) => {
     setSelectedAreaIndex(String(index));
-    const element = document.getElementById(`area-${index}`);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
+    const element = document.getElementById(`area-index-${index}`);
+    const container = scrollContainerRef.current;
+
+    if (element && container) {
+      // Calculate position relative to the container
+      // Considering the container might have padding
+      const topPos = element.offsetTop;
+      container.scrollTo({ top: topPos, behavior: "smooth" });
     }
   };
 
@@ -384,6 +389,7 @@ const ProjectSiteContent: React.FC = () => {
                 paddingBottom: 16,
                 paddingLeft: 4,
                 scrollBehavior: "smooth",
+                position: "relative", // Needed for offsetTop calculation
               }}>
               {cardList.length === 0 ? (
                 <Empty
@@ -399,7 +405,7 @@ const ProjectSiteContent: React.FC = () => {
                     return (
                       <div
                         key={item.areaId || index}
-                        id={`area-${item.areaId}`}>
+                        id={`area-index-${index}`}>
                         <div
                           style={{
                             display: "flex",
