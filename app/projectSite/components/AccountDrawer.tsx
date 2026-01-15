@@ -43,7 +43,8 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
   const STORAGE_KEY = "account_default_view_preference";
 
   useEffect(() => {
-    if (open && moduleData?.id) {
+    const mId = moduleData?.id || moduleData?.moduleId;
+    if (open && mId) {
       // Default reset
       setEditingKey("");
 
@@ -51,7 +52,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
       const savedTab = localStorage.getItem(STORAGE_KEY);
       setActiveTab(savedTab === "table" ? "table" : "text");
 
-      fetchAccounts(moduleData.id);
+      fetchAccounts(mId);
     }
   }, [open, moduleData, fetchAccounts]);
 
@@ -60,13 +61,14 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
   };
 
   const handleAddAccount = () => {
-    if (!moduleData?.id) return;
+    const mId = moduleData?.id || moduleData?.moduleId;
+    if (!mId) return;
     setAccountList([
       {
         id: -1,
         account: "",
         password: "",
-        moduleId: moduleData.id,
+        moduleId: mId,
         isNew: true,
       },
       ...accountList,
@@ -75,27 +77,29 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
   };
 
   const handleSaveAccount = async (record: Account) => {
-    if (!moduleData?.id) return;
+    const mId = moduleData?.id || moduleData?.moduleId;
+    if (!mId) return;
     const payload = {
       id: record.id === -1 ? null : record.id,
       account: record.account,
       password: record.password,
-      moduleId: moduleData.id,
+      moduleId: mId,
     };
     const res = await API.addOrUpdateAccount(payload);
     if (res.success) {
       message.success("保存成功");
       setEditingKey("");
-      fetchAccounts(moduleData.id);
+      fetchAccounts(mId);
     }
   };
 
   const handleDeleteAccount = async (id: number) => {
-    if (!moduleData?.id) return;
+    const mId = moduleData?.id || moduleData?.moduleId;
+    if (!mId) return;
     const res = await API.deleteAccount([id]);
     if (res.success) {
       message.success("删除成功");
-      fetchAccounts(moduleData.id);
+      fetchAccounts(mId);
     }
   };
 
@@ -218,7 +222,9 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
             <a onClick={() => setEditingKey(String(record.id))}>编辑</a>
             <Popconfirm
               title="确认删除?"
-              onConfirm={() => handleDeleteAccount(record.id)}>
+              onConfirm={() => handleDeleteAccount(record.id)}
+              okText="确定"
+              cancelText="取消">
               <a style={{ color: "red" }}>删除</a>
             </Popconfirm>
           </Space>

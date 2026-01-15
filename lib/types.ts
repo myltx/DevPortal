@@ -25,6 +25,7 @@ export interface Project {
 
 export interface ProjectModule {
   id?: number;
+  moduleId?: number;
   projectId?: number;
   moduleName: string;
   describe?: string;

@@ -455,7 +455,7 @@ const ProjectSiteContent: React.FC = () => {
                                     onConfirm={() =>
                                       handleDeleteProject(card.moduleId)
                                     }
-                                    okText="删除"
+                                    okText="确定"
                                     cancelText="取消"
                                     placement="left">
                                     <span style={{ color: "#ff4d4f" }}>

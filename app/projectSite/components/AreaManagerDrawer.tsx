@@ -139,7 +139,9 @@ const AreaManagerDrawer: React.FC<AreaManagerDrawerProps> = ({
                         } 个模块将变为“未分类”。`
                       : "删除后，相关项目将不再显示此地区标签。"
                   }
-                  onConfirm={() => handleDelete(item.id)}>
+                  onConfirm={() => handleDelete(item.id)}
+                  okText="确定"
+                  cancelText="取消">
                   <Button type="text" danger icon={<DeleteOutlined />}>
                     删除
                   </Button>
@@ -166,7 +168,9 @@ const AreaManagerDrawer: React.FC<AreaManagerDrawerProps> = ({
         title={editingItem ? "编辑地区" : "新增地区"}
         open={isModalOpen}
         onOk={handleModalOk}
-        onCancel={() => setIsModalOpen(false)}>
+        onCancel={() => setIsModalOpen(false)}
+        okText="确定"
+        cancelText="取消">
         <Space direction="vertical" style={{ width: "100%" }}>
           <div>
             <div style={{ marginBottom: 4 }}>名称:</div>

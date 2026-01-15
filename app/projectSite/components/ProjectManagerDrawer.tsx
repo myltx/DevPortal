@@ -166,7 +166,9 @@ const ProjectManagerDrawer: React.FC<ProjectManagerDrawerProps> = ({
                   key="del"
                   title="确认删除？"
                   description="删除前请确保该项目下没有业务模块。"
-                  onConfirm={() => handleDelete(item.id)}>
+                  onConfirm={() => handleDelete(item.id)}
+                  okText="确定"
+                  cancelText="取消">
                   <Button type="text" danger icon={<DeleteOutlined />}>
                     删除
                   </Button>
@@ -201,7 +203,9 @@ const ProjectManagerDrawer: React.FC<ProjectManagerDrawerProps> = ({
         title={editingItem ? "编辑页签" : "新增页签"}
         open={isModalOpen}
         onOk={handleModalOk}
-        onCancel={() => setIsModalOpen(false)}>
+        onCancel={() => setIsModalOpen(false)}
+        okText="确定"
+        cancelText="取消">
         <Space direction="vertical" style={{ width: "100%" }} size="middle">
           <div>
             <div style={{ marginBottom: 4 }}>页签名称:</div>
