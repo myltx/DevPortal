@@ -294,4 +294,45 @@ graph TD
     - 最后将第 1 步生成的 `.next` 文件夹复制进容器。
     - 结果：获得了一个既包含最新代码，又拥有正确底层依赖的完美镜像。
 
-通过这种“移花接木”的方式，我们既享受了 Mac 的编译速度，又保证了服务器的运行稳定性。
+## 8. 公司内网部署与分发指南
+
+如果您需要在公司内部推广使用本系统，请参考以下流程：
+
+### 8.1 服务端部署 (后端)
+
+请按照本文档第 2 节或第 6 节的步骤，将服务部署在公司内网服务器上（例如 `192.168.x.x`）。
+假设部署后的服务地址为：`http://192.168.1.100:3001`
+
+### 8.2 Chrome 扩展打包与分发 (客户端)
+
+为了让同事们无需安装 Git 或 Node.js 环境也能使用扩展，您需要打包并分发配置好的扩展程序。
+
+#### 第一步：修改 API 地址
+
+打开代码中的 `chrome-extension/popup.js` 文件，将顶部的 `API_URL` 修改为内网服务器地址：
+
+```javascript
+// chrome-extension/popup.js
+// const API_URL = "http://localhost:3000/api/match-credentials";
+const API_URL = "http://192.168.1.100:3001/api/match-credentials"; // <--- 修改这里
+```
+
+#### 第二步：打包扩展
+
+1.  进入 `chrome-extension` 目录。
+2.  将该目录下的所有文件（`manifest.json`, `popup.html`, `popup.js`, `background.js`, `README.md` 等）打包成一个 `.zip` 压缩包。
+3.  命名建议：`DevPortal-Extension-v1.0.zip`。
+
+#### 第三步：分发与安装
+
+1.  将 `DevPortal-Extension-v1.0.zip` 发送给同事，或上传到公司网盘。
+2.  **同事需执行的操作**：
+    - 解压 `.zip` 包到一个固定文件夹。
+    - 打开 Chrome 浏览器，访问 `chrome://extensions/`。
+    - 开启右上角的 **“开发者模式”**。
+    - 点击左上角的 **“加载已解压的扩展程序”**，选择解压后的文件夹。
+    - 推荐点击浏览器工具栏的“拼图”图标，将插件 **固定 (Pin)** 在工具栏上。
+
+---
+
+Powered by Next.js & Prisma

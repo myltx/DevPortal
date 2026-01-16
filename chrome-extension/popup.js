@@ -57,6 +57,8 @@ async function loadCredentials(tabId) {
       document.getElementById("header-title").textContent = "凭据列表";
     }
 
+    checkUpdate(); // Check for updates silently
+
     renderList(data, hostname);
     renderText(data);
   } catch (err) {
@@ -64,6 +66,62 @@ async function loadCredentials(tabId) {
     errorEl.textContent = err.message;
     errorEl.style.display = "block";
   }
+}
+
+// Version Check Logic
+async function checkUpdate() {
+  try {
+    const manifest = chrome.runtime.getManifest();
+    const currentVersion = manifest.version;
+
+    // Fetch latest version from backend
+    // Construct absolute URL based on API_URL setting
+    const baseUrl = new URL(API_URL).origin;
+    const versionApiUrl = `${baseUrl}/api/extension-version`;
+
+    const res = await fetch(versionApiUrl);
+    if (!res.ok) return;
+
+    const remoteData = await res.json();
+    const latestVersion = remoteData.version;
+    const downloadUrl = remoteData.downloadUrl;
+
+    if (compareVersions(latestVersion, currentVersion) > 0) {
+      showUpdateBanner(latestVersion, downloadUrl);
+    }
+  } catch (e) {
+    console.warn("Update check failed", e);
+  }
+}
+
+function compareVersions(v1, v2) {
+  const parts1 = v1.split(".").map(Number);
+  const parts2 = v2.split(".").map(Number);
+  for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+    const n1 = parts1[i] || 0;
+    const n2 = parts2[i] || 0;
+    if (n1 > n2) return 1;
+    if (n1 < n2) return -1;
+  }
+  return 0;
+}
+
+function showUpdateBanner(version, url) {
+  const banner = document.getElementById("update-banner");
+  const versionSpan = document.getElementById("new-version");
+
+  if (!banner || !versionSpan) return;
+
+  versionSpan.textContent = `v${version}`;
+  banner.style.display = "flex";
+
+  banner.onclick = () => {
+    if (url) {
+      chrome.tabs.create({ url: url });
+    } else {
+      alert(`请联系管理员获取最新版本 v${version} 的安装包。`);
+    }
+  };
 }
 
 function renderList(data, hostname) {

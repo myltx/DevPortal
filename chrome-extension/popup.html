@@ -374,9 +374,38 @@
         visibility: visible;
         transform: translateX(-50%) translateY(0);
       }
+      /* Update Banner */
+      .update-banner {
+        background: #fffbe6;
+        border-bottom: 1px solid #ffe58f;
+        color: #d46b08;
+        padding: 8px 12px;
+        font-size: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        display: none; /* Hidden by default */
+      }
+      .update-banner:hover {
+        background: #fff1b8;
+      }
+      .update-banner .icon {
+        margin-right: 6px;
+      }
+      .update-banner .link {
+        color: #d46b08;
+        text-decoration: underline;
+        font-weight: 500;
+      }
     </style>
   </head>
   <body>
+    <div id="update-banner" class="update-banner">
+      <span>🚀 发现新版本 <span id="new-version"></span></span>
+      <span class="link">点击下载</span>
+    </div>
+
     <div class="header">
       <h3 id="header-title">凭据列表</h3>
       <div class="tabs">
