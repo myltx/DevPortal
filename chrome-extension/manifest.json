@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "云滃公共配置[内网]",
+  "version": "1.0",
+  "description": "Inner-source credential matcher for DevPortal",
+  "permissions": ["activeTab", "scripting", "sidePanel", "tabs"],
+  "host_permissions": ["*://localhost/*", "*://public.dev.cn/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Find Credentials"
+  },
+  "side_panel": {
+    "default_path": "popup.html"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}

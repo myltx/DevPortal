@@ -29,9 +29,15 @@
   - 标签 (`Label`) 关联管理
 
 - **⚙️ 对象属性定义 (`ObjAttrDefine`)**
+
   - 对象信息 (`ObjectInfo`) 管理
   - 动态属性定义
   - **Excel 导入/导出** 支持
+
+- **🧩 Chrome 扩展 (Credential Matcher)**
+  - 浏览器侧边栏自动匹配当前域名凭据
+  - 支持列表/文本双视图，点击即复制
+  - [查看安装指南](./chrome-extension/README.md)
 
 ## 🚀 快速开始
 
