@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { accountService } from "@/services/accountService";
-import { createAuditLog } from "@/lib/audit";
+import { createAuditLog, resolveProjectModule } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 
 // ... swagger comments ...
@@ -19,29 +19,13 @@ export async function POST(request: NextRequest) {
                 select: { account: true, moduleId: true }
             });
 
-            const moduleIds = Array.from(new Set(accounts.map(a => a.moduleId).filter(Boolean) as number[]));
-            const modules = await prisma.module.findMany({
-                where: { id: { in: moduleIds } },
-                select: { id: true, moduleName: true, projectId: true }
-            });
+            // Parallel resolve of module names using helper
+            const resolvedList = await Promise.all(accounts.map(async (acc) => {
+                const prefix = await resolveProjectModule(acc.moduleId);
+                return `${prefix || "未知模块"}-${acc.account}`;
+            }));
             
-            const projectIds = Array.from(new Set(modules.map(m => m.projectId).filter(Boolean) as number[]));
-            const projects = await prisma.project.findMany({
-                where: { id: { in: projectIds } },
-                select: { id: true, projectName: true }
-            });
-            const projectMap = new Map(projects.map(p => [p.id, p]));
-            
-            const moduleMap = new Map(modules.map(m => [m.id, {
-                moduleName: m.moduleName,
-                projectName: m.projectId ? projectMap.get(m.projectId)?.projectName : null
-            }]));
-
-            logDetails = accounts.map(acc => {
-                const m = acc.moduleId ? moduleMap.get(acc.moduleId) : null;
-                const prefix = m ? `${m.projectName || "未命名项目"}-${m.moduleName || "未命名模块"}` : "未知模块";
-                return `${prefix}-${acc.account}`;
-            }).join(", ");
+            logDetails = resolvedList.join(", ");
         }
     } catch (e) {
         console.error("Log prep failed:", e);

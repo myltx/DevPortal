@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { moduleService } from "@/services/moduleService";
 import { ModuleUpdateDTO } from "@/types";
-import { createAuditLog } from "@/lib/audit";
+import { createAuditLog, resolveProjectModule } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 
 // ... swagger comments ...
@@ -23,19 +23,19 @@ export async function POST(request: NextRequest) {
     try {
         const mid = Number(body.moduleId);
         if (!isNaN(mid)) {
+             // 1. Get Name via shared helper
+             const resolvedName = await resolveProjectModule(mid);
+             if (resolvedName) {
+                 moduleInfoStr = resolvedName;
+             }
+
+             // 2. Diff Logic (Fetch moduleDescribe specifically)
              const m = await prisma.module.findUnique({
                 where: { id: mid },
-                select: { moduleName: true, projectId: true, moduleDescribe: true }
+                select: { moduleDescribe: true } // Only need description for diff
              });
              
              if (m) {
-                 let pname = "未知项目";
-                 if (m.projectId) {
-                     const p = await prisma.project.findUnique({ where: { id: m.projectId }, select: { projectName: true } });
-                     if (p?.projectName) pname = p.projectName;
-                 }
-                 moduleInfoStr = `${pname}-${m.moduleName || "未知模块"}`;
-                 
                  // Compute text diff if description changed
                  if (body.moduleDescribe !== undefined && body.moduleDescribe !== null && body.moduleDescribe !== m.moduleDescribe) {
                      const oldLines = (m.moduleDescribe || "").split('\n').map(l => l.trim()).filter(Boolean);

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { moduleService } from "@/services/moduleService";
-import { createAuditLog } from "@/lib/audit";
-import { prisma } from "@/lib/prisma";
+import { createAuditLog, resolveProjectModule } from "@/lib/audit";
 
 // ... swagger comments ...
 
@@ -17,24 +16,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch info BEFORE delete
-    let moduleInfoStr = `ID: ${id}`;
     const mid = Number(id);
-    
+    // Fetch details before deletion
+    let moduleInfoStr = `ID: ${mid}`;
     try {
         if (!isNaN(mid)) {
-             const m = await prisma.module.findUnique({
-                where: { id: mid },
-                select: { moduleName: true, projectId: true }
-             });
-             if (m) {
-                 let pname = "未知项目";
-                 if (m.projectId) {
-                     const p = await prisma.project.findUnique({ where: { id: m.projectId }, select: { projectName: true } });
-                     if (p?.projectName) pname = p.projectName;
-                 }
-                 moduleInfoStr = `${pname}-${m.moduleName || "未知模块"}`;
-             }
+             const resolved = await resolveProjectModule(mid);
+             if (resolved) moduleInfoStr = resolved;
         }
     } catch (e) {
         console.error("Log prep failed:", e);

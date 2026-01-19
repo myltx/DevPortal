@@ -53,3 +53,40 @@ export async function createAuditLog(
     console.error("Failed to create audit log:", error);
   }
 }
+
+/**
+ * Helper to resolve "ProjectName-ModuleName" from a Module ID.
+ * Handles missing IDs, invalid IDs, and database lookups safely.
+ */
+export async function resolveProjectModule(moduleId: number | string | undefined | null): Promise<string> {
+    if (!moduleId) return "";
+    
+    try {
+        const mid = parseInt(String(moduleId), 10);
+        if (isNaN(mid)) return "";
+
+        const m = await prisma.module.findUnique({
+            where: { id: mid },
+            select: { moduleName: true, projectId: true }
+        });
+
+        if (!m) {
+            console.warn(`[Audit] Module ID ${mid} not found`);
+            return "";
+        }
+
+        let projectName = "未命名项目";
+        if (m.projectId) {
+            const p = await prisma.project.findUnique({
+                where: { id: m.projectId },
+                select: { projectName: true }
+            });
+            if (p?.projectName) projectName = p.projectName;
+        }
+
+        return `${projectName}-${m.moduleName || "未命名模块"}`;
+    } catch (error) {
+        console.error("Failed to resolve project/module:", error);
+        return "";
+    }
+}
