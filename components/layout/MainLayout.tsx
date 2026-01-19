@@ -59,8 +59,12 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   ];
 
   return (
-    <Layout style={{ minHeight: "100vh" }}>
-      <Sider trigger={null} collapsible collapsed={collapsed}>
+    <Layout style={{ height: "100vh", overflow: "hidden" }}>
+      <Sider
+        trigger={null}
+        collapsible
+        collapsed={collapsed}
+        style={{ overflowY: "auto" }}>
         <div
           className="demo-logo-vertical"
           style={{
@@ -85,13 +89,15 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           items={menuItems}
         />
       </Sider>
-      <Layout>
+      <Layout
+        style={{ display: "flex", flexDirection: "column", height: "100%" }}>
         <Header
           style={{
             padding: 0,
             background: colorBgContainer,
             display: "flex",
             alignItems: "center",
+            flexShrink: 0, // Prevent header from shrinking
           }}>
           <div
             style={{ padding: "0 24px", cursor: "pointer" }}
@@ -135,6 +141,8 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             minHeight: 280,
             background: colorBgContainer,
             borderRadius: borderRadiusLG,
+            overflowY: "auto", // Allow content to scroll
+            flex: 1, // Fill remaining space
           }}>
           {children}
         </Content>
