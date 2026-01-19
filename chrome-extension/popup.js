@@ -1,5 +1,5 @@
 // Configuration
-const API_URL = "http://localhost:3000/api/match-credentials";
+const API_URL = "http://public.dev.cn/api/match-credentials";
 
 const listEl = document.getElementById("list");
 const textContainerEl = document.getElementById("text-container");

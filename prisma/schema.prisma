@@ -118,3 +118,13 @@ model Label {
 
   @@map("label")
 }
+
+model SystemConfig {
+  id          Int      @id @default(autoincrement())
+  configKey   String   @unique @map("config_key")
+  configValue String?  @map("config_value") @db.Text
+  description String?
+  updateTime  DateTime @updatedAt @map("update_time")
+
+  @@map("system_config")
+}

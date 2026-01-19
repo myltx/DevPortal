@@ -49,3 +49,6 @@ next-env.d.ts
 
 # Generated OpenAPI spec
 /public/openapi.json
+
+# chrome extension
+chrome-extension.*
