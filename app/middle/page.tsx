@@ -13,6 +13,7 @@ import {
 } from "@ant-design/icons";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { useKBar } from "kbar";
 
 // --- Interfaces ---
 interface Project {
@@ -43,6 +44,7 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 }
 
 export default function MiddlePage() {
+  const { query } = useKBar();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -113,15 +115,15 @@ export default function MiddlePage() {
           </h1>
 
           {/* Global Search */}
-          <div className="max-w-2xl mx-auto relative group">
+          <div
+            className="max-w-2xl mx-auto relative group cursor-pointer"
+            onClick={() => query.toggle()}>
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <SearchOutlined className="text-gray-400 text-lg group-focus-within:text-gray-600 transition-colors" />
             </div>
-            <input
-              type="text"
-              placeholder="搜索项目、文档或配置..."
-              className="block w-full pl-12 pr-4 py-4 rounded-2xl border-none bg-white shadow-sm ring-1 ring-gray-900/5 focus:ring-2 focus:ring-blue-500 focus:outline-none text-lg transition-all placeholder:text-gray-400"
-            />
+            <div className="block w-full pl-12 pr-4 py-4 rounded-2xl border-none bg-white shadow-sm ring-1 ring-gray-900/5 hover:ring-2 hover:ring-blue-500 text-lg transition-all text-gray-400 text-left">
+              搜索项目、文档或配置...
+            </div>
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
               <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-gray-400 bg-gray-50 border border-gray-200 rounded-md">
                 ⌘ K

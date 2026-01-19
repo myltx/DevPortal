@@ -8,6 +8,10 @@ export const metadata: Metadata = {
   description: "云滃公共配置",
 };
 
+import CommandPalette from "@/components/command/CommandPalette";
+
+// ...
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -17,7 +21,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="antialiased">
         <StyledComponentsRegistry>
-          <ThemeProvider>{children}</ThemeProvider>
+          <ThemeProvider>
+            <CommandPalette>{children}</CommandPalette>
+          </ThemeProvider>
         </StyledComponentsRegistry>
       </body>
     </html>
