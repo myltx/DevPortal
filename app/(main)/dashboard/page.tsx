@@ -1,36 +1,35 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Card, Row, Col, Statistic, List, Typography, Button, Tag } from "antd";
+import {
+  Card,
+  Row,
+  Col,
+  Statistic,
+  List,
+  Typography,
+  Button,
+  Table,
+  Tag,
+  Space,
+} from "antd";
 import {
   ProjectOutlined,
   AppstoreOutlined,
   UserOutlined,
   BookOutlined,
   ReloadOutlined,
-  RocketOutlined,
+  SafetyCertificateOutlined,
+  ConsoleSqlOutlined,
 } from "@ant-design/icons";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
 
 const { Title, Text } = Typography;
 
-interface Project {
-  id: number;
-  projectName: string;
-  projectDescribe: string;
-  createTime: string;
-  updateTime: string;
-  area?: {
-    name: string;
-  };
-}
-
+// --- Interfaces ---
 interface Account {
   id: number;
   account: string;
-  moduleId: number;
-  remark: string;
+  remark?: string;
 }
 
 interface DashboardStats {
@@ -40,12 +39,63 @@ interface DashboardStats {
     accounts: number;
     nouns: number;
   };
-  recentProjects: Project[];
   recentAccounts: Account[];
 }
 
+interface LogItem {
+  key: string;
+  time: string;
+  user: string;
+  action: string;
+  module: string;
+  status: "success" | "error";
+}
+
+// Mock Logs Data
+const mockLogs: LogItem[] = [
+  {
+    key: "1",
+    time: "2024-01-19 10:30:00",
+    user: "admin",
+    action: "Updated System Config",
+    module: "Configuration",
+    status: "success",
+  },
+  {
+    key: "2",
+    time: "2024-01-19 10:15:23",
+    user: "developer_01",
+    action: "Created New Project",
+    module: "Project Space",
+    status: "success",
+  },
+  {
+    key: "3",
+    time: "2024-01-19 09:45:10",
+    user: "system_bot",
+    action: "Sync API Docs",
+    module: "Documentation",
+    status: "error",
+  },
+  {
+    key: "4",
+    time: "2024-01-19 09:30:00",
+    user: "admin",
+    action: "Deleted Account",
+    module: "Account Management",
+    status: "success",
+  },
+  {
+    key: "5",
+    time: "2024-01-19 09:00:00",
+    user: "admin",
+    action: "Login",
+    module: "Auth",
+    status: "success",
+  },
+];
+
 const DashboardPage: React.FC = () => {
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats | null>(null);
 
@@ -95,8 +145,44 @@ const DashboardPage: React.FC = () => {
     },
   ];
 
+  const columns = [
+    {
+      title: "时间",
+      dataIndex: "time",
+      key: "time",
+      width: 180,
+    },
+    {
+      title: "用户",
+      dataIndex: "user",
+      key: "user",
+      render: (text: string) => <Tag color="blue">{text}</Tag>,
+    },
+    {
+      title: "模块",
+      dataIndex: "module",
+      key: "module",
+    },
+    {
+      title: "操作",
+      dataIndex: "action",
+      key: "action",
+    },
+    {
+      title: "状态",
+      dataIndex: "status",
+      key: "status",
+      render: (status: "success" | "error") => (
+        <Tag color={status === "success" ? "success" : "error"}>
+          {status === "success" ? "成功" : "失败"}
+        </Tag>
+      ),
+    },
+  ];
+
   return (
     <div style={{ padding: 24 }}>
+      {/* Header */}
       <div
         style={{
           display: "flex",
@@ -104,9 +190,12 @@ const DashboardPage: React.FC = () => {
           alignItems: "center",
           marginBottom: 24,
         }}>
-        <Title level={2} style={{ margin: 0 }}>
-          研发概览
-        </Title>
+        <div>
+          <Title level={2} style={{ margin: 0 }}>
+            系统监控
+          </Title>
+          <Text type="secondary">DevPortal 后台管理系统数据概览与日志审计</Text>
+        </div>
         <Button
           icon={<ReloadOutlined />}
           onClick={fetchStats}
@@ -115,7 +204,8 @@ const DashboardPage: React.FC = () => {
         </Button>
       </div>
 
-      <Row gutter={[24, 24]}>
+      {/* 1. Statistics Cards */}
+      <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
         {statCards.map((item, index) => (
           <Col xs={24} sm={12} md={6} key={index}>
             <Card bordered={false} hoverable>
@@ -131,114 +221,38 @@ const DashboardPage: React.FC = () => {
         ))}
       </Row>
 
-      <Row gutter={[24, 24]} style={{ marginTop: 24 }}>
+      {/* 2. Main Content */}
+      <Row gutter={[24, 24]}>
+        {/* Left: System Logs */}
         <Col xs={24} lg={16}>
           <Card
             title={
-              <div style={{ display: "flex", alignItems: "center" }}>
-                <RocketOutlined style={{ marginRight: 8, color: "#1890ff" }} />
-                <span>最近更新项目</span>
-              </div>
+              <Space>
+                <ConsoleSqlOutlined />
+                <span>系统操作日志 (最近5条)</span>
+              </Space>
             }
             bordered={false}
-            extra={<Link href="/projectSite">查看全部</Link>}>
-            <List
-              loading={loading}
-              itemLayout="horizontal"
-              dataSource={stats?.recentProjects || []}
-              renderItem={(item: Project) => (
-                <List.Item
-                  actions={[
-                    <Button
-                      type="link"
-                      key="view"
-                      onClick={() =>
-                        router.push(
-                          `/projectSite?classId=${item.classId}&projectId=${item.id}`
-                        )
-                      }>
-                      进入
-                    </Button>,
-                  ]}>
-                  <List.Item.Meta
-                    avatar={
-                      <div
-                        style={{
-                          width: 40,
-                          height: 40,
-                          background: "#e6f7ff",
-                          borderRadius: 6,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: "#1890ff",
-                          fontWeight: "bold",
-                        }}>
-                        {item.projectName?.[0]?.toUpperCase()}
-                      </div>
-                    }
-                    title={
-                      <span style={{ fontWeight: 500 }}>
-                        {item.projectName}
-                      </span>
-                    }
-                    description={
-                      <div>
-                        {item.area ? (
-                          <Tag color="blue">{item.area.name}</Tag>
-                        ) : null}
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                          更新于{" "}
-                          {new Date(
-                            item.updateTime || item.createTime
-                          ).toLocaleDateString()}
-                        </Text>
-                      </div>
-                    }
-                  />
-                  <div
-                    style={{
-                      maxWidth: 200,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      color: "#888",
-                    }}>
-                    {item.projectDescribe}
-                  </div>
-                </List.Item>
-              )}
+            extra={<Button type="link">查看全部</Button>}>
+            <Table
+              columns={columns}
+              dataSource={mockLogs}
+              pagination={false}
+              size="middle"
             />
           </Card>
         </Col>
-        <Col xs={24} lg={8}>
-          <Card title="快捷导航" bordered={false} style={{ marginBottom: 24 }}>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-              <Button
-                type="dashed"
-                block
-                style={{ height: 48 }}
-                onClick={() => router.push("/project")}>
-                <ProjectOutlined /> 项目管理
-              </Button>
-              <Button
-                type="dashed"
-                block
-                style={{ height: 48 }}
-                onClick={() => router.push("/doc")}>
-                <BookOutlined /> API 文档
-              </Button>
-              <Button
-                type="dashed"
-                block
-                style={{ height: 48 }}
-                onClick={() => router.push("/sysConfig")}>
-                <RocketOutlined /> 系统配置
-              </Button>
-            </div>
-          </Card>
 
-          <Card title="最近收录账号" bordered={false}>
+        {/* Right: Recent Accounts */}
+        <Col xs={24} lg={8}>
+          <Card
+            title={
+              <Space>
+                <SafetyCertificateOutlined />
+                <span>新进账号收录</span>
+              </Space>
+            }
+            bordered={false}>
             <List
               loading={loading}
               size="small"

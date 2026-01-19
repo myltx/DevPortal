@@ -27,10 +27,10 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const menuItems = [
     {
-      key: "/dashboard",
+      key: "/middle",
       icon: <DashboardOutlined />,
-      label: "首页",
-      onClick: () => router.push("/dashboard"),
+      label: "工作台", // More accurate than "Home" for this context
+      onClick: () => router.push("/middle"),
     },
     {
       key: "/project",
@@ -55,6 +55,12 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       icon: <SettingOutlined />,
       label: "系统配置",
       onClick: () => router.push("/sysConfig"),
+    },
+    {
+      key: "/dashboard",
+      icon: <DashboardOutlined />,
+      label: "系统监控",
+      onClick: () => router.push("/dashboard"),
     },
   ];
 
