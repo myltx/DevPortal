@@ -33,27 +33,34 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const configKeys = Object.keys(body);
+    const changeDetails: string[] = [];
 
     // 1. Fetch current values BEFORE update to calculate diff
-    const currentConfigs = await prisma.systemConfig.findMany({
-      where: { configKey: { in: configKeys } },
-    });
+    let currentMap: Map<string, string | null> = new Map();
+    try {
+        const currentConfigs = await prisma.systemConfig.findMany({
+          where: { configKey: { in: configKeys } },
+        });
+        currentMap = new Map(currentConfigs.map(c => [c.configKey, c.configValue]));
+    } catch (e) {
+        console.error("Config fetch failed", e);
+    }
     
-    const currentMap = new Map(currentConfigs.map(c => [c.configKey, c.configValue]));
-    const changeDetails: string[] = [];
     const updates = [];
 
     for (const [key, value] of Object.entries(body)) {
       if (typeof value === "string") {
-        const oldValue = currentMap.get(key) || "(empty)";
-        if (oldValue !== value) {
-            const labelMap: Record<string, string> = {
-                extension_version: "Chrome扩展版本号",
-                extension_download_url: "下载地址"
-            };
-            const label = labelMap[key] || key;
-            changeDetails.push(`${label}: '${oldValue}' -> '${value}'`);
-        }
+        try {
+            const oldValue = currentMap.get(key) || "(empty)";
+            if (oldValue !== value) {
+                const labelMap: Record<string, string> = {
+                    extension_version: "Chrome扩展版本号",
+                    extension_download_url: "下载地址"
+                };
+                const label = labelMap[key] || key;
+                changeDetails.push(`${label}: '${oldValue}' -> '${value}'`);
+            }
+        } catch (e) { console.error("Diff calc failed", e); }
 
         updates.push(
           prisma.systemConfig.upsert({

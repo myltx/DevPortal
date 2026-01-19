@@ -14,6 +14,14 @@ service.interceptors.request.use(
     if (token) {
         config.headers["Authorization"] = token;
     }
+    
+    // Audit Log Header
+    if (typeof window !== 'undefined') {
+        const currentUser = localStorage.getItem("currentUser");
+        if (currentUser) {
+            config.headers["x-user-name"] = encodeURIComponent(currentUser);
+        }
+    }
     return config;
   },
   (error) => {

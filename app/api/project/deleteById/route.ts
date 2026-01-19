@@ -20,14 +20,24 @@ export async function POST(request: NextRequest) {
     // Fetch info BEFORE delete
     let moduleInfoStr = `ID: ${id}`;
     const mid = Number(id);
-    if (mid) {
-         const m = await prisma.module.findUnique({
-            where: { id: mid },
-            select: { moduleName: true, projectName: true }
-         });
-         if (m) {
-             moduleInfoStr = `${m.projectName || "未知项目"}-${m.moduleName || "未知模块"}`;
-         }
+    
+    try {
+        if (!isNaN(mid)) {
+             const m = await prisma.module.findUnique({
+                where: { id: mid },
+                select: { moduleName: true, projectId: true }
+             });
+             if (m) {
+                 let pname = "未知项目";
+                 if (m.projectId) {
+                     const p = await prisma.project.findUnique({ where: { id: m.projectId }, select: { projectName: true } });
+                     if (p?.projectName) pname = p.projectName;
+                 }
+                 moduleInfoStr = `${pname}-${m.moduleName || "未知模块"}`;
+             }
+        }
+    } catch (e) {
+        console.error("Log prep failed:", e);
     }
 
     const data = await moduleService.deleteById(mid);

@@ -12,14 +12,19 @@ export async function POST(request: NextRequest) {
     const data = await moduleService.add(body);
     
     let projectContext = "";
-    if (body.projectId) {
-        const project = await prisma.project.findUnique({
-            where: { id: body.projectId },
-            select: { projectName: true }
-        });
-        if (project) {
-            projectContext = ` (所属项目: ${project.projectName})`;
+    try {
+        const pid = Number(body.projectId);
+        if (pid && !isNaN(pid)) {
+            const project = await prisma.project.findUnique({
+                where: { id: pid },
+                select: { projectName: true }
+            });
+            if (project) {
+                projectContext = ` (所属项目: ${project.projectName})`;
+            }
         }
+    } catch (e) {
+        console.error("Log prep failed:", e);
     }
 
     await createAuditLog(

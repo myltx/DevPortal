@@ -23,10 +23,20 @@ export async function createAuditLog(
     if (ip.includes(",")) {
       ip = ip.split(",")[0].trim();
     }
+    // Normalize IPv6 localhost to IPv4
+    if (ip === "::1") {
+        ip = "127.0.0.1";
+    }
 
     // Extract User Name from header (client-side passed)
-    // In a real app, this would come from a session/token
-    const userName = req.headers.get("x-user-name") || "System";
+    // Support URL-encoded header for non-ASCII characters
+    let userNameRaw = req.headers.get("x-user-name") || "System";
+    let userName = userNameRaw;
+    try {
+        userName = decodeURIComponent(userNameRaw);
+    } catch (e) {
+        // failed to decode, keep raw
+    }
 
     await prisma.auditLog.create({
       data: {
