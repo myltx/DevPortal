@@ -283,7 +283,53 @@ function renderText(data) {
     // const header = document.createElement("div"); ...
 
     // Parse description
+    // Structured detection integrated into render loop below
+
     const lines = item.description.split(/\r?\n/);
+    const textCard = document.createElement("div");
+    textCard.className = "text-card";
+
+    // State for visual detection
+    let lastLabelType = null; // 'user' | 'pass'
+    let detectedUser = null;
+    let detectedPass = null;
+
+    // Explicit keywords for detection
+    // Strategy: Negative Filter (Anything label-like is User, unless it's Pass or Ignored)
+    const passKeywords = [
+      "password",
+      "pass",
+      "pwd",
+      "secret",
+      "密码",
+      "口令",
+      "密钥",
+      "code",
+      "auth",
+      "token",
+      "key",
+    ];
+    const ignoreKeywords = [
+      "url",
+      "link",
+      "地址",
+      "网址",
+      "desc",
+      "description",
+      "备注",
+      "描述",
+      "说明",
+      "env",
+      "environment",
+      "环境",
+      "provider",
+      "service",
+      "服务商",
+      "name",
+      "名称",
+      "项目",
+    ];
+
     lines.forEach((line) => {
       const trimmed = line.trim();
       if (!trimmed) return;
@@ -291,7 +337,6 @@ function renderText(data) {
       // Separator normalization
       const normalized = trimmed.replace(/[—–]/g, "-");
 
-      // Smart Parsing Logic (Ported from SmartTextDisplay)
       const masterRegex =
         /((?:https?:\/\/[^\s]+)|(?:[\t]|\s{2,}|\s*[-–—]\s*|\s*\/\s*|[:：]))/;
       const segments = normalized.split(masterRegex);
@@ -306,50 +351,135 @@ function renderText(data) {
         if (masterRegex.test(seg)) {
           // Separator or URL
           if (/^https?:\/\//i.test(trimSeg)) {
-            // URL
+            // ... link logic ...
             const link = document.createElement("a");
             link.href = trimSeg;
             link.target = "_blank";
             link.className = "smart-text-link";
             link.textContent = trimSeg;
             lineDiv.appendChild(link);
+            lastLabelType = null; // Reset
           } else {
-            // Separator
+            // ... separator logic ...
             const span = document.createElement("span");
             span.style.color = "#ccc";
             span.style.margin = "0 2px";
-            span.textContent = seg; // keep original spacing for separators
+            span.textContent = seg;
             lineDiv.appendChild(span);
           }
         } else if (trimSeg) {
           // Text content
-          if (isLabelLike(trimSeg)) {
-            const span = document.createElement("span");
-            span.className = "smart-text-label";
-            span.textContent = trimSeg;
-            lineDiv.appendChild(span);
-          } else {
-            // Copyable Value
+          const isStrongLabel = /[:：]$/.test(trimSeg);
+          const looksLikeLabel = isLabelLike(trimSeg);
+
+          // Contextual Decision:
+          // If we are expecting a value (lastLabelType is set), and this segment is NOT clearly a new label (no colon),
+          // treated it as a Value, even if it happens to be a keyword (e.g. 'admin').
+          if (lastLabelType && !isStrongLabel) {
+            // Treat as Value
             const span = document.createElement("span");
             span.className = "smart-text-copyable";
             span.title = "点击复制";
             span.textContent = trimSeg;
             span.onclick = () => copyToClipboard(trimSeg);
             lineDiv.appendChild(span);
+
+            // Capture
+            if (lastLabelType === "user" && !detectedUser)
+              detectedUser = trimSeg;
+            if (lastLabelType === "pass" && !detectedPass)
+              detectedPass = trimSeg;
+            lastLabelType = null; // Reset
+          } else if (looksLikeLabel) {
+            // Treat as Label
+            const span = document.createElement("span");
+            span.className = "smart-text-label";
+            span.textContent = trimSeg;
+            lineDiv.appendChild(span);
+
+            // Detect Label Type
+            const lowerLabel = trimSeg.toLowerCase().replace(/[:：\s]/g, "");
+
+            if (passKeywords.some((k) => lowerLabel.includes(k))) {
+              lastLabelType = "pass";
+            } else if (ignoreKeywords.some((k) => lowerLabel.includes(k))) {
+              lastLabelType = null;
+            } else {
+              lastLabelType = "user";
+            }
+          } else {
+            // Default: Treat as Copyable Value (e.g. unknown string)
+            const span = document.createElement("span");
+            span.className = "smart-text-copyable";
+            span.title = "点击复制";
+            span.textContent = trimSeg;
+            span.onclick = () => copyToClipboard(trimSeg);
+            lineDiv.appendChild(span);
+
+            // If checking for floating values or just consuming generic text
+            lastLabelType = null;
           }
         }
       });
 
-      card.appendChild(lineDiv);
+      textCard.appendChild(lineDiv);
     });
 
-    textContainerEl.appendChild(card);
+    // Append Fill Button if pair detected
+    if (detectedUser && detectedPass) {
+      const btn = document.createElement("button");
+      btn.className = "fill-btn";
+      btn.setAttribute("data-user", detectedUser);
+      btn.setAttribute("data-pass", detectedPass);
+      btn.innerHTML = "⚡ 填入页面";
+
+      // Re-bind event later or inline? Inline is risky with CSP but here we use addEventListener later
+      // Just add class and data attrs
+      textCard.appendChild(btn);
+    }
+
+    textContainerEl.appendChild(textCard);
   });
 
   if (textContainerEl.children.length === 0) {
     textContainerEl.innerHTML =
       "<div style='text-align:center;color:#999;font-size:12px;'>暂无描述文本。</div>";
   }
+
+  // Bind events for Text View items (Copy & Fill)
+  // Note: reuse existing handlers or re-bind?
+  // Re-bind specific to text container might be safer to avoid dupes?
+  // Actually, global delegating listeners would be better, but for now simple re-bind
+
+  textContainerEl.querySelectorAll(".value").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      const text = e.target.getAttribute("data-copy");
+      copyToClipboard(text);
+    });
+  });
+
+  textContainerEl.querySelectorAll(".fill-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      if (!tab) return;
+
+      const user = btn.getAttribute("data-user");
+      const pass = btn.getAttribute("data-pass");
+
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: fillForm,
+          args: [user, pass],
+        });
+      } catch (err) {
+        alert("填充失败: " + err.message);
+      }
+    });
+  });
 }
 
 // Heuristics
@@ -445,3 +575,5 @@ function showToast() {
     toast.classList.remove("show");
   }, 1500);
 }
+
+// Basic credential extractor from text
