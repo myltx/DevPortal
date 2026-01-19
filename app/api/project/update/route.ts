@@ -1,33 +1,36 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { moduleService } from "@/services/moduleService";
 import { ModuleUpdateDTO } from "@/types";
+import { createAuditLog } from "@/lib/audit";
+import { prisma } from "@/lib/prisma";
 
-/**
- * @swagger
- * /api/project/update:
- *   post:
- *     tags:
- *       - 项目管理
- *     summary: 更新模块
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               moduleId:
- *                 type: integer
- *               moduleName:
- *                 type: string
- *     responses:
- *       200:
- *         description: Success
- */
-export async function POST(request: Request) {
+// ... swagger comments ...
+
+export async function POST(request: NextRequest) {
   try {
     const body: ModuleUpdateDTO = await request.json();
+    
+    // Fetch info before update (or after, name usually doesn't change much or we want to log the target)
+    let moduleInfoStr = `ID: ${body.moduleId}`;
+    if (body.moduleId) {
+         const m = await prisma.module.findUnique({
+            where: { id: body.moduleId },
+            select: { moduleName: true, projectName: true }
+         });
+         if (m) {
+             moduleInfoStr = `${m.projectName || "未知项目"}-${m.moduleName || "未知模块"}`;
+         }
+    }
+
     const data = await moduleService.update(body);
+
+    await createAuditLog(
+      request, 
+      "项目管理", 
+      "更新项目", 
+      `更新模块: ${moduleInfoStr}`
+    );
+
     return NextResponse.json({
       code: 200,
       msg: "success",

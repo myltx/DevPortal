@@ -1,24 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { moduleService } from "@/services/moduleService";
+import { createAuditLog } from "@/lib/audit";
+import { prisma } from "@/lib/prisma";
 
-/**
- * @swagger
- * /api/project/deleteById:
- *   post:
- *     tags:
- *       - 项目管理
- *     summary: 根据 ID 删除模块
- *     parameters:
- *       - in: query
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Success
- */
-export async function POST(request: Request) {
+// ... swagger comments ...
+
+export async function POST(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
@@ -30,7 +17,28 @@ export async function POST(request: Request) {
       );
     }
 
-    const data = await moduleService.deleteById(Number(id));
+    // Fetch info BEFORE delete
+    let moduleInfoStr = `ID: ${id}`;
+    const mid = Number(id);
+    if (mid) {
+         const m = await prisma.module.findUnique({
+            where: { id: mid },
+            select: { moduleName: true, projectName: true }
+         });
+         if (m) {
+             moduleInfoStr = `${m.projectName || "未知项目"}-${m.moduleName || "未知模块"}`;
+         }
+    }
+
+    const data = await moduleService.deleteById(mid);
+
+    await createAuditLog(
+      request, 
+      "项目管理", 
+      "删除项目", 
+      `删除模块: ${moduleInfoStr}`
+    );
+
     return NextResponse.json({
       code: 200,
       msg: "success",

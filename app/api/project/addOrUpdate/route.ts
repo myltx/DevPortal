@@ -1,37 +1,36 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { accountService } from "@/services/accountService";
 import { AccountDTO } from "@/types";
+import { createAuditLog } from "@/lib/audit";
+import { prisma } from "@/lib/prisma";
 
-/**
- * @swagger
- * /api/project/addOrUpdate:
- *   post:
- *     tags:
- *       - 项目管理
- *     summary: 添加或更新账号
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               id:
- *                 type: integer
- *               account:
- *                 type: string
- *               password:
- *                 type: string
- *               moduleId:
- *                 type: integer
- *     responses:
- *       200:
- *         description: Success
- */
-export async function POST(request: Request) {
+// ... swagger comments ...
+
+export async function POST(request: NextRequest) {
   try {
     const body: AccountDTO = await request.json();
     const data = await accountService.addOrUpdate(body);
+
+    // Fetch module info for detailed log
+    let moduleDetails = `(模块ID: ${body.moduleId})`;
+    if (body.moduleId) {
+        const moduleInfo = await prisma.module.findUnique({
+            where: { id: body.moduleId },
+            select: { moduleName: true, projectName: true }
+        });
+        if (moduleInfo) {
+            moduleDetails = `${moduleInfo.projectName || "未命名"}项目的${moduleInfo.moduleName || "未命名"}模块`;
+        }
+    }
+
+    const actionType = body.id ? "更新账号" : "新增账号";
+    await createAuditLog(
+        request, 
+        "账号管理", 
+        actionType, 
+        `${actionType}: ${moduleDetails}的账号[${body.account}]`
+    );
+
     return NextResponse.json({
       code: 200,
       msg: "success",

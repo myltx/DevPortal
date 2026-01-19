@@ -1,35 +1,34 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { moduleService } from "@/services/moduleService";
 import { ModuleSaveDTO } from "@/types";
+import { createAuditLog } from "@/lib/audit";
+import { prisma } from "@/lib/prisma";
 
-/**
- * @swagger
- * /api/project/add:
- *   post:
- *     tags:
- *       - 项目管理
- *     summary: 添加模块
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               projectId:
- *                 type: integer
- *               moduleName:
- *                 type: string
- *               moduleUrl:
- *                 type: string
- *     responses:
- *       200:
- *         description: Success
- */
-export async function POST(request: Request) {
+// ... swagger comments ...
+
+export async function POST(request: NextRequest) {
   try {
     const body: ModuleSaveDTO = await request.json();
     const data = await moduleService.add(body);
+    
+    let projectContext = "";
+    if (body.projectId) {
+        const project = await prisma.project.findUnique({
+            where: { id: body.projectId },
+            select: { projectName: true }
+        });
+        if (project) {
+            projectContext = ` (所属项目: ${project.projectName})`;
+        }
+    }
+
+    await createAuditLog(
+      request, 
+      "项目管理", 
+      "新增项目", 
+      `新增模块: ${body.moduleName}${projectContext}`
+    );
+
     return NextResponse.json({
       code: 200,
       msg: "success",

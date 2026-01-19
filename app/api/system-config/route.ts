@@ -32,10 +32,29 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const configKeys = Object.keys(body);
+
+    // 1. Fetch current values BEFORE update to calculate diff
+    const currentConfigs = await prisma.systemConfig.findMany({
+      where: { configKey: { in: configKeys } },
+    });
+    
+    const currentMap = new Map(currentConfigs.map(c => [c.configKey, c.configValue]));
+    const changeDetails: string[] = [];
     const updates = [];
 
     for (const [key, value] of Object.entries(body)) {
       if (typeof value === "string") {
+        const oldValue = currentMap.get(key) || "(empty)";
+        if (oldValue !== value) {
+            const labelMap: Record<string, string> = {
+                extension_version: "Chrome扩展版本号",
+                extension_download_url: "下载地址"
+            };
+            const label = labelMap[key] || key;
+            changeDetails.push(`${label}: '${oldValue}' -> '${value}'`);
+        }
+
         updates.push(
           prisma.systemConfig.upsert({
             where: { configKey: key },
@@ -55,13 +74,15 @@ export async function POST(request: NextRequest) {
 
     await prisma.$transaction(updates);
 
-    // Create Audit Log
-    await createAuditLog(
-      request,
-      "SystemConfig",
-      "UPDATE_CONFIG",
-      `Updated keys: ${Object.keys(body).join(", ")}`
-    );
+    // Create Audit Log only if there are changes
+    if (changeDetails.length > 0) {
+      await createAuditLog(
+        request,
+        "系统配置",
+        "更新配置",
+        `配置变更: ${changeDetails.join("; ")}`
+      );
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
