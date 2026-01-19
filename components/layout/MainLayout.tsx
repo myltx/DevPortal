@@ -6,13 +6,11 @@ import {
   AppstoreOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  UserOutlined,
-  VideoCameraOutlined,
-  UploadOutlined,
   DashboardOutlined,
   ProjectOutlined,
   BookOutlined,
   FunctionOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
 import { useRouter, usePathname } from "next/navigation";
 import { ThemeSwitch } from "@/components/theme/ThemeSwitch";
@@ -47,16 +45,16 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       onClick: () => router.push("/objectPage"),
     },
     {
-      key: "/webNav",
-      icon: <BookOutlined />,
-      label: "前台导航",
-      onClick: () => router.push("/webNav"),
-    },
-    {
       key: "/doc",
       icon: <BookOutlined />,
       label: "API 文档",
       onClick: () => router.push("/doc"),
+    },
+    {
+      key: "/sysConfig",
+      icon: <SettingOutlined />,
+      label: "系统配置",
+      onClick: () => router.push("/sysConfig"),
     },
   ];
 
