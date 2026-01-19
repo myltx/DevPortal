@@ -128,3 +128,16 @@ model SystemConfig {
 
   @@map("system_config")
 }
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  action      String
+  module      String
+  description String?
+  userName    String?  @map("user_name")
+  ipAddress   String?  @map("ip_address")
+  status      Int      @default(1)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("audit_log")
+}

@@ -40,7 +40,10 @@ export default function SysConfigPage() {
     try {
       const res = await fetch("/api/system-config", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-name": localStorage.getItem("currentUser") || "Unknown",
+        },
         body: JSON.stringify(values),
       });
 

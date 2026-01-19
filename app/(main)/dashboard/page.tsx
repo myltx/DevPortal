@@ -42,83 +42,52 @@ interface DashboardStats {
   recentAccounts: Account[];
 }
 
-interface LogItem {
-  key: string;
-  time: string;
-  user: string;
+// ... imports
+
+// ... interfaces
+interface AuditLog {
+  id: number;
   action: string;
   module: string;
-  status: "success" | "error";
+  description: string;
+  userName?: string;
+  ipAddress?: string;
+  status: number;
+  createdAt: string;
 }
-
-// Mock Logs Data
-const mockLogs: LogItem[] = [
-  {
-    key: "1",
-    time: "2024-01-19 10:30:00",
-    user: "admin",
-    action: "Updated System Config",
-    module: "Configuration",
-    status: "success",
-  },
-  {
-    key: "2",
-    time: "2024-01-19 10:15:23",
-    user: "developer_01",
-    action: "Created New Project",
-    module: "Project Space",
-    status: "success",
-  },
-  {
-    key: "3",
-    time: "2024-01-19 09:45:10",
-    user: "system_bot",
-    action: "Sync API Docs",
-    module: "Documentation",
-    status: "error",
-  },
-  {
-    key: "4",
-    time: "2024-01-19 09:30:00",
-    user: "admin",
-    action: "Deleted Account",
-    module: "Account Management",
-    status: "success",
-  },
-  {
-    key: "5",
-    time: "2024-01-19 09:00:00",
-    user: "admin",
-    action: "Login",
-    module: "Auth",
-    status: "success",
-  },
-];
 
 const DashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [logs, setLogs] = useState<AuditLog[]>([]);
 
-  const fetchStats = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/dashboard/stats");
-      if (res.ok) {
-        const data = await res.json();
-        setStats(data);
+      const [statsRes, logsRes] = await Promise.all([
+        fetch("/api/dashboard/stats"),
+        fetch("/api/dashboard/logs"),
+      ]);
+
+      if (statsRes.ok) {
+        setStats(await statsRes.json());
+      }
+      if (logsRes.ok) {
+        setLogs(await logsRes.json());
       }
     } catch (error) {
-      console.error("Failed to fetch dashboard stats", error);
+      console.error("Failed to fetch dashboard data", error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchStats();
+    fetchData();
   }, []);
 
   const statCards = [
+    // ... same as before
     {
       title: "项目总数",
       value: stats?.counts.projects || 0,
@@ -148,15 +117,22 @@ const DashboardPage: React.FC = () => {
   const columns = [
     {
       title: "时间",
-      dataIndex: "time",
-      key: "time",
+      dataIndex: "createdAt",
+      key: "createdAt",
       width: 180,
+      render: (t: string) => new Date(t).toLocaleString(),
     },
     {
-      title: "用户",
-      dataIndex: "user",
+      title: "操作人",
       key: "user",
-      render: (text: string) => <Tag color="blue">{text}</Tag>,
+      render: (_: unknown, record: AuditLog) => (
+        <Space direction="vertical" size={0}>
+          <Tag color="geekblue">{record.userName || "System"}</Tag>
+          <Text type="secondary" style={{ fontSize: 10 }}>
+            {record.ipAddress}
+          </Text>
+        </Space>
+      ),
     },
     {
       title: "模块",
@@ -164,17 +140,23 @@ const DashboardPage: React.FC = () => {
       key: "module",
     },
     {
-      title: "操作",
+      title: "动作",
       dataIndex: "action",
       key: "action",
+    },
+    {
+      title: "描述",
+      dataIndex: "description",
+      key: "description",
+      ellipsis: true,
     },
     {
       title: "状态",
       dataIndex: "status",
       key: "status",
-      render: (status: "success" | "error") => (
-        <Tag color={status === "success" ? "success" : "error"}>
-          {status === "success" ? "成功" : "失败"}
+      render: (status: number) => (
+        <Tag color={status === 1 ? "success" : "error"}>
+          {status === 1 ? "成功" : "失败"}
         </Tag>
       ),
     },
@@ -196,10 +178,7 @@ const DashboardPage: React.FC = () => {
           </Title>
           <Text type="secondary">DevPortal 后台管理系统数据概览与日志审计</Text>
         </div>
-        <Button
-          icon={<ReloadOutlined />}
-          onClick={fetchStats}
-          loading={loading}>
+        <Button icon={<ReloadOutlined />} onClick={fetchData} loading={loading}>
           刷新数据
         </Button>
       </div>
@@ -229,15 +208,16 @@ const DashboardPage: React.FC = () => {
             title={
               <Space>
                 <ConsoleSqlOutlined />
-                <span>系统操作日志 (最近5条)</span>
+                <span>系统操作日志 (最近20条)</span>
               </Space>
             }
             bordered={false}
             extra={<Button type="link">查看全部</Button>}>
             <Table
               columns={columns}
-              dataSource={mockLogs}
-              pagination={false}
+              dataSource={logs}
+              rowKey="id"
+              pagination={{ pageSize: 5 }}
               size="middle"
             />
           </Card>

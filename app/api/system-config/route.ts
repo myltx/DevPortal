@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { createAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const updates = [];
@@ -54,12 +55,23 @@ export async function POST(request: Request) {
 
     await prisma.$transaction(updates);
 
+    // Create Audit Log
+    await createAuditLog(
+      request,
+      "SystemConfig",
+      "UPDATE_CONFIG",
+      `Updated keys: ${Object.keys(body).join(", ")}`
+    );
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Update config error:", error);
+    // Log failure
+    // Note: In a real world scenario, you might want to create a failed audit log here too
     return NextResponse.json(
       { error: "Failed to update configs" },
       { status: 500 }
     );
   }
 }
+

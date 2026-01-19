@@ -17,6 +17,8 @@ const LoginPage: React.FC = () => {
         message.success("Login successful");
         // Set token (mock)
         localStorage.setItem("token", "fanqie-token");
+        // Save current user for Audit Logging
+        localStorage.setItem("currentUser", values.username);
         document.cookie = "token=fanqie-token; path=/";
         window.location.href = "/middle";
       } else {
