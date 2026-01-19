@@ -35,7 +35,7 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     {
       key: "/project",
       icon: <ProjectOutlined />,
-      label: "项目管理",
+      label: "名词管理",
       onClick: () => router.push("/project"),
     },
     {
