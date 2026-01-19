@@ -4,7 +4,7 @@
   "version": "1.0",
   "description": "Inner-source credential matcher for DevPortal",
   "permissions": ["activeTab", "scripting", "sidePanel", "tabs"],
-  "host_permissions": ["*://localhost/*", "*://public.dev.cn/*"],
+  "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"
   },

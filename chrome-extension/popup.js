@@ -59,7 +59,7 @@ async function loadCredentials(tabId) {
 
     checkUpdate(); // Check for updates silently
 
-    renderList(data, hostname);
+    renderList(data);
     renderText(data);
   } catch (err) {
     loadingEl.style.display = "none";
@@ -124,7 +124,7 @@ function showUpdateBanner(version, url) {
   };
 }
 
-function renderList(data, hostname) {
+function renderList(data) {
   listEl.innerHTML = "";
   data.forEach((item) => {
     const card = document.createElement("div");
@@ -142,17 +142,129 @@ function renderList(data, hostname) {
         <span class="label">密码</span>
         <span class="value" title="点击复制" data-copy="${item.password}">${item.password}</span>
       </div>
+      
+      <button class="fill-btn" data-user="${item.username}" data-pass="${item.password}">
+        ⚡ 填入页面
+      </button>
     `;
     listEl.appendChild(card);
   });
 
-  // Bind Events Delegate directly to value spans
+  // Copy Event
   listEl.querySelectorAll(".value").forEach((el) => {
     el.addEventListener("click", (e) => {
       const text = e.target.getAttribute("data-copy");
       copyToClipboard(text);
     });
   });
+
+  // Fill Event
+  listEl.querySelectorAll(".fill-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      // Get current tab
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      if (!tab) return;
+
+      const user = btn.getAttribute("data-user");
+      const pass = btn.getAttribute("data-pass");
+
+      // Inject Script
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: fillForm,
+          args: [user, pass],
+        });
+        // window.close(); // Keep open as requested
+      } catch (err) {
+        console.error("Injection failed", err);
+        alert("填充失败，请刷新页面重试: " + err.message);
+      }
+    });
+  });
+}
+
+// Injected Function - Must be self-contained
+function fillForm(username, password) {
+  // 1. Find Password Field
+  const passInputs = Array.from(
+    document.querySelectorAll('input[type="password"]'),
+  );
+  // Filter out hidden inputs
+  const visiblePass =
+    passInputs.find((i) => i.offsetParent !== null) || passInputs[0];
+
+  if (!visiblePass) {
+    alert("未找到密码输入框");
+    return;
+  }
+
+  // 2. Find Username Field
+  // Strategy: Previous input element
+  let userInputs = Array.from(
+    document.querySelectorAll(
+      'input[type="text"], input[type="email"], input[type="tel"]',
+    ),
+  );
+  // Filter visible
+  userInputs = userInputs.filter((i) => i.offsetParent !== null);
+
+  let targetUser = null;
+
+  // Heuristic A: Input immediately before password in DOM order
+  // Flatten all inputs
+  const allInputs = Array.from(document.querySelectorAll("input"));
+  const passIndex = allInputs.indexOf(visiblePass);
+  if (passIndex > 0) {
+    for (let i = passIndex - 1; i >= 0; i--) {
+      const inp = allInputs[i];
+      const type = inp.type.toLowerCase();
+      if (
+        (type === "text" || type === "email" || type === "tel") &&
+        inp.offsetParent !== null
+      ) {
+        targetUser = inp;
+        break;
+      }
+    }
+  }
+
+  // Heuristic B: Name contains user/login
+  if (!targetUser) {
+    targetUser = userInputs.find((i) =>
+      /user|name|login|email|account|phone/i.test(i.name || i.id),
+    );
+  }
+
+  // Fallback: First visible text input
+  if (!targetUser && userInputs.length > 0) {
+    targetUser = userInputs[0];
+  }
+
+  // 3. Fill Function with event dispatch
+  const fillInput = (input, value) => {
+    if (!input) return;
+
+    // React value setter hack
+    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      "value",
+    ).set;
+    nativeInputValueSetter.call(input, value);
+
+    const evInput = new Event("input", { bubbles: true });
+    const evChange = new Event("change", { bubbles: true });
+
+    input.dispatchEvent(evInput);
+    input.dispatchEvent(evChange);
+    input.blur(); // Trigger validation
+  };
+
+  if (targetUser) fillInput(targetUser, username);
+  fillInput(visiblePass, password);
 }
 
 function renderText(data) {

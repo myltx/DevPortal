@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
     <meta charset="UTF-8" />
@@ -11,7 +11,8 @@
       body {
         width: 100%;
         box-sizing: border-box;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
           "Helvetica Neue", Arial, sans-serif;
         padding: 0;
         margin: 0;
@@ -246,6 +247,32 @@
         opacity: 0; /* Hidden by default */
         transform: translateX(5px);
         transition: all 0.2s;
+        margin-left: auto; /* Push to right */
+      }
+
+      button.fill-btn {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        font-weight: 500;
+        margin-top: 8px;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s;
+      }
+
+      button.fill-btn:hover {
+        background: #4096ff;
+      }
+
+      button.fill-btn:active {
+        transform: scale(0.98);
       }
 
       /* Show button on row hover */
@@ -269,8 +296,10 @@
         backdrop-filter: blur(4px);
         padding: 8px 20px;
         font-weight: 500;
-        box-shadow: 0 3px 6px -4px rgba(0, 0, 0, 0.12),
-          0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
+        box-shadow:
+          0 3px 6px -4px rgba(0, 0, 0, 0.12),
+          0 6px 16px 0 rgba(0, 0, 0, 0.08),
+          0 9px 28px 8px rgba(0, 0, 0, 0.05);
       }
 
       .project-name {
@@ -365,8 +394,10 @@
         transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
         pointer-events: none;
         backdrop-filter: blur(4px);
-        box-shadow: 0 3px 6px -4px rgba(0, 0, 0, 0.12),
-          0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
+        box-shadow:
+          0 3px 6px -4px rgba(0, 0, 0, 0.12),
+          0 6px 16px 0 rgba(0, 0, 0, 0.08),
+          0 9px 28px 8px rgba(0, 0, 0, 0.05);
         z-index: 1000;
       }
       .toast.show {
