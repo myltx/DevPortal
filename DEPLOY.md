@@ -315,6 +315,7 @@ graph TD
 // chrome-extension/popup.js
 // const API_URL = "http://localhost:3000/api/match-credentials";
 const API_URL = "http://192.168.1.100:3001/api/match-credentials"; // <--- 修改这里
+const API_KEY = "YOUR_SHARED_KEY"; // <--- 同时配置 Key（与服务端 DEVPORTAL_EXTENSION_API_KEY 一致）
 ```
 
 #### 第二步：打包扩展

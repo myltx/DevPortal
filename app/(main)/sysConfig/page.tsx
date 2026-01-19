@@ -42,7 +42,9 @@ export default function SysConfigPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-user-name": localStorage.getItem("currentUser") || "Unknown",
+          "x-user-name": encodeURIComponent(
+            localStorage.getItem("currentUser") || "Unknown"
+          ),
         },
         body: JSON.stringify(values),
       });
@@ -50,7 +52,8 @@ export default function SysConfigPage() {
       if (res.ok) {
         message.success("配置已更新");
       } else {
-        message.error("更新失败");
+        const data = await res.json().catch(() => null);
+        message.error(data?.error || "更新失败");
       }
     } catch (error) {
       console.error("Request failed", error);

@@ -4,6 +4,8 @@ import { createAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
+const ALLOWED_KEYS = new Set(["extension_version", "extension_download_url"]);
+
 export async function GET() {
   try {
     const configs = await prisma.systemConfig.findMany({
@@ -32,7 +34,10 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const configKeys = Object.keys(body);
+    const configKeys = Object.keys(body).filter((k) => ALLOWED_KEYS.has(k));
+    if (configKeys.length === 0) {
+      return NextResponse.json({ error: "No allowed keys" }, { status: 400 });
+    }
     const changeDetails: string[] = [];
 
     // 1. Fetch current values BEFORE update to calculate diff
@@ -49,6 +54,7 @@ export async function POST(request: NextRequest) {
     const updates = [];
 
     for (const [key, value] of Object.entries(body)) {
+      if (!ALLOWED_KEYS.has(key)) continue;
       if (typeof value === "string") {
         try {
             const oldValue = currentMap.get(key) || "(empty)";
@@ -102,4 +108,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

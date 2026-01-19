@@ -32,11 +32,14 @@
 
 - **API 地址**: `http://localhost:3000/api/match-credentials`
 
+为避免接口在内网被随意调用，建议后端开启 **API Key** 校验，并在扩展里配置 Key。
+
 如需连接远程服务器，请修改 `chrome-extension/popup.js` 文件顶部的配置：
 
 ```javascript
 // popup.js
 const API_URL = "http://YOUR_REMOTE_SERVER_IP:3000/api/match-credentials";
+const API_KEY = "YOUR_SHARED_KEY";
 ```
 
 ## 🖥 使用方法

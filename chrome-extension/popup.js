@@ -1,5 +1,8 @@
 // Configuration
 const API_URL = "http://public.dev.cn/api/match-credentials";
+// 由管理员分发的公共 Key（少量同事使用的最低成本方案）
+// 注意：扩展内的 Key 并不是“秘密”，需要配合后端/网关限制一起使用。
+const API_KEY = "yw-devportal-2026";
 
 const listEl = document.getElementById("list");
 const textContainerEl = document.getElementById("text-container");
@@ -32,9 +35,18 @@ async function loadCredentials(tabId) {
     const hostname = url.hostname;
 
     // Fetch credentials
-    const response = await fetch(`${API_URL}?hostname=${hostname}`);
+    if (!API_KEY) {
+      throw new Error("未配置 API Key，请联系管理员");
+    }
+    const response = await fetch(`${API_URL}?hostname=${hostname}`, {
+      headers: { "x-api-key": API_KEY },
+    });
     if (!response.ok) {
-      throw new Error("API 请求失败");
+      if (response.status === 401) {
+        throw new Error("API Key 无效或未授权，请联系管理员");
+      }
+      const data = await response.json().catch(() => null);
+      throw new Error(data?.error || "API 请求失败");
     }
 
     const data = await response.json();
