@@ -18,7 +18,7 @@ const LoginPage: React.FC = () => {
         // Set token (mock)
         localStorage.setItem("token", "fanqie-token");
         document.cookie = "token=fanqie-token; path=/";
-        window.location.href = "/dashboard";
+        window.location.href = "/middle";
       } else {
         message.error("Invalid username or password (try admin/123456)");
         setLoading(false);
