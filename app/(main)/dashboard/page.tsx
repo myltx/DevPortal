@@ -152,7 +152,11 @@ const DashboardPage: React.FC = () => {
                     <Button
                       type="link"
                       key="view"
-                      onClick={() => router.push(`/projectSite`)}>
+                      onClick={() =>
+                        router.push(
+                          `/projectSite?classId=${item.classId}&projectId=${item.id}`
+                        )
+                      }>
                       进入
                     </Button>,
                   ]}>

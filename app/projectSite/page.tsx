@@ -19,6 +19,7 @@ import {
   Button,
   Dropdown,
 } from "antd";
+import { useSearchParams } from "next/navigation";
 import {
   EditOutlined,
   DeleteOutlined,
@@ -77,6 +78,11 @@ const ProjectSiteContent: React.FC = () => {
   const [currentAccountModule, setCurrentAccountModule] =
     useState<ProjectModule | null>(null); // For Account Drawer
 
+  // --- Params ---
+  const searchParams = useSearchParams();
+  const paramClassId = searchParams.get("classId");
+  const paramProjectId = searchParams.get("projectId");
+
   // --- Fetch Logic ---
 
   const fetchProjectNames = React.useCallback(
@@ -87,15 +93,29 @@ const ProjectSiteContent: React.FC = () => {
       const res = await API.getProjectNameList(Number(idToUse));
       if (res.success && res.data && res.data.length > 0) {
         setProjectIdOptions(res.data);
-        // Always reset active project when class changes
-        setActiveProjectId(String(res.data[0].id));
+
+        // If there's a paramProjectId matching one of the projects, use it
+        // Otherwise default to the first one
+        if (
+          paramProjectId &&
+          res.data.some((p) => String(p.id) === paramProjectId)
+        ) {
+          setActiveProjectId(paramProjectId);
+        } else {
+          // Only reset to first if we aren't already on a valid project for this class?
+          // Actually, simplifying: default to first unless param exists.
+          // But wait, if user switches class manually, we shouldn't respect key from URL anymore?
+          // Need to handle "initial load" vs "user interaction".
+          // For now, let's just set it. If user clicks tab, standard flow works.
+          setActiveProjectId(String(res.data[0].id));
+        }
       } else {
         setProjectIdOptions([]);
         setActiveProjectId("");
         setCardList([]);
       }
     },
-    [activeClassId]
+    [activeClassId, paramProjectId]
   );
 
   const fetchAreaList = React.useCallback(async () => {
@@ -109,11 +129,15 @@ const ProjectSiteContent: React.FC = () => {
     const res = await API.getClassInfo();
     if (res.success) {
       setClassInfoList(res.data);
-      if (!activeClassId && res.data.length > 0) {
+
+      // Priority: URL Param > Current State > Default First
+      if (paramClassId) {
+        setActiveClassId(paramClassId);
+      } else if (!activeClassId && res.data.length > 0) {
         setActiveClassId(String(res.data[0].id));
       }
     }
-  }, [activeClassId]);
+  }, [activeClassId, paramClassId]);
 
   const fetchProjectList = React.useCallback(async () => {
     if (!activeProjectId) {
