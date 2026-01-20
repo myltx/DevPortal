@@ -266,6 +266,7 @@ chmod +x server-deploy.sh
 #### 备份与空间占用说明
 
 - 备份目录：`./backups/YYYYMMDD-HHMMSS/`
+- 环境检查：脚本会检查 `.env` 中的 `DEVPORTAL_EXTENSION_API_KEY`，未配置会提示输入（否则插件可能提示 `Server not configured`）。
 - 备份内容（尽力而为，缺少就跳过）：
   - `dev-portal.tar`（如果当前目录存在，会复制一份进去）
   - `image.tar`（如果服务器上存在 `dev-portal:latest` 镜像，会 `docker save` 备份一份）

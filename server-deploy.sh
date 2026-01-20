@@ -72,6 +72,67 @@ function check_env() {
     else
         info ".env 文件已存在。"
     fi
+
+    if [ -f ".env" ]; then
+        ensure_extension_key
+    fi
+}
+
+function set_env_kv() {
+    local file="$1"
+    local key="$2"
+    local value="$3"
+
+    local tmp
+    tmp=$(mktemp)
+
+    # 保留原文件其他内容，仅替换/追加指定 key
+    awk -v k="$key" -v v="$value" '
+      BEGIN { found=0 }
+      $0 ~ ("^" k "=") {
+        print k "=\"" v "\""
+        found=1
+        next
+      }
+      { print }
+      END {
+        if (found==0) print k "=\"" v "\""
+      }
+    ' "$file" > "$tmp" && mv "$tmp" "$file"
+}
+
+function ensure_extension_key() {
+    local key_line
+    key_line=$(grep -E '^DEVPORTAL_EXTENSION_API_KEY=' .env 2>/dev/null || true)
+
+    local need_prompt=0
+    if [ -z "$key_line" ]; then
+        need_prompt=1
+    else
+        # 简单判断空值/默认占位
+        if echo "$key_line" | grep -Eq '^DEVPORTAL_EXTENSION_API_KEY\s*=\s*(""?\s*""?|\s*)$'; then
+            need_prompt=1
+        elif echo "$key_line" | grep -Eq 'please-change-me'; then
+            need_prompt=1
+        fi
+    fi
+
+    if [ "$need_prompt" -eq 0 ]; then
+        info "已配置 DEVPORTAL_EXTENSION_API_KEY（用于 Chrome 插件调用 /api/match-credentials）"
+        return 0
+    fi
+
+    warn "检测到未配置 DEVPORTAL_EXTENSION_API_KEY（否则插件会提示 Server not configured）"
+    echo "说明：该 Key 需要与插件的 API_KEY 保持一致（请求头 x-api-key）。"
+    read -p "请输入 DEVPORTAL_EXTENSION_API_KEY（直接回车跳过）： " ext_key
+    if [ -z "$ext_key" ]; then
+        warn "你选择跳过配置。后续如遇插件报错，请补充 .env 中的 DEVPORTAL_EXTENSION_API_KEY 并重建容器。"
+        return 0
+    fi
+
+    set_env_kv ".env" "DEVPORTAL_EXTENSION_API_KEY" "$ext_key"
+    info "已写入 .env：DEVPORTAL_EXTENSION_API_KEY"
+    return 0
 }
 
 function backup_current_bundle() {
@@ -241,6 +302,7 @@ function first_setup() {
 
 function update_app() {
     info "开始更新流程..."
+    check_env
     read -p "是否在更新前备份当前版本？[y/N] " do_backup
     do_backup=${do_backup:-N}
     if [[ "$do_backup" =~ ^[Yy]$ ]]; then
