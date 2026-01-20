@@ -33,6 +33,15 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
   onClose,
   moduleData,
 }) => {
+  const ACCOUNT_INFO_EXAMPLES = [
+    "服务商-测试服务中心",
+    "服务商-生产环境",
+    "乡镇民政-马桥街道",
+    "EC后台-超级管理员-生产",
+  ];
+  const ACCOUNT_INFO_HINT =
+    "推荐格式：用 “-” 分层，例如：服务商-系统/模块-角色/环境/地区。";
+
   const [accountList, setAccountList] = useState<Account[]>([]);
   const [editingKey, setEditingKey] = useState<string>("");
   const [activeTab, setActiveTab] = useState("table");
@@ -470,7 +479,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
                   setAccountList(newList);
                 }
               }}
-              placeholder="例如：乡镇民政-马桥街道"
+              placeholder={`例如：${ACCOUNT_INFO_EXAMPLES[0]}`}
             />
           );
         }
@@ -713,7 +722,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
           onChange={(e) =>
             updateImportItem(record._idx, { accountInfo: e.target.value })
           }
-          placeholder="例如：乡镇民政-马桥街道"
+          placeholder={`例如：${ACCOUNT_INFO_EXAMPLES[0]}`}
         />
       ),
     },
@@ -936,8 +945,26 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
           </Space>
         }>
         <Form form={addForm} layout="vertical">
-          <Form.Item label="账号描述" name="accountInfo">
-            <Input placeholder="例如：超级管理员 / 乡镇民政-马桥街道" />
+          <Form.Item
+            label={
+              <Space size={6}>
+                <span>账号描述</span>
+                <Tooltip
+                  title={
+                    <div>
+                      <div>{ACCOUNT_INFO_HINT}</div>
+                      <div style={{ marginTop: 6 }}>
+                        示例：{ACCOUNT_INFO_EXAMPLES.join("、")}
+                      </div>
+                    </div>
+                  }>
+                  <span style={{ color: "#999", cursor: "help" }}>?</span>
+                </Tooltip>
+              </Space>
+            }
+            name="accountInfo"
+            extra={<span style={{ color: "#999" }}>{ACCOUNT_INFO_HINT}</span>}>
+            <Input placeholder={`例如：${ACCOUNT_INFO_EXAMPLES.join(" / ")}`} />
           </Form.Item>
           <Form.Item
             label="账号"
@@ -1009,6 +1036,20 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
             description={
               <div style={{ color: "#666" }}>
                 仅会新增账号记录，不会覆盖已存在账号的任何字段；已存在的条目会自动标记为“已存在”并跳过导入。
+              </div>
+            }
+          />
+
+          <Alert
+            type="info"
+            showIcon
+            message="账号描述（accountInfo）推荐写法"
+            description={
+              <div style={{ color: "#666" }}>
+                {ACCOUNT_INFO_HINT}
+                <div style={{ marginTop: 6 }}>
+                  示例：{ACCOUNT_INFO_EXAMPLES.join("、")}
+                </div>
               </div>
             }
           />
@@ -1151,7 +1192,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
             description={
               <div>
                 <div style={{ marginBottom: 8, color: "#666" }}>
-                  建议使用 “账号描述: 账号-密码” 的方式（用冒号把描述与账号密码分隔开），例如：
+                  建议使用 “账号描述: 账号-密码” 的方式（用冒号把描述与账号密码分隔开），账号描述建议按 “-” 分层，例如：
                 </div>
                 <pre
                   style={{
