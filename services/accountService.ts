@@ -56,4 +56,80 @@ export const accountService = {
     });
     return result.count;
   },
+
+  batchImport: async (dto: {
+    moduleId: number;
+    items: Array<{
+      account: string;
+      password: string;
+      accountInfo?: string;
+      remark?: string;
+    }>;
+  }): Promise<{
+    total: number;
+    invalid: number;
+    deduped: number;
+    created: number;
+    skippedExisting: number;
+  }> => {
+    const moduleId = Number(dto.moduleId);
+    const items = Array.isArray(dto.items) ? dto.items : [];
+    if (!moduleId || !Number.isFinite(moduleId)) {
+      return { total: items.length, invalid: items.length, deduped: 0, created: 0, skippedExisting: 0 };
+    }
+
+    const total = items.length;
+    const normalized = items
+      .map((i) => ({
+        account: String(i.account || "").trim(),
+        password: String(i.password || "").trim(),
+        accountInfo: i.accountInfo != null ? String(i.accountInfo).trim() : undefined,
+        remark: i.remark != null ? String(i.remark).trim() : undefined,
+      }))
+      .filter((i) => i.account && i.password);
+
+    const invalid = total - normalized.length;
+
+    const uniqMap = new Map<string, typeof normalized[number]>();
+    for (const i of normalized) {
+      const key = `${i.account}\u0000${i.password}`;
+      if (!uniqMap.has(key)) uniqMap.set(key, i);
+    }
+    const dedupedItems = Array.from(uniqMap.values());
+
+    const existing = await prisma.account.findMany({
+      where: {
+        moduleId,
+        account: { in: dedupedItems.map((x) => x.account) },
+      },
+      select: { account: true, password: true },
+    });
+
+    const existingSet = new Set(existing.map((e) => `${e.account || ""}\u0000${e.password || ""}`));
+
+    const toCreate = dedupedItems.filter((i) => !existingSet.has(`${i.account}\u0000${i.password}`));
+    const skippedExisting = dedupedItems.length - toCreate.length;
+
+    if (toCreate.length === 0) {
+      return { total, invalid, deduped: dedupedItems.length, created: 0, skippedExisting };
+    }
+
+    const result = await prisma.account.createMany({
+      data: toCreate.map((i) => ({
+        moduleId,
+        account: i.account,
+        password: i.password,
+        accountInfo: i.accountInfo || null,
+        remark: i.remark || null,
+      })),
+    });
+
+    return {
+      total,
+      invalid,
+      deduped: dedupedItems.length,
+      created: result.count,
+      skippedExisting,
+    };
+  },
 };

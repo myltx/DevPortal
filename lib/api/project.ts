@@ -169,6 +169,14 @@ export function addOrUpdateAccount(data: any) {
   });
 }
 
+export function batchImportAccount(data: any) {
+  return request({
+    url: "/project/batchImportAccount",
+    method: "post",
+    data,
+  });
+}
+
 export function deleteAccount(ids: number[]) {
   return request({
     url: "/project/deleteAccount",

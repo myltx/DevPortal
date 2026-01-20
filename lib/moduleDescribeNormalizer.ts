@@ -104,11 +104,11 @@ function parseAccountPasswordFromValue(valueText: string): ParsedPair | null {
   if (!v) return null;
 
   const both =
-    /(?:账号|account|user(?:name)?)\s*[:=]\s*(?<user>\S+).*(?:密码|password|pass(?:wd)?)\s*[:=]\s*(?<pass>\S+)/i.exec(
+    /(?:账号|account|user(?:name)?)\s*[:=]\s*(\S+).*(?:密码|password|pass(?:wd)?)\s*[:=]\s*(\S+)/i.exec(
       v,
     );
-  if (both?.groups?.user && both?.groups?.pass) {
-    return { user: both.groups.user, pass: both.groups.pass, rule: "kv-pair" };
+  if (both?.[1] && both?.[2]) {
+    return { user: both[1], pass: both[2], rule: "kv-pair" };
   }
 
   const slashSplit = splitOnce(v, "/");
@@ -142,6 +142,152 @@ function parseAccountPasswordFromValue(valueText: string): ParsedPair | null {
 }
 
 type Group = { label: string; creds: Array<{ user: string; pass: string }>; urls: string[]; notes: string[] };
+
+export type ExtractedAccount = {
+  account: string;
+  password: string;
+  accountInfo?: string;
+};
+
+export function extractAccountsFromText(input: string): ExtractedAccount[] {
+  const minimal = normalizeDescribeMinimal(normalizePunctuation(normalizeNewlines(input)));
+  const lines = minimal ? minimal.split("\n").filter(Boolean) : [];
+
+  const pairs: Array<{ label?: string; account: string; password: string }> = [];
+
+  const pushPair = (label: string | null | undefined, account: string, password: string) => {
+    const a = String(account || "").trim();
+    const p = String(password || "").trim();
+    if (!a || !p) return;
+    const l = String(label || "").trim();
+    pairs.push({ label: l || undefined, account: a, password: p });
+  };
+
+  let currentLabel: string | null = null;
+  let pendingCredLabel: string | null = null;
+  let pendingUser: string | null = null;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    if (looksLikeUrl(line)) continue;
+
+    if (isLabelOnlyLine(line)) {
+      currentLabel = line.slice(0, -1).trim();
+      pendingCredLabel = currentLabel;
+      pendingUser = null;
+      continue;
+    }
+
+    const colonSplit = splitOnce(line, ":");
+    if (colonSplit) {
+      const label = colonSplit[0].trim();
+      const rest = colonSplit[1].trim();
+      if (label && rest && looksLikeLabelKey(label)) {
+        currentLabel = label;
+        if (looksLikeUrl(rest)) {
+          pendingCredLabel = null;
+          pendingUser = null;
+          continue;
+        }
+
+        const parsed = parseAccountPasswordFromValue(rest);
+        if (parsed) {
+          pushPair(currentLabel, parsed.user, parsed.pass);
+          pendingCredLabel = null;
+          pendingUser = null;
+          continue;
+        }
+
+        const cols = splitColumns(rest);
+        if (cols.length === 2) {
+          pushPair(currentLabel, cols[0], cols[1]);
+          pendingCredLabel = null;
+          pendingUser = null;
+          continue;
+        }
+
+        pendingCredLabel = currentLabel;
+        pendingUser = null;
+        continue;
+      }
+    }
+
+    if (pendingCredLabel) {
+      if (!pendingUser) {
+        const row3 = parseTableRow3(line);
+        if (row3) {
+          pushPair(makeNestedLabel(pendingCredLabel, row3.subLabel), row3.user, row3.pass);
+          continue;
+        }
+        const row2 = parseTableRow2(line);
+        if (row2) {
+          pendingCredLabel = makeNestedLabel(pendingCredLabel, row2.subLabel);
+          pendingUser = row2.user;
+          continue;
+        }
+
+        const parsedInline = parseAccountPasswordFromValue(line);
+        if (parsedInline) {
+          const label = "label" in parsedInline ? parsedInline.label : pendingCredLabel;
+          pushPair(label, parsedInline.user, parsedInline.pass);
+          pendingCredLabel = null;
+          pendingUser = null;
+          continue;
+        }
+
+        pendingUser = line;
+        continue;
+      }
+
+      pushPair(pendingCredLabel, pendingUser, line);
+      pendingCredLabel = null;
+      pendingUser = null;
+      continue;
+    }
+
+    const row3 = parseTableRow3(line);
+    if (row3) {
+      pushPair(row3.subLabel, row3.user, row3.pass);
+      continue;
+    }
+    const row2 = parseTableRow2(line);
+    if (row2) {
+      currentLabel = row2.subLabel;
+      pendingCredLabel = row2.subLabel;
+      pendingUser = row2.user;
+      continue;
+    }
+
+    const parsedLine = parseAccountPasswordFromValue(line);
+    if (parsedLine) {
+      const label = "label" in parsedLine ? parsedLine.label : currentLabel || "账号";
+      pushPair(label, parsedLine.user, parsedLine.pass);
+      continue;
+    }
+  }
+
+  // 合并同账号同密码的多条 label（用于给 accountInfo 一个“建议值”，避免在导入弹窗里重复很多行）
+  const map = new Map<string, { account: string; password: string; labels: Set<string> }>();
+  for (const p of pairs) {
+    const key = `${p.account}\u0000${p.password}`;
+    const existing = map.get(key);
+    if (!existing) {
+      const labels = new Set<string>();
+      if (p.label && p.label !== "账号") labels.add(p.label);
+      map.set(key, { account: p.account, password: p.password, labels });
+      continue;
+    }
+    if (p.label && p.label !== "账号") existing.labels.add(p.label);
+  }
+
+  return Array.from(map.values()).map((v) => ({
+    account: v.account,
+    password: v.password,
+    accountInfo: v.labels.size ? Array.from(v.labels).join(" / ") : undefined,
+  }));
+}
 
 export function normalizeModuleDescribeConservative(input: string): {
   minimal: string;
