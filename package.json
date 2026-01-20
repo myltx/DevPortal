@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "gen:openapi": "node scripts/generate-openapi.js",
-    "predev": "node scripts/generate-openapi.js",
-    "prebuild": "node scripts/generate-openapi.js",
+    "predev": "node scripts/generate-openapi.js && npx prisma generate",
+    "prebuild": "node scripts/generate-openapi.js && npx prisma generate",
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",

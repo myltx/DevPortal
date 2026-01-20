@@ -67,6 +67,44 @@ docker compose version
   docker compose up -d --build
   ```
 
+## 3.1 Prisma 数据库迁移（强烈建议保留）
+
+> [!IMPORTANT]
+> `npx prisma generate` **只会生成 Prisma Client（类型/代码）**，不会建表/加字段/删字段。
+> 真正让数据库结构“从 0 变成可用”，需要跑迁移（migrations）。
+
+### 开发环境（本地）
+
+当你修改了 `prisma/schema.prisma`（例如新增字段）：
+
+```bash
+# 生成并应用迁移（会连接数据库）
+npx prisma migrate dev
+
+# 如果遇到 Prisma Client 字段不一致（例如提示 Unknown argument），可手动再生成一次
+npx prisma generate
+```
+
+> [!NOTE]
+> 如果你本地正在跑 `npm run dev`，改完 schema 后仍然报 “Unknown argument xxx”，通常是旧 Prisma Client/旧 dev 进程未刷新：
+> 先停掉 `npm run dev` 再重新启动即可。
+
+### 生产/服务器（Docker）
+
+部署时（无论数据库是空库还是已有数据），建议用 **deploy** 模式执行迁移：
+
+```bash
+# 只会应用 prisma/migrations 中尚未执行的迁移（不会生成新迁移）
+npx prisma migrate deploy
+
+# 确保 Prisma Client 与 schema 一致
+npx prisma generate
+```
+
+> [!TIP]
+> 如果你们确定“每次都是全新空库”，理论上可以用 `npx prisma db push` 直接同步结构；
+> 但它没有迁移历史、不利于排查与回溯，所以本项目选择保留 migrations。
+
 ## 4. (可选) 清理无效的 NVM 环境
 
 由于我们已切换到 Docker 部署，宿主机上之前安装的 NVM 和 Node (因 Glibc 版本过低无法使用) 可以安全清理。

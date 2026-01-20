@@ -15,6 +15,8 @@ export const accountService = {
       id: a.id,
       account: a.account || "",
       password: a.password || "",
+      accountInfo: a.accountInfo || "",
+      remark: a.remark || "",
     }));
   },
 
@@ -26,6 +28,7 @@ export const accountService = {
         data: {
             account: dto.account,
             password: dto.password,
+            accountInfo: dto.accountInfo,
             remark: dto.remark,
             moduleId: dto.moduleId
         }
@@ -36,6 +39,7 @@ export const accountService = {
           data: {
               account: dto.account,
               password: dto.password,
+              accountInfo: dto.accountInfo,
               remark: dto.remark,
               moduleId: dto.moduleId
           }

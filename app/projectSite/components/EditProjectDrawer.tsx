@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Drawer, Form, Input, Select, Button, message } from "antd";
+import { Drawer, Form, Input, Select, Button, message, Modal, Space, Typography } from "antd";
 import * as API from "@/lib/api/project";
+import { normalizeModuleDescribeConservative } from "@/lib/moduleDescribeNormalizer";
 
 const { Option } = Select;
 
@@ -28,6 +29,14 @@ const EditProjectDrawer: React.FC<EditProjectDrawerProps> = ({
   const [form] = Form.useForm();
   const isEdit = !!initialData;
   const title = isEdit ? "编辑模块" : "新增模块";
+  const [normalizeModalOpen, setNormalizeModalOpen] = useState(false);
+  const [normalizePreview, setNormalizePreview] = useState<{
+    mode: "submit" | "format";
+    original: string;
+    normalized: string;
+    values?: any;
+  } | null>(null);
+  const [normalizeEdited, setNormalizeEdited] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -56,32 +65,57 @@ const EditProjectDrawer: React.FC<EditProjectDrawerProps> = ({
     }
   }, [open, initialData, form, activeProjectId, areaList]);
 
+  useEffect(() => {
+    if (normalizeModalOpen && normalizePreview) {
+      setNormalizeEdited(normalizePreview.normalized || "");
+    }
+  }, [normalizeModalOpen, normalizePreview]);
+
+  const submitPayload = async (values: any) => {
+    // Resolve areaName from selected areaId for Dual Write requirement
+    const selectedArea = areaList.find((a: any) => a.id === values.areaId);
+    const resolvedAreaName = selectedArea ? selectedArea.name : "";
+
+    const payload = {
+      ...values,
+      areaName: resolvedAreaName, // Explicitly send Name
+      id: initialData?.moduleId,
+    };
+
+    let res;
+    if (isEdit) {
+      res = await API.editProject(payload);
+    } else {
+      res = await API.createProject(payload);
+    }
+
+    if (res.success) {
+      message.success("保存成功");
+      onSuccess();
+      onClose();
+    }
+  };
+
+  const maybePromptNormalize = (values: any, mode: "submit" | "format") => {
+    const original = String(values?.moduleDescribe ?? "");
+    const { normalized, changed } = normalizeModuleDescribeConservative(original);
+    if (!changed) {
+      if (mode === "format") {
+        message.info("当前内容已无需格式化");
+        return;
+      }
+      void submitPayload(values);
+      return;
+    }
+
+    setNormalizePreview({ mode, original, normalized, values });
+    setNormalizeModalOpen(true);
+  };
+
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-
-      // Resolve areaName from selected areaId for Dual Write requirement
-      const selectedArea = areaList.find((a: any) => a.id === values.areaId);
-      const resolvedAreaName = selectedArea ? selectedArea.name : "";
-
-      const payload = {
-        ...values,
-        areaName: resolvedAreaName, // Explicitly send Name
-        id: initialData?.moduleId,
-      };
-
-      let res;
-      if (isEdit) {
-        res = await API.editProject(payload);
-      } else {
-        res = await API.createProject(payload);
-      }
-
-      if (res.success) {
-        message.success("保存成功");
-        onSuccess();
-        onClose();
-      }
+      maybePromptNormalize(values, "submit");
     } catch (error) {
       // Form validation failed
     }
@@ -162,13 +196,94 @@ const EditProjectDrawer: React.FC<EditProjectDrawerProps> = ({
         <Form.Item
           name="moduleDescribe"
           label="账号信息(描述)"
-          extra="建议格式：标题/说明 - 账号 - 密码。支持智能识别多种分隔符（空格、Tab、连字符等）。">
+          extra={
+            <Space direction="vertical" size={4}>
+              <span>建议格式：标题/说明 - 账号 - 密码。系统会在提交时提示你是否需要格式化。</span>
+              <Button
+                size="small"
+                onClick={() => {
+                  const current = form.getFieldValue("moduleDescribe");
+                  maybePromptNormalize({ moduleDescribe: current }, "format");
+                }}>
+                一键智能格式化（预览后应用）
+              </Button>
+            </Space>
+          }>
           <Input.TextArea
             rows={4}
             placeholder="例如：测试环境 - admin - 123456"
           />
         </Form.Item>
       </Form>
+
+      <Modal
+        title={normalizePreview?.mode === "submit" ? "提交前请确认账号信息格式" : "智能格式化预览"}
+        open={normalizeModalOpen}
+        onCancel={() => {
+          setNormalizeModalOpen(false);
+          setNormalizePreview(null);
+        }}
+        width={900}
+        footer={
+          <Space style={{ display: "flex", justifyContent: "flex-end" }}>
+            <Button
+              onClick={() => {
+                setNormalizeModalOpen(false);
+                setNormalizePreview(null);
+              }}>
+              返回编辑
+            </Button>
+            {normalizePreview?.mode === "submit" && (
+              <Button
+                danger
+                onClick={() => {
+                  const values = normalizePreview?.values;
+                  setNormalizeModalOpen(false);
+                  setNormalizePreview(null);
+                  message.warning("已按原文提交（如需更规范，建议先执行一键智能格式化）");
+                  if (values) void submitPayload(values);
+                }}>
+                继续原文提交
+              </Button>
+            )}
+            <Button
+              type="primary"
+              onClick={() => {
+                const normalized = normalizeEdited ?? "";
+                const values = normalizePreview?.values ?? {};
+                form.setFieldValue("moduleDescribe", normalized);
+                setNormalizeModalOpen(false);
+                setNormalizePreview(null);
+
+                if (normalizePreview?.mode === "submit") {
+                  void submitPayload({ ...values, moduleDescribe: normalized });
+                } else {
+                  message.success("已应用格式化内容");
+                }
+              }}>
+              {normalizePreview?.mode === "submit" ? "应用格式化并提交" : "应用格式化"}
+            </Button>
+          </Space>
+        }>
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
+          系统根据常见分隔符/标签尝试把账号信息整理为更统一的格式，便于后续复制与插件识别。若不满意可返回继续编辑。
+        </Typography.Paragraph>
+        <div style={{ display: "flex", gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <Typography.Text strong>原文</Typography.Text>
+            <Input.TextArea value={normalizePreview?.original ?? ""} readOnly rows={14} style={{ marginTop: 6 }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <Typography.Text strong>格式化后（可编辑）</Typography.Text>
+            <Input.TextArea
+              value={normalizeEdited}
+              onChange={(e) => setNormalizeEdited(e.target.value)}
+              rows={14}
+              style={{ marginTop: 6 }}
+            />
+          </div>
+        </div>
+      </Modal>
     </Drawer>
   );
 };

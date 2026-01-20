@@ -39,6 +39,8 @@ export interface Account {
   id: number;
   account?: string;
   password?: string;
+  accountInfo?: string;
+  remark?: string;
   moduleId: number;
   // Frontend properties
   isNew?: boolean;

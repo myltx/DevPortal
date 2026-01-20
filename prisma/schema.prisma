@@ -45,16 +45,16 @@ model Project {
 }
 
 model Module {
-  id             Int       @id @default(autoincrement())
-  moduleName     String?   @map("module_name")
-  moduleUrl      String?   @map("module_url")
-  typeName       String?   @map("type_name")
-  projectId      Int?      @map("project_id")
-  createTime     DateTime? @map("create_time")
-  updateTime     DateTime? @map("update_time")
-  moduleDescribe String?   @map("module_describe") @db.Text
-  remark         String?   @db.Text
-  areaName       String?   @map("area_name") // Kept for legacy compatibility (Dual Write)
+  id                Int       @id @default(autoincrement())
+  moduleName        String?   @map("module_name")
+  moduleUrl         String?   @map("module_url")
+  typeName          String?   @map("type_name")
+  projectId         Int?      @map("project_id")
+  createTime        DateTime? @map("create_time")
+  updateTime        DateTime? @map("update_time")
+  moduleDescribe    String?   @map("module_describe") @db.Text
+  remark            String?   @db.Text
+  areaName          String?   @map("area_name") // Kept for legacy compatibility (Dual Write)
 
   // New Relation
   areaId Int?  @map("area_id")
@@ -67,6 +67,8 @@ model Account {
   id       Int     @id @default(autoincrement())
   account  String?
   password String?
+  // 账号描述：用于保存“角色/归属/用途”等业务信息（例如：乡镇民政-马桥街道）
+  accountInfo String? @map("account_info") @db.Text
   remark   String?
   moduleId Int?    @map("module_id")
 

@@ -68,6 +68,8 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
         id: -1,
         account: "",
         password: "",
+        accountInfo: "",
+        remark: "",
         moduleId: mId,
         isNew: true,
       },
@@ -83,6 +85,8 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
       id: record.id === -1 ? null : record.id,
       account: record.account,
       password: record.password,
+      accountInfo: record.accountInfo,
+      remark: record.remark,
       moduleId: mId,
     };
     const res = await API.addOrUpdateAccount(payload);
@@ -130,6 +134,34 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
   };
 
   const columns = [
+    {
+      title: "账号描述",
+      dataIndex: "accountInfo",
+      render: (text: string, record: Account) => {
+        if (editingKey === String(record.id)) {
+          return (
+            <Input
+              value={text}
+              onChange={(e) => {
+                const newList = [...accountList];
+                const index = newList.findIndex(
+                  (item) => item.id === record.id
+                );
+                if (index > -1) {
+                  newList[index] = {
+                    ...newList[index],
+                    accountInfo: e.target.value,
+                  };
+                  setAccountList(newList);
+                }
+              }}
+              placeholder="例如：乡镇民政-马桥街道"
+            />
+          );
+        }
+        return <span>{text || "-"}</span>;
+      },
+    },
     {
       title: "账号",
       dataIndex: "account",
@@ -198,6 +230,34 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
             />
           </Space>
         );
+      },
+    },
+    {
+      title: "备注",
+      dataIndex: "remark",
+      render: (text: string, record: Account) => {
+        if (editingKey === String(record.id)) {
+          return (
+            <Input
+              value={text}
+              onChange={(e) => {
+                const newList = [...accountList];
+                const index = newList.findIndex(
+                  (item) => item.id === record.id
+                );
+                if (index > -1) {
+                  newList[index] = {
+                    ...newList[index],
+                    remark: e.target.value,
+                  };
+                  setAccountList(newList);
+                }
+              }}
+              placeholder="例如：导入自文本-2026-01-20"
+            />
+          );
+        }
+        return <span>{text || "-"}</span>;
       },
     },
     {

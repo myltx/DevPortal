@@ -52,3 +52,8 @@ next-env.d.ts
 
 # chrome extension
 chrome-extension.*
+/chrome-extension/module.json
+
+# reports (contains sensitive data when UNSAFE)
+/reports/module-describe/*.UNSAFE.*
+/reports/

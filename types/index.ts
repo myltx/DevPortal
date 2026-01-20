@@ -78,6 +78,7 @@ export interface Account {
   id: number; // id
   account: string; // 账号
   password: string; // 密码
+  accountInfo?: string; // 账号描述（角色/归属/用途等）
   remark: string; // 备注
   moduleId: number; // 模块id
 }
@@ -86,6 +87,7 @@ export interface AccountDTO {
   id?: number; // id
   account: string; // 账号
   password: string; // 密码
+  accountInfo?: string; // 账号描述（角色/归属/用途等）
   remark: string; // 备注
   moduleId: number; // 模块id
 }
@@ -98,6 +100,8 @@ export interface AccountListVO {
   id: number; // id
   account: string; // 账号
   password: string; // 密码
+  accountInfo?: string; // 账号描述
+  remark?: string; // 备注
 }
 
 // NounName Interfaces
