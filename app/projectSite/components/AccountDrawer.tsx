@@ -46,6 +46,10 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
   const [importFilter, setImportFilter] = useState<
     "new" | "all" | "existing" | "duplicate" | "invalid"
   >("new");
+  const [importAutoFillRemark, setImportAutoFillRemark] = useState(true);
+  const [importLocalExistingKeys, setImportLocalExistingKeys] = useState<
+    Set<string>
+  >(new Set());
   const [splitModalOpen, setSplitModalOpen] = useState(false);
   const [splitTargetIndex, setSplitTargetIndex] = useState<number | null>(null);
   const [splitText, setSplitText] = useState("");
@@ -97,6 +101,11 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
   ).length;
   const existingFromCurrentTextCount =
     extractedFromCurrentText.length - importableFromCurrentTextCount;
+
+  const allExistingKeySet = new Set<string>([
+    ...existingKeySet,
+    ...Array.from(importLocalExistingKeys),
+  ]);
 
   useEffect(() => {
     if (open && moduleId) {
@@ -151,6 +160,8 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
     if (!moduleId) return;
     setImportSource(source);
     setImportFilter("new");
+    setImportAutoFillRemark(true);
+    setImportLocalExistingKeys(new Set());
     if (!importBatchRemark) {
       const d = new Date();
       const y = d.getFullYear();
@@ -178,7 +189,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
       })),
     );
     const importableCount = extracted.filter(
-      (x) => !existingKeySet.has(`${x.account}\u0000${x.password}`),
+      (x) => !allExistingKeySet.has(`${x.account}\u0000${x.password}`),
     ).length;
     message.success(
       `已解析 ${extracted.length} 条（可导入 ${importableCount} 条）`,
@@ -197,10 +208,15 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
         account: String(i.account || "").trim(),
         password: String(i.password || "").trim(),
         accountInfo: i.accountInfo ? String(i.accountInfo).trim() : undefined,
-        remark: (i.remark || "").trim() || importBatchRemark,
+        remark: (() => {
+          const row = (i.remark || "").trim();
+          if (row) return row;
+          if (!importAutoFillRemark) return undefined;
+          return importBatchRemark;
+        })(),
       }))
       .filter((i) => i.account && i.password)
-      .filter((i) => !existingKeySet.has(`${i.account}\u0000${i.password}`))
+      .filter((i) => !allExistingKeySet.has(`${i.account}\u0000${i.password}`))
       .filter((i) => {
         const key = `${i.account}\u0000${i.password}`;
         if (uniqKey.has(key)) return false;
@@ -218,6 +234,13 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
       items,
     });
     if (res.success) {
+      setImportLocalExistingKeys((prev) => {
+        const next = new Set(prev);
+        for (const i of items) {
+          next.add(`${i.account}\u0000${i.password}`);
+        }
+        return next;
+      });
       message.success(
         `导入完成：新增 ${res.data?.created ?? 0}，跳过已存在 ${res.data?.skippedExisting ?? 0}`,
       );
@@ -234,14 +257,19 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
     const account = String(item.account || "").trim();
     const password = String(item.password || "").trim();
     const accountInfo = item.accountInfo ? String(item.accountInfo).trim() : undefined;
-    const remark = (item.remark || "").trim() || importBatchRemark;
+    const remark = (() => {
+      const row = String(item.remark || "").trim();
+      if (row) return row;
+      if (!importAutoFillRemark) return undefined;
+      return importBatchRemark;
+    })();
 
     if (!account || !password) {
       message.error("该条数据无效：账号/密码不能为空");
       return;
     }
 
-    if (existingKeySet.has(`${account}\u0000${password}`)) {
+    if (allExistingKeySet.has(`${account}\u0000${password}`)) {
       message.info("该账号已存在，无需导入");
       return;
     }
@@ -251,6 +279,11 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
       items: [{ account, password, accountInfo, remark }],
     });
     if (res.success) {
+      setImportLocalExistingKeys((prev) => {
+        const next = new Set(prev);
+        next.add(`${account}\u0000${password}`);
+        return next;
+      });
       message.success(
         `已导入：新增 ${res.data?.created ?? 0}，跳过已存在 ${res.data?.skippedExisting ?? 0}`,
       );
@@ -610,7 +643,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
     const p = String(item.password || "").trim();
     if (!a || !p) return { type: "invalid", label: "无效" };
     const key = `${a}\u0000${p}`;
-    if (existingKeySet.has(key)) return { type: "existing", label: "已存在" };
+    if (allExistingKeySet.has(key)) return { type: "existing", label: "已存在" };
     if ((importItemKeyCounts.get(key) || 0) > 1)
       return { type: "duplicate", label: "重复" };
     return { type: "new", label: "将导入" };
@@ -962,12 +995,23 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
               optionType="button"
               buttonStyle="solid"
             />
-            <Button
-              onClick={() => setImportItems(buildImportItemsFromText(moduleDescribeText))}
-              disabled={!moduleDescribeText}>
-              重新带入当前文本
-            </Button>
+              <Button
+                onClick={() => setImportItems(buildImportItemsFromText(moduleDescribeText))}
+                disabled={!moduleDescribeText}>
+                重新带入当前文本
+              </Button>
           </Space>
+
+          <Alert
+            type="info"
+            showIcon
+            message="导入策略说明"
+            description={
+              <div style={{ color: "#666" }}>
+                仅会新增账号记录，不会覆盖已存在账号的任何字段；已存在的条目会自动标记为“已存在”并跳过导入。
+              </div>
+            }
+          />
 
           {importSource === "paste" ? (
             <Card size="small" styles={{ body: { padding: 12 } }}>
@@ -1003,6 +1047,11 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
               style={{ width: 320 }}
               placeholder="例如：导入自文本 2026-01-20"
             />
+            <Checkbox
+              checked={importAutoFillRemark}
+              onChange={(e) => setImportAutoFillRemark(e.target.checked)}>
+              备注为空时自动填入批次备注
+            </Checkbox>
             <span style={{ color: "#666" }}>筛选：</span>
             <Radio.Group
               value={importFilter}
