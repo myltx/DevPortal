@@ -772,53 +772,14 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
                           </Button>
                         </Space>
                       </Space>
-                      <div style={{ marginTop: 12 }}>
+                      <div style={{ marginTop: 12, color: "#999" }}>
                         {extractedFromCurrentText.length ? (
-                          <Table
-                            size="small"
-                            rowKey={(r) => `${r.account}\u0000${r.password}`}
-                            dataSource={extractedFromCurrentText}
-                            pagination={{ pageSize: 8, showSizeChanger: false }}
-                            columns={[
-                              {
-                                title: "标记",
-                                width: 90,
-                                render: (_: any, record: any) => {
-                                  const exists = existingKeySet.has(
-                                    `${record.account}\u0000${record.password}`,
-                                  );
-                                  return (
-                                    <Tag color={exists ? "green" : "blue"}>
-                                      {exists ? "已导入" : "可导入"}
-                                    </Tag>
-                                  );
-                                },
-                              },
-                              {
-                                title: "账号描述",
-                                dataIndex: "accountInfo",
-                                render: (t: string) => <span>{t || "-"}</span>,
-                              },
-                              {
-                                title: "账号",
-                                dataIndex: "account",
-                                render: (t: string) => (
-                                  renderCopyCell(t)
-                                ),
-                              },
-                              {
-                                title: "密码",
-                                dataIndex: "password",
-                                render: (t: string) => (
-                                  renderCopyCell(t)
-                                ),
-                              },
-                            ]}
-                          />
+                          <>
+                            已从文本中识别出可能的账号/密码条目；如需预览/编辑请点击
+                            “从当前文本导入”，在导入弹窗中处理。
+                          </>
                         ) : (
-                          <div style={{ color: "#999" }}>
-                            未识别到可用的账号/密码结构
-                          </div>
+                          <>未识别到可用的账号/密码结构（仍可保留原文手动维护账号列表）。</>
                         )}
                       </div>
                     </Card>
