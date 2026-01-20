@@ -259,8 +259,15 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
   };
 
   const openSplitModal = (index: number) => {
+    const origin = importItems[index];
     setSplitTargetIndex(index);
-    setSplitText("");
+    const prefill = origin
+      ? [origin.accountInfo, origin.account, origin.password]
+          .map((v) => String(v || "").trim())
+          .filter(Boolean)
+          .join(" ")
+      : "";
+    setSplitText(prefill);
     setSplitInheritRemark(true);
     setSplitInheritAccountInfo(false);
     setSplitModalOpen(true);
@@ -1044,9 +1051,29 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
               message="当前要拆分的条目"
               description={
                 <div style={{ wordBreak: "break-all" }}>
-                  {String(importItems[splitTargetIndex].account || "").trim()}{" "}
-                  /{" "}
-                  {String(importItems[splitTargetIndex].password || "").trim()}
+                  <div>
+                    <span style={{ color: "#666" }}>账号描述：</span>
+                    {String(importItems[splitTargetIndex].accountInfo || "").trim() ||
+                      "-"}
+                  </div>
+                  <div>
+                    <span style={{ color: "#666" }}>账号：</span>
+                    {String(importItems[splitTargetIndex].account || "").trim() ||
+                      "-"}
+                  </div>
+                  <div>
+                    <span style={{ color: "#666" }}>密码：</span>
+                    {String(importItems[splitTargetIndex].password || "").trim() ||
+                      "-"}
+                  </div>
+                  <div>
+                    <span style={{ color: "#666" }}>备注：</span>
+                    {String(importItems[splitTargetIndex].remark || "").trim() ||
+                      "-"}
+                  </div>
+                  <div style={{ marginTop: 8, color: "#999" }}>
+                    已自动把上面这条的完整内容带入到下方输入框，你可以直接在下方编辑并换行拆分。
+                  </div>
                 </div>
               }
             />
@@ -1066,6 +1093,42 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
               "ecAdmin qwerty@123456",
               "guest/123456",
             ].join("\n")}
+          />
+
+          <Alert
+            type="warning"
+            showIcon
+            message="推荐格式（更容易拆分正确）"
+            description={
+              <div>
+                <div style={{ marginBottom: 8, color: "#666" }}>
+                  建议使用 “账号描述: 账号-密码” 的方式（用冒号把描述与账号密码分隔开），例如：
+                </div>
+                <pre
+                  style={{
+                    margin: 0,
+                    padding: 12,
+                    background: "#fafafa",
+                    border: "1px solid rgba(0,0,0,0.06)",
+                    borderRadius: 6,
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-all",
+                  }}>
+{`服务商-测试服务中心: 13391902603-Ecare@133919
+服务商-生产环境: 13391902608-&Flfit)2@ry1`}
+                </pre>
+                <div style={{ marginTop: 8 }}>
+                  <Button
+                    size="small"
+                    onClick={() =>
+                      setSplitText(`服务商-测试服务中心: 13391902603-Ecare@133919
+服务商-生产环境: 13391902608-&Flfit)2@ry1`)
+                    }>
+                    一键填入示例
+                  </Button>
+                </div>
+              </div>
+            }
           />
 
           <Space wrap>
