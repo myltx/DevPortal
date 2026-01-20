@@ -250,11 +250,28 @@ chmod +x server-deploy.sh
 ./server-deploy.sh
 ```
 
-会出现交互式菜单，您可以选择：
+会出现交互式中文菜单，您可以选择：
 
-1. **First Time Setup**: 自动检查环境、加载镜像并启动。
-2. **Update App**: 更新镜像并自动重启。
-3. **View Logs**: 查看日志。
+1. **首次部署（初始化）**：自动检查 `.env`、加载 `dev-portal.tar` 并启动服务。
+2. **更新应用（加载 tar 并重建）**：上传新的 `dev-portal.tar` 后使用；更新前会询问是否需要备份（默认不备份）。
+3. **仅重启服务**：不更新镜像，仅重启容器。
+4. **查看日志（Ctrl+C 返回）**：进入 `docker compose logs -f` 跟随日志，按 `Ctrl+C` 返回菜单。
+5. **进入容器 Shell（exit 返回）**：进入容器后输入 `exit` 返回菜单。
+6. **清理未使用镜像**：执行 `docker image prune -f`。
+7. **备份当前版本（镜像 + 配置 + tar）**：备份到 `./backups/<时间戳>/`。
+8. **回滚到备份版本**：从 `./backups/` 选择一个备份回滚（可选同时恢复 `.env/compose`）。
+
+每次执行完一项操作后，脚本会询问是否继续；默认不继续并自动退出。
+
+#### 备份与空间占用说明
+
+- 备份目录：`./backups/YYYYMMDD-HHMMSS/`
+- 备份内容（尽力而为，缺少就跳过）：
+  - `dev-portal.tar`（如果当前目录存在，会复制一份进去）
+  - `image.tar`（如果服务器上存在 `dev-portal:latest` 镜像，会 `docker save` 备份一份）
+  - `.env` 与 `docker-compose*.yml`
+- 空间占用：`dev-portal.tar` 与 `image.tar` 体积通常同量级（都可能比较大），因此默认只保留最近 1 份备份。
+- 保留策略：脚本内置 `BACKUP_KEEP=1`，每次备份后会自动清理旧备份（只会清理 `./backups/` 下符合时间戳格式的目录，不会影响容器、数据库或其他文件）。
 
 ### 🔄 服务器端如何更新 (重启)?
 
