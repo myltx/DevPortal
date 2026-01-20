@@ -216,6 +216,38 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
     }
   };
 
+  const doImportOne = async (index: number) => {
+    if (!moduleId) return;
+    const item = importItems[index];
+    if (!item) return;
+
+    const account = String(item.account || "").trim();
+    const password = String(item.password || "").trim();
+    const accountInfo = item.accountInfo ? String(item.accountInfo).trim() : undefined;
+    const remark = (item.remark || "").trim() || importBatchRemark;
+
+    if (!account || !password) {
+      message.error("该条数据无效：账号/密码不能为空");
+      return;
+    }
+
+    if (existingKeySet.has(`${account}\u0000${password}`)) {
+      message.info("该账号已存在，无需导入");
+      return;
+    }
+
+    const res = await API.batchImportAccount({
+      moduleId,
+      items: [{ account, password, accountInfo, remark }],
+    });
+    if (res.success) {
+      message.success(
+        `已导入：新增 ${res.data?.created ?? 0}，跳过已存在 ${res.data?.skippedExisting ?? 0}`,
+      );
+      fetchAccounts(moduleId);
+    }
+  };
+
   const handleSaveAccount = async (record: Account) => {
     if (!moduleId) return;
     const payload = {
@@ -606,14 +638,22 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
     },
     {
       title: "操作",
-      width: 80,
+      width: 140,
       render: (_: any, record: any) => (
-        <Button
-          type="link"
-          danger
-          onClick={() => removeImportItem(record._idx)}>
-          删除
-        </Button>
+        <Space>
+          <Button
+            type="link"
+            disabled={getImportItemStatus(record).type !== "new"}
+            onClick={() => doImportOne(record._idx)}>
+            导入
+          </Button>
+          <Button
+            type="link"
+            danger
+            onClick={() => removeImportItem(record._idx)}>
+            删除
+          </Button>
+        </Space>
       ),
     },
   ];
