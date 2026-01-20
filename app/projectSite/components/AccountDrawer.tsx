@@ -42,6 +42,9 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
   const [importSource, setImportSource] = useState<"current" | "paste">(
     "current",
   );
+  const [importFilter, setImportFilter] = useState<
+    "new" | "all" | "existing" | "duplicate" | "invalid"
+  >("new");
   const [importPasteText, setImportPasteText] = useState("");
   const [importBatchRemark, setImportBatchRemark] = useState("");
   const [importItems, setImportItems] = useState<
@@ -141,6 +144,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
   const openImportModal = (source: "current" | "paste") => {
     if (!moduleId) return;
     setImportSource(source);
+    setImportFilter("new");
     if (!importBatchRemark) {
       const d = new Date();
       const y = d.getFullYear();
@@ -570,10 +574,17 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
     (x) => getImportItemStatus(x).type === "duplicate",
   ).length;
 
-  const importTableDataSource = importItems.map((item, idx) => ({
+  const importTableAllDataSource = importItems.map((item, idx) => ({
     ...item,
     _idx: idx,
   }));
+
+  const importTableDataSource = importTableAllDataSource.filter((record: any) => {
+    if (importFilter === "all") return true;
+    return getImportItemStatus(record).type === importFilter;
+  });
+
+  const importVisibleCount = importTableDataSource.length;
 
   const importColumns = [
     {
@@ -921,10 +932,25 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
               style={{ width: 320 }}
               placeholder="例如：导入自文本 2026-01-20"
             />
+            <span style={{ color: "#666" }}>筛选：</span>
+            <Radio.Group
+              value={importFilter}
+              onChange={(e) => setImportFilter(e.target.value)}
+              optionType="button"
+              buttonStyle="solid"
+              options={[
+                { label: "将导入", value: "new" },
+                { label: "全部", value: "all" },
+                { label: "已存在", value: "existing" },
+                { label: "重复", value: "duplicate" },
+                { label: "无效", value: "invalid" },
+              ]}
+            />
             <Tag color="blue">总计 {importItems.length}</Tag>
             <Tag color="green">已存在 {importExistingCount}</Tag>
             <Tag color="orange">重复 {importDuplicateCount}</Tag>
             <Tag color="red">无效 {importInvalidCount}</Tag>
+            <Tag color="default">当前显示 {importVisibleCount}</Tag>
           </Space>
 
           <Table
