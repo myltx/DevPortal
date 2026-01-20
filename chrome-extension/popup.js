@@ -141,24 +141,62 @@ function renderList(data) {
   data.forEach((item) => {
     const card = document.createElement("div");
     card.className = "credential-item";
-    card.innerHTML = `
-      <!-- Project Name redundant with header -->
-      <!-- URL hidden in compact mode -->
-      
-      <div class="row">
-        <span class="label">账号</span>
-        <span class="value" title="点击复制" data-copy="${item.username}">${item.username}</span>
-      </div>
-      
-      <div class="row">
-        <span class="label">密码</span>
-        <span class="value" title="点击复制" data-copy="${item.password}">${item.password}</span>
-      </div>
-      
-      <button class="fill-btn" data-user="${item.username}" data-pass="${item.password}">
-        ⚡ 填入页面
-      </button>
-    `;
+
+    const info = String(item.accountInfo || "").trim();
+    if (info) {
+      const infoDiv = document.createElement("div");
+      infoDiv.style.color = "#8c8c8c";
+      infoDiv.style.fontSize = "12px";
+      infoDiv.style.marginBottom = "8px";
+      infoDiv.textContent = `描述：${info}`;
+      card.appendChild(infoDiv);
+    }
+
+    const remark = String(item.remark || "").trim();
+    if (remark) {
+      const remarkDiv = document.createElement("div");
+      remarkDiv.style.color = "#8c8c8c";
+      remarkDiv.style.fontSize = "12px";
+      remarkDiv.style.marginBottom = "8px";
+      remarkDiv.textContent = `备注：${remark}`;
+      card.appendChild(remarkDiv);
+    }
+
+    const rowUser = document.createElement("div");
+    rowUser.className = "row";
+    const labelUser = document.createElement("span");
+    labelUser.className = "label";
+    labelUser.textContent = "账号";
+    const valueUser = document.createElement("span");
+    valueUser.className = "value";
+    valueUser.title = "点击复制";
+    valueUser.setAttribute("data-copy", item.username || "");
+    valueUser.textContent = item.username || "";
+    rowUser.appendChild(labelUser);
+    rowUser.appendChild(valueUser);
+    card.appendChild(rowUser);
+
+    const rowPass = document.createElement("div");
+    rowPass.className = "row";
+    const labelPass = document.createElement("span");
+    labelPass.className = "label";
+    labelPass.textContent = "密码";
+    const valuePass = document.createElement("span");
+    valuePass.className = "value";
+    valuePass.title = "点击复制";
+    valuePass.setAttribute("data-copy", item.password || "");
+    valuePass.textContent = item.password || "";
+    rowPass.appendChild(labelPass);
+    rowPass.appendChild(valuePass);
+    card.appendChild(rowPass);
+
+    const fillBtn = document.createElement("button");
+    fillBtn.className = "fill-btn";
+    fillBtn.setAttribute("data-user", item.username || "");
+    fillBtn.setAttribute("data-pass", item.password || "");
+    fillBtn.textContent = "⚡ 填入页面";
+    card.appendChild(fillBtn);
+
     listEl.appendChild(card);
   });
 

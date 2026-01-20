@@ -98,6 +98,8 @@ export async function GET(request: Request) {
         projectName: proj?.projectName || mod?.moduleName || "Unknown Project",
         username: acc.account || "",
         password: acc.password || "",
+        accountInfo: acc.accountInfo || "",
+        remark: acc.remark || "",
         site: mod?.moduleUrl || "",
         description: mod?.moduleDescribe || "",
         // Extra info for UI clarity
