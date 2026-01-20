@@ -9,6 +9,7 @@ import {
   Modal,
   Form,
   Radio,
+  Checkbox,
   Tag,
   Popconfirm,
   message,
@@ -45,6 +46,11 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
   const [importFilter, setImportFilter] = useState<
     "new" | "all" | "existing" | "duplicate" | "invalid"
   >("new");
+  const [splitModalOpen, setSplitModalOpen] = useState(false);
+  const [splitTargetIndex, setSplitTargetIndex] = useState<number | null>(null);
+  const [splitText, setSplitText] = useState("");
+  const [splitInheritRemark, setSplitInheritRemark] = useState(true);
+  const [splitInheritAccountInfo, setSplitInheritAccountInfo] = useState(false);
   const [importPasteText, setImportPasteText] = useState("");
   const [importBatchRemark, setImportBatchRemark] = useState("");
   const [importItems, setImportItems] = useState<
@@ -250,6 +256,61 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
       );
       fetchAccounts(moduleId);
     }
+  };
+
+  const openSplitModal = (index: number) => {
+    setSplitTargetIndex(index);
+    setSplitText("");
+    setSplitInheritRemark(true);
+    setSplitInheritAccountInfo(false);
+    setSplitModalOpen(true);
+  };
+
+  const parseSplitText = (text: string) => {
+    return extractAccountsFromText(text).map((x) => ({
+      account: x.account,
+      password: x.password,
+      accountInfo: x.accountInfo,
+      remark: "",
+    }));
+  };
+
+  const confirmSplit = () => {
+    const idx = splitTargetIndex;
+    if (idx == null) return;
+    const origin = importItems[idx];
+    if (!origin) return;
+
+    const extracted = parseSplitText(splitText);
+    if (!extracted.length) {
+      message.error("未识别到可拆分的账号/密码，请检查输入格式");
+      return;
+    }
+
+    const originAccountInfo = String(origin.accountInfo || "").trim();
+    const originRemark = String(origin.remark || "").trim();
+
+    const nextItems = extracted.map((x) => {
+      const nextAccountInfo = splitInheritAccountInfo
+        ? originAccountInfo || x.accountInfo
+        : x.accountInfo;
+      const nextRemark = splitInheritRemark ? originRemark : "";
+      return {
+        account: x.account,
+        password: x.password,
+        accountInfo: nextAccountInfo,
+        remark: nextRemark,
+      };
+    });
+
+    setImportItems((prev) => {
+      const next = [...(prev || [])];
+      next.splice(idx, 1, ...nextItems);
+      return next;
+    });
+
+    message.success(`已拆分为 ${nextItems.length} 条`);
+    setSplitModalOpen(false);
   };
 
   const handleSaveAccount = async (record: Account) => {
@@ -658,6 +719,9 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
             onClick={() => doImportOne(record._idx)}>
             导入
           </Button>
+          <Button type="link" onClick={() => openSplitModal(record._idx)}>
+            拆分
+          </Button>
           <Button
             type="link"
             danger
@@ -960,6 +1024,66 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
             columns={importColumns as any}
             pagination={{ pageSize: 8, showSizeChanger: false }}
           />
+        </Space>
+      </Modal>
+
+      <Modal
+        title="拆分为多条账号"
+        open={splitModalOpen}
+        onCancel={() => setSplitModalOpen(false)}
+        onOk={confirmSplit}
+        okText="确认拆分"
+        cancelText="取消"
+        width={760}
+        destroyOnClose>
+        <Space direction="vertical" style={{ width: "100%" }} size={12}>
+          {splitTargetIndex != null && importItems[splitTargetIndex] ? (
+            <Alert
+              type="info"
+              showIcon
+              message="当前要拆分的条目"
+              description={
+                <div style={{ wordBreak: "break-all" }}>
+                  {String(importItems[splitTargetIndex].account || "").trim()}{" "}
+                  /{" "}
+                  {String(importItems[splitTargetIndex].password || "").trim()}
+                </div>
+              }
+            />
+          ) : null}
+
+          <Input.TextArea
+            value={splitText}
+            onChange={(e) => setSplitText(e.target.value)}
+            rows={8}
+            placeholder={[
+              "把多条账号/密码粘贴到这里，支持：",
+              "1) 账号 密码（空格或 Tab 分隔）",
+              "2) 账号/密码",
+              "3) 两行一组：账号\\n密码",
+              "",
+              "示例：",
+              "ecAdmin qwerty@123456",
+              "guest/123456",
+            ].join("\n")}
+          />
+
+          <Space wrap>
+            <Checkbox
+              checked={splitInheritRemark}
+              onChange={(e) => setSplitInheritRemark(e.target.checked)}>
+              拆分后继承原行备注（remark）
+            </Checkbox>
+            <Checkbox
+              checked={splitInheritAccountInfo}
+              onChange={(e) => setSplitInheritAccountInfo(e.target.checked)}>
+              拆分后继承原行账号描述（accountInfo）
+            </Checkbox>
+          </Space>
+
+          <div style={{ color: "#999" }}>
+            拆分后的条目仍会按“将导入/已存在/重复/无效”规则标记，你可以在弹窗里继续编辑后再导入。
+          </div>
         </Space>
       </Modal>
     </Drawer>
