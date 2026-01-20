@@ -241,7 +241,13 @@ function first_setup() {
 
 function update_app() {
     info "开始更新流程..."
-    backup_current_bundle
+    read -p "是否在更新前备份当前版本？[y/N] " do_backup
+    do_backup=${do_backup:-N}
+    if [[ "$do_backup" =~ ^[Yy]$ ]]; then
+        backup_current_bundle
+    else
+        info "已跳过备份。"
+    fi
     load_image
     info "重建容器..."
     $COMPOSE_CMD -f $COMPOSE_FILE up -d --force-recreate
@@ -272,7 +278,7 @@ while true; do
     echo -e "   DevPortal 部署脚本"
     echo "----------------------------------------"
     echo "1. 首次部署（初始化）"
-    echo "2. 更新应用（自动备份后加载 tar 并重建）"
+    echo "2. 更新应用（加载 tar 并重建）"
     echo "3. 仅重启服务"
     echo "4. 查看日志（Ctrl+C 返回）"
     echo "5. 进入容器 Shell（exit 返回）"
