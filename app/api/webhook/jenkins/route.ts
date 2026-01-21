@@ -11,14 +11,20 @@ const DINGTALK_SECRET = process.env.DINGTALK_SECRET;
 const PUBLIC_URL = process.env.PUBLIC_URL; // 确保已配置公网域名
 const SWAGGER_EXPORT_SECRET = process.env.SWAGGER_EXPORT_SECRET; // 用于导出鉴权的密钥
 
-// Default Import Options (match original proxy)
-const DEFAULT_IMPORT_OPTIONS = {
-  endpointOverwriteBehavior: "AUTO_MERGE",
-  schemaOverwriteBehavior: "AUTO_MERGE",
-  updateFolderOfChangedEndpoint: true,
-  prependBasePath: false,
-  deleteUnmatchedResources: true
-};
+interface ApifoxImportResult {
+    success: boolean;
+    errorCode?: string;
+    errorMessage?: string;
+    error?: { message: string };
+    data?: {
+        counters?: {
+            newCount: number;
+            updatedCount: number;
+            ignoredCount: number;
+        };
+        errors?: Array<{ message: string }>;
+    };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -59,25 +65,29 @@ export async function POST(request: NextRequest) {
     // 4. Construct Public Export URL
     // 我们不再在本地进行合并和发送，而是生成一个公网可访问的 URL 让 Apifox 来拉取。
     // 这解决了 4.7MB 超大负载导致的同步失败问题。
-    if (!PUBLIC_URL) {
-        console.warn("[JenkinsWebhook] PUBLIC_URL is not configured, falling back to local merge (risky for large data)");
+    const cleanPublicUrl = (PUBLIC_URL || "").replace(/\/$/, "");
+    if (!cleanPublicUrl) {
+        console.warn("[JenkinsWebhook] PUBLIC_URL is not configured, API import may fail if Apifox cannot reach this server.");
     }
 
-    const exportUrl = new URL(`${PUBLIC_URL || ""}/api/swagger/public-export`);
+    const exportUrl = new URL(`${cleanPublicUrl}/api/swagger/public-export`);
     exportUrl.searchParams.set("targetUrl", targetUrl);
     if (apiPrefix) exportUrl.searchParams.set("apiPrefix", apiPrefix);
     if (timeout) exportUrl.searchParams.set("timeout", timeout);
     if (debugLimit) exportUrl.searchParams.set("debugLimit", debugLimit);
     if (SWAGGER_EXPORT_SECRET) exportUrl.searchParams.set("token", SWAGGER_EXPORT_SECRET);
 
-    console.log(`[JenkinsWebhook] Generated export URL for Apifox: ${exportUrl.toString()}`);
+    const fullExportUrl = exportUrl.toString();
+    console.log(`[JenkinsWebhook] Generated export URL for Apifox: ${fullExportUrl}`);
 
     // 5. Call Apifox API (URL Mode)
     const apifoxApiUrl = `https://api.apifox.com/v1/projects/${projectId}/import-openapi`;
     
-    // Construct Options
+    // Construct Options (Minimal)
     const importOptions: any = {
-      ...DEFAULT_IMPORT_OPTIONS,
+      endpointOverwriteBehavior: "OVERWRITE_EXISTING",
+      schemaOverwriteBehavior: "OVERWRITE_EXISTING",
+      updateFolderOfChangedEndpoint: true
     };
     if (moduleId) {
       importOptions.moduleId = parseInt(moduleId, 10);
@@ -86,13 +96,12 @@ export async function POST(request: NextRequest) {
     // Payload uses 'URL' mode for input
     const payload = {
       input: {
-        url: exportUrl.toString()
+        url: fullExportUrl
       },
       options: importOptions,
     };
 
-    const payloadStr = JSON.stringify(payload);
-    console.log(`[JenkinsWebhook] Requesting Apifox to pull from URL (Project: ${projectId})`);
+    console.log(`[JenkinsWebhook] Requesting Apifox to pull from URL. Options:`, JSON.stringify(importOptions));
 
     const response = await fetch(apifoxApiUrl, {
         method: "POST",
@@ -101,14 +110,14 @@ export async function POST(request: NextRequest) {
             "X-Apifox-Api-Version": "2024-03-28",
             "Content-Type": "application/json"
         },
-        body: payloadStr,
+        body: JSON.stringify(payload),
     });
 
     const responseText = await response.text();
     let result: ApifoxImportResult;
     try {
         result = JSON.parse(responseText);
-    } catch (e) {
+    } catch {
         console.error(`[JenkinsWebhook] Failed to parse Apifox response as JSON. Status: ${response.status}. Body preview: ${responseText.substring(0, 200)}...`);
         
         // 即使解析失败，也发个异常通知
@@ -135,20 +144,22 @@ export async function POST(request: NextRequest) {
         // --- Success Notification ---
         if (DINGTALK_WEBHOOK) {
             try {
-                const counters = result?.data?.counters || {};
+                const counters = result?.data?.counters;
                 const errors = result?.data?.errors || [];
                 
-                let docUrl = targetUrl;
+                let docUrl = targetUrl || "";
                 try {
-                    const urlObj = new URL(targetUrl);
-                    docUrl = `${urlObj.origin}/api/doc.html`;
-                } catch (parseErr) {
-                    console.warn("[JenkinsWebhook] Failed to parse targetUrl for doc link:", parseErr);
+                    if (targetUrl) {
+                        const urlObj = new URL(targetUrl);
+                        docUrl = `${urlObj.origin}/api/doc.html`;
+                    }
+                } catch {
+                    // Ignore parse error
                 }
 
-                const statsText = [
-                    `**接口统计**: ✨新增 ${counters.newCount || 0} | 📝更新 ${counters.updatedCount || 0} | ⏩忽略 ${counters.ignoredCount || 0}`,
-                ].join("\n\n");
+                const statsText = counters
+                    ? `**接口统计**: ✨新增 ${counters.newCount || 0} | 📝更新 ${counters.updatedCount || 0} | ⏩忽略 ${counters.ignoredCount || 0}`
+                    : "";
 
                 let errorText = "";
                 if (errors.length > 0) {
