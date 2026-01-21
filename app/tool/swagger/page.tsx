@@ -60,7 +60,8 @@ export default function SwaggerToolPage() {
   const [appConfig, setAppConfig] = useState<{
     jenkinsSecret: string;
     publicUrl: string;
-  }>({ jenkinsSecret: "", publicUrl: "" });
+    internalWebhookUrl: string;
+  }>({ jenkinsSecret: "", publicUrl: "", internalWebhookUrl: "" });
 
   const INIT_VALUES = {
     timeout: 10000,
@@ -350,23 +351,37 @@ export default function SwaggerToolPage() {
       projectName,
     } = values;
 
-    const url = new URL(`${baseUrl}/api/webhook/jenkins`);
-    url.searchParams.set("projectId", projectId || "YOUR_PROJECT_ID");
+    // 1. URL for UI Testing (Clicking "模拟测试" in browser)
+    const testUrl = new URL(`${baseUrl}/api/webhook/jenkins`);
+    testUrl.searchParams.set("projectId", projectId || "YOUR_PROJECT_ID");
+    if (projectName) testUrl.searchParams.set("projectName", projectName);
+    if (webhookModuleId) testUrl.searchParams.set("moduleId", webhookModuleId);
+    if (webhookTargetUrl)
+      testUrl.searchParams.set("targetUrl", webhookTargetUrl);
+    if (webhookApiPrefix)
+      testUrl.searchParams.set("apiPrefix", webhookApiPrefix);
+    setWebhookUrl(testUrl.toString());
 
-    if (projectName) url.searchParams.set("projectName", projectName);
-    if (webhookModuleId) url.searchParams.set("moduleId", webhookModuleId);
-    if (webhookTargetUrl) url.searchParams.set("targetUrl", webhookTargetUrl);
-    if (webhookApiPrefix) url.searchParams.set("apiPrefix", webhookApiPrefix);
-
-    const fullUrl = url.toString();
-    setWebhookUrl(fullUrl);
+    // 2. URL for Scripts (For Jenkins to use)
+    // If internalWebhookUrl is configured, use it. Otherwise fallback to current origin.
+    const scriptBase = appConfig.internalWebhookUrl || baseUrl;
+    const scriptUrl = new URL(`${scriptBase}/api/webhook/jenkins`);
+    scriptUrl.searchParams.set("projectId", projectId || "YOUR_PROJECT_ID");
+    if (projectName) scriptUrl.searchParams.set("projectName", projectName);
+    if (webhookModuleId)
+      scriptUrl.searchParams.set("moduleId", webhookModuleId);
+    if (webhookTargetUrl)
+      scriptUrl.searchParams.set("targetUrl", webhookTargetUrl);
+    if (webhookApiPrefix)
+      scriptUrl.searchParams.set("apiPrefix", webhookApiPrefix);
+    const fullScriptUrl = scriptUrl.toString();
 
     // Scripts
     const secretValue =
       appConfig.jenkinsSecret || "YOUR_JENKINS_WEBHOOK_SECRET";
 
     const groovy = `httpRequest(
-    url: "${fullUrl}",
+    url: "${fullScriptUrl}",
     httpMode: 'POST',
     customHeaders: [[name: 'x-jenkins-token', value: '${secretValue}']],
     requestBody: '{"status": "SUCCESS"}',
@@ -374,7 +389,7 @@ export default function SwaggerToolPage() {
 )`;
     setJenkinsScript(groovy);
 
-    const curl = `curl -X POST "${fullUrl}" \\
+    const curl = `curl -X POST "${fullScriptUrl}" \\
   -H "Content-Type: application/json" \\
   -H "x-jenkins-token: ${secretValue}" \\
   -d '{"status": "SUCCESS"}'`;
@@ -411,9 +426,41 @@ export default function SwaggerToolPage() {
   };
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text).then(() => {
-      message.success("已复制到剪贴板");
-    });
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard
+        .writeText(text)
+        .then(() => {
+          message.success("已复制到剪贴板");
+        })
+        .catch(() => {
+          fallbackCopyTextToClipboard(text);
+        });
+    } else {
+      fallbackCopyTextToClipboard(text);
+    }
+  };
+
+  const fallbackCopyTextToClipboard = (text: string) => {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.opacity = "0";
+    textArea.style.left = "-999999px";
+    textArea.style.top = "-999999px";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      const successful = document.execCommand("copy");
+      if (successful) {
+        message.success("已复制到剪贴板");
+      } else {
+        message.error("复制失败，请手动选择");
+      }
+    } catch (err) {
+      message.error("浏览器不支持自动复制");
+    }
+    document.body.removeChild(textArea);
   };
 
   return (

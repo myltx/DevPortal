@@ -6,5 +6,6 @@ export async function GET() {
   return NextResponse.json({
     jenkinsSecret: process.env.JENKINS_WEBHOOK_SECRET || "",
     publicUrl: process.env.PUBLIC_URL || "",
+    internalWebhookUrl: process.env.INTERNAL_WEBHOOK_URL || "",
   });
 }
