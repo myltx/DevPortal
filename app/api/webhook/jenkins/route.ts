@@ -22,6 +22,11 @@ interface ApifoxImportResult {
             updatedCount: number;
             ignoredCount: number;
         };
+        modelCounters?: {
+            newCount: number;
+            updatedCount: number;
+            ignoredCount: number;
+        };
         errors?: Array<{ message: string }>;
     };
 }
@@ -148,6 +153,7 @@ export async function POST(request: NextRequest) {
         if (DINGTALK_WEBHOOK) {
             try {
                 const counters = result?.data?.counters;
+                const modelCounters = result?.data?.modelCounters;
                 const errors = result?.data?.errors || [];
                 
                 let docUrl = targetUrl || "";
@@ -160,8 +166,12 @@ export async function POST(request: NextRequest) {
                     // Ignore parse error
                 }
 
-                const statsText = counters
+                const endpointStats = counters
                     ? `**接口统计**: ✨新增 ${counters.newCount || 0} | 📝更新 ${counters.updatedCount || 0} | ⏩忽略 ${counters.ignoredCount || 0}`
+                    : "";
+                
+                const modelStats = modelCounters
+                    ? `**模型统计**: ✨新增 ${modelCounters.newCount || 0} | 📝更新 ${modelCounters.updatedCount || 0} | ⏩忽略 ${modelCounters.ignoredCount || 0}`
                     : "";
 
                 let errorText = "";
@@ -180,10 +190,10 @@ export async function POST(request: NextRequest) {
                             moduleId ? `**模块 ID**: ${moduleId}` : "",
                             `**接口文档**: [点击查看](${docUrl})`,
                             `---`,
-                            `> **提示**: 本次同步使用 URL 模式处理，已绕过体积限制。`,
-                            `---`,
-                            statsText,
+                            endpointStats,
+                            modelStats,
                             errorText,
+                            `> **提示**: 本次同步使用 URL 模式处理，已绕过体积限制。`,
                             `\n推送时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`
                         ].filter(Boolean).join("\n\n")
                     }
