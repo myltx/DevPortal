@@ -14,6 +14,7 @@ import {
   Tabs,
   Alert,
   Tooltip,
+  Select,
 } from "antd";
 import { useRouter } from "next/navigation";
 import {
@@ -23,8 +24,10 @@ import {
   ReloadOutlined,
   AppstoreOutlined,
 } from "@ant-design/icons";
+import * as API from "@/lib/api/project"; // Import API
 
 const { Title, Text, Paragraph } = Typography;
+const { Option } = Select;
 
 export default function SwaggerToolPage() {
   const router = useRouter(); // Initialize router
@@ -37,6 +40,10 @@ export default function SwaggerToolPage() {
   const [curlScript, setCurlScript] = useState("");
 
   const [baseUrl, setBaseUrl] = useState("");
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const [moduleOptions, setModuleOptions] = useState<any[]>([]); // simplified type for groups
+  const [moduleDataMap, setModuleDataMap] = useState<Record<number, any>>({}); // ID -> Module Detail map
+  const [loadingModules, setLoadingModules] = useState(false);
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const [testResult, setTestResult] = useState<{
@@ -45,64 +52,92 @@ export default function SwaggerToolPage() {
   } | null>(null);
   const [testLoading, setTestLoading] = useState(false);
 
+  const INIT_VALUES = {
+    timeout: 10000,
+    debugLimit: 0,
+    apiPrefix: "/api",
+  };
+
   useEffect(() => {
     // Client-side execution
     setBaseUrl(window.location.origin);
 
-    // Set defaults
-    form.setFieldsValue({
-      timeout: 10000,
-      debugLimit: 0,
-    });
+    // Fetch Modules
+    fetchModules();
 
     // Trigger initial generation
     setTimeout(handleGenerate, 100);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run once on mount
 
-  const handleGenerate = () => {
-    const values = form.getFieldsValue();
-    const { targetUrl, apiPrefix, timeout, debugLimit, moduleId } = values;
+  const fetchModules = async () => {
+    setLoadingModules(true);
+    try {
+      const res = await API.projectList({});
+      if (res.success && Array.isArray(res.data)) {
+        // Flatten first: extracting all modules from Areas
+        /* eslint-disable @typescript-eslint/no-explicit-any */
+        const allModules: any[] = [];
+        res.data.forEach((area: any) => {
+          if (area.list) {
+            allModules.push(...area.list);
+          }
+        });
 
-    if (!baseUrl) return;
+        // Filter: Only keep DOC/文档 area modules
+        const docModules = allModules.filter((m) => {
+          const area = (m.areaName || "").toUpperCase();
+          return area.includes("DOC") || area.includes("文档");
+        });
 
-    const url = new URL(`${baseUrl}/api/tool/swagger-merge`);
+        // Group by Project Name
+        const grouped: Record<string, any[]> = {};
+        const dataMap: Record<number, any> = {};
 
-    // Hybrid Logic: ModuleID or TargetURL
-    if (moduleId) url.searchParams.set("moduleId", moduleId);
-    if (targetUrl) url.searchParams.set("targetUrl", targetUrl);
+        docModules.forEach((m) => {
+          const pName = m.projectName || "未分类项目";
+          if (!grouped[pName]) {
+            grouped[pName] = [];
+          }
 
-    if (apiPrefix) url.searchParams.set("apiPrefix", apiPrefix);
-    if (timeout && timeout !== 10000) url.searchParams.set("timeout", timeout);
-    if (debugLimit && debugLimit !== 0)
-      url.searchParams.set("debugLimit", debugLimit);
+          // Populate Data Map
+          if (m.moduleId) {
+            dataMap[m.moduleId] = m;
+          }
 
-    setGeneratedLink(url.toString());
+          // Push to group
+          grouped[pName].push(m);
+        });
 
-    // Sync to Webhook form for convenience
-    const wValues = webhookForm.getFieldsValue();
-    if (!wValues.webhookTargetUrl && targetUrl)
-      webhookForm.setFieldsValue({ webhookTargetUrl: targetUrl });
-    if (!wValues.webhookApiPrefix && apiPrefix)
-      webhookForm.setFieldsValue({ webhookApiPrefix: apiPrefix });
+        setModuleDataMap(dataMap);
 
-    handleWebhookGenerate();
+        // Transform to Antd Options format
+        const options = Object.keys(grouped).map((pName) => ({
+          label: pName,
+          options: grouped[pName].map((m) => ({
+            label: m.moduleName,
+            value: m.moduleId,
+          })),
+        }));
+
+        setModuleOptions(options);
+
+        if (docModules.length === 0) {
+          // Optional: console log or silent
+          console.log("No DOC modules found.");
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch modules", e);
+    } finally {
+      setLoadingModules(false);
+    }
   };
 
-  const handleSmartPaste = (e: React.ClipboardEvent) => {
-    const text = e.clipboardData.getData("text");
-    if (!text || !text.startsWith("http")) return;
-
-    e.preventDefault();
+  const parseSwaggerUrl = (urlStr: string) => {
     try {
-      const u = new URL(text);
-
-      // 1. Domain (Origin) -> Target URL
-      const origin = u.origin;
-
-      // 2. Path Logic
+      const u = new URL(urlStr);
       let path = u.pathname;
-      // Remove common suffixes
       const suffixes = [
         "/doc.html",
         "/swagger-ui.html",
@@ -117,23 +152,75 @@ export default function SwaggerToolPage() {
       }
       path = path.replace(/\/$/, "");
 
-      // Strategy: If path depth > 0, it's likely a prefix
-      let prefix = "";
-      if (path && path !== "/") {
-        prefix = path;
-      }
+      return {
+        origin: u.origin,
+        prefix: path === "/" ? "" : path,
+      };
+    } catch {
+      return { origin: urlStr, prefix: "" };
+    }
+  };
 
+  const handleDocSelect = (moduleId: number) => {
+    const m = moduleDataMap[moduleId];
+    if (m && m.moduleUrl) {
+      const { origin, prefix } = parseSwaggerUrl(m.moduleUrl);
       form.setFieldsValue({
         targetUrl: origin,
         apiPrefix: prefix,
       });
+      message.success(`已快速回填 ${m.moduleName} 的配置`);
 
-      message.success("智能粘贴成功: 已自动拆分域名和前缀");
+      // Reset selector
+      form.setFieldValue("docModuleId", undefined);
       handleGenerate();
-    } catch (err) {
-      // Fallback
-      form.setFieldValue("targetUrl", text);
     }
+  };
+
+  const handleGenerate = () => {
+    const values = form.getFieldsValue();
+    const { targetUrl, apiPrefix, timeout, debugLimit } = values;
+
+    if (!baseUrl) return;
+
+    if (!targetUrl) {
+      setGeneratedLink("");
+      return;
+    }
+
+    const url = new URL(`${baseUrl}/api/tool/swagger-merge`);
+
+    // Only use TargetURL now (Simplified)
+    url.searchParams.set("targetUrl", targetUrl);
+
+    if (apiPrefix) url.searchParams.set("apiPrefix", apiPrefix);
+    if (timeout && timeout !== 10000) url.searchParams.set("timeout", timeout);
+    if (debugLimit && debugLimit !== 0)
+      url.searchParams.set("debugLimit", debugLimit);
+
+    setGeneratedLink(url.toString());
+
+    // Sync to Webhook form
+    if (targetUrl) webhookForm.setFieldsValue({ webhookTargetUrl: targetUrl });
+    if (apiPrefix) webhookForm.setFieldsValue({ webhookApiPrefix: apiPrefix });
+
+    handleWebhookGenerate();
+  };
+
+  const handleSmartPaste = (e: React.ClipboardEvent) => {
+    const text = e.clipboardData.getData("text");
+    if (!text || !text.startsWith("http")) return;
+
+    e.preventDefault();
+    const { origin, prefix } = parseSwaggerUrl(text);
+
+    form.setFieldsValue({
+      targetUrl: origin,
+      apiPrefix: prefix,
+    });
+
+    message.success("智能粘贴成功: 已自动拆分域名和前缀");
+    handleGenerate();
   };
 
   const handleTest = async () => {
@@ -271,7 +358,10 @@ export default function SwaggerToolPage() {
             <Button
               type="text"
               icon={<ReloadOutlined />}
-              onClick={() => form.resetFields()}>
+              onClick={() => {
+                form.resetFields();
+                handleGenerate();
+              }}>
               重置
             </Button>
           }>
@@ -292,7 +382,11 @@ export default function SwaggerToolPage() {
             style={{ marginBottom: 24 }}
           />
 
-          <Form form={form} layout="vertical" onValuesChange={handleGenerate}>
+          <Form
+            form={form}
+            layout="vertical"
+            initialValues={INIT_VALUES}
+            onValuesChange={handleGenerate}>
             <div
               style={{
                 display: "grid",
@@ -310,15 +404,23 @@ export default function SwaggerToolPage() {
                 />
               </Form.Item>
               <Form.Item
-                label="Module ID (托管模式)"
-                name="moduleId"
-                tooltip="DevPortal 数据库中的模块 ID，自动读取配置">
-                <InputNumber style={{ width: "100%" }} placeholder="例如: 12" />
+                label="Quick Select (DOC 模块助记)"
+                name="docModuleId"
+                tooltip="快速从 'DOC' 分区同步已有的 URL 配置">
+                <Select
+                  showSearch
+                  placeholder="选择 DOC 模块快速回填"
+                  optionFilterProp="label"
+                  loading={loadingModules}
+                  allowClear
+                  options={moduleOptions}
+                  onChange={handleDocSelect}
+                />
               </Form.Item>
             </div>
 
             <Form.Item label="API Prefix (可选)" name="apiPrefix">
-              <Input placeholder="自动提取或手动输入，例如 /order-service" />
+              <Input placeholder="自动提取或手动输入，例如 /api" />
             </Form.Item>
 
             <div
@@ -420,7 +522,19 @@ export default function SwaggerToolPage() {
                 gap: 16,
               }}>
               <Form.Item label="Module ID (覆盖)" name="webhookModuleId">
-                <InputNumber style={{ width: "100%" }} placeholder="ID" />
+                <Select
+                  showSearch
+                  placeholder="选择模块覆盖"
+                  optionFilterProp="children"
+                  loading={loadingModules}
+                  allowClear
+                  filterOption={(input, option) =>
+                    (option?.label ?? "")
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                  }
+                  options={moduleOptions}
+                />
               </Form.Item>
               <Form.Item label="Target URL (覆盖)" name="webhookTargetUrl">
                 <Input placeholder="URL" />
