@@ -10,6 +10,7 @@ import {
   RocketOutlined,
   ArrowRightOutlined,
   SearchOutlined,
+  DashboardOutlined,
 } from "@ant-design/icons";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -61,20 +62,20 @@ export default function MiddlePage() {
       primary: true,
     },
     {
-      title: "名词管理",
-      desc: "维护系统核心名词定义",
-      icon: <ProjectOutlined className="text-xl" />,
+      title: "Swagger 工具",
+      desc: "API 文档聚合与导入", // Shortened
+      icon: <ProjectOutlined className="text-xl" />, // Keeping ProjectOutlined or using FunctionOutlined
       color: "text-blue-500",
       bg: "bg-blue-500/10",
-      path: "/project",
+      path: "/tool/swagger",
     },
     {
-      title: "系统配置",
-      desc: "管理全局参数与设置",
-      icon: <RocketOutlined className="text-xl" />,
+      title: "系统后台",
+      desc: "系统管理与监控中心", // Shortened
+      icon: <DashboardOutlined className="text-xl" />,
       color: "text-amber-500",
       bg: "bg-amber-500/10",
-      path: "/sysConfig",
+      path: "/dashboard",
     },
     {
       title: "技术文档",
@@ -154,7 +155,7 @@ export default function MiddlePage() {
                     className={cn(
                       "w-14 h-14 rounded-xl flex items-center justify-center mb-5 transition-colors",
                       app.bg,
-                      app.color
+                      app.color,
                     )}>
                     {app.icon}
                   </div>
@@ -208,7 +209,7 @@ export default function MiddlePage() {
                     key={item.id}
                     onClick={() =>
                       router.push(
-                        `/projectSite?classId=${item.classId}&projectId=${item.id}`
+                        `/projectSite?classId=${item.classId}&projectId=${item.id}`,
                       )
                     }
                     className="group p-6 hover:bg-gray-50/80 transition-colors cursor-pointer flex items-center gap-5">
@@ -236,7 +237,7 @@ export default function MiddlePage() {
                         </p>
                         <span className="text-xs text-gray-300 font-mono whitespace-nowrap group-hover:text-gray-400 transition-colors">
                           {new Date(
-                            item.updateTime || item.createTime
+                            item.updateTime || item.createTime,
                           ).toLocaleDateString()}
                         </span>
                       </div>

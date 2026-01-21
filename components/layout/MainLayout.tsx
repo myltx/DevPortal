@@ -27,10 +27,10 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const menuItems = [
     {
-      key: "/middle",
+      key: "/dashboard",
       icon: <DashboardOutlined />,
-      label: "工作台", // More accurate than "Home" for this context
-      onClick: () => router.push("/middle"),
+      label: "系统监控", // New Homepage
+      onClick: () => router.push("/dashboard"),
     },
     {
       key: "/project",
@@ -56,12 +56,6 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       label: "系统配置",
       onClick: () => router.push("/sysConfig"),
     },
-    {
-      key: "/dashboard",
-      icon: <DashboardOutlined />,
-      label: "系统监控",
-      onClick: () => router.push("/dashboard"),
-    },
   ];
 
   return (
@@ -76,10 +70,20 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           style={{
             height: 32,
             margin: 16,
+            color: "white",
+            textAlign: "center",
+            marginBottom: 20,
+            display: collapsed ? "none" : "block",
+            fontSize: 16,
+            fontWeight: "bold",
             background: "rgba(255, 255, 255, 0.2)",
-          }}
-        />
-        <div
+            borderRadius: borderRadiusLG,
+            padding: "0 16px",
+            lineHeight: "32px",
+          }}>
+          云滃公共管理
+        </div>
+        {/* <div
           style={{
             color: "white",
             textAlign: "center",
@@ -87,7 +91,7 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             display: collapsed ? "none" : "block",
           }}>
           Admin System
-        </div>
+        </div> */}
         <Menu
           theme="dark"
           mode="inline"
