@@ -52,6 +52,12 @@ export default function SwaggerToolPage() {
   } | null>(null);
   const [testLoading, setTestLoading] = useState(false);
 
+  const [webhookTestLoading, setWebhookTestLoading] = useState(false);
+  const [webhookTestResult, setWebhookTestResult] = useState<{
+    success: boolean;
+    data: any;
+  } | null>(null);
+
   const INIT_VALUES = {
     timeout: 10000,
     debugLimit: 0,
@@ -69,6 +75,55 @@ export default function SwaggerToolPage() {
     setTimeout(handleGenerate, 100);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run once on mount
+
+  // Helper component for JSON display
+  const JsonDisplay = ({ data, success }: { data: any; success: boolean }) => (
+    <div
+      style={{
+        marginTop: 12,
+        borderRadius: 8,
+        overflow: "hidden",
+        border: `1px solid ${success ? "rgba(82, 196, 26, 0.2)" : "rgba(255, 77, 79, 0.2)"}`,
+      }}>
+      <div
+        style={{
+          background: success
+            ? "rgba(82, 196, 26, 0.05)"
+            : "rgba(255, 77, 79, 0.05)",
+          padding: "8px 12px",
+          borderBottom: `1px solid ${success ? "rgba(82, 196, 26, 0.1)" : "rgba(255, 77, 79, 0.1)"}`,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}>
+        <Text strong style={{ color: success ? "#52c41a" : "#ff4d4f" }}>
+          {success ? "Success" : "Error"} Response
+        </Text>
+        <Button
+          type="text"
+          size="small"
+          icon={<CopyOutlined />}
+          onClick={() => copyToClipboard(JSON.stringify(data, null, 2))}>
+          Copy JSON
+        </Button>
+      </div>
+      <pre
+        style={{
+          margin: 0,
+          padding: 12,
+          maxHeight: 300,
+          overflow: "auto",
+          fontSize: "13px",
+          lineHeight: "1.6",
+          background: "#fafafa",
+          color: "#4a4a4a",
+          fontFamily:
+            "'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace",
+        }}>
+        {JSON.stringify(data, null, 2)}
+      </pre>
+    </div>
+  );
 
   const fetchModules = async () => {
     setLoadingModules(true);
@@ -294,6 +349,35 @@ export default function SwaggerToolPage() {
     setCurlScript(curl);
   };
 
+  const handleTestWebhook = async () => {
+    if (!webhookUrl) return;
+    setWebhookTestLoading(true);
+    setWebhookTestResult(null);
+
+    try {
+      const res = await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-jenkins-token": "DEBUG_MODE_TOKEN", // Mock token for local debug
+        },
+        body: JSON.stringify({
+          status: "SUCCESS",
+          debug: true,
+        }),
+      });
+      const data = await res.json();
+      setWebhookTestResult({ success: res.ok, data });
+      if (res.ok) message.success("Webhook 测试发送成功");
+      else message.error("Webhook 测试反馈异常");
+    } catch (err: any) {
+      setWebhookTestResult({ success: false, data: { message: err.message } });
+      message.error("Webhook 发送请求失败");
+    } finally {
+      setWebhookTestLoading(false);
+    }
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).then(() => {
       message.success("已复制到剪贴板");
@@ -301,306 +385,332 @@ export default function SwaggerToolPage() {
   };
 
   return (
-    <div style={{ padding: 24, maxWidth: 1000, margin: "0 auto" }}>
+    <div style={{ padding: "40px 24px", maxWidth: 1000, margin: "0 auto" }}>
+      {/* Page Header */}
       <div
         style={{
           textAlign: "center",
-          marginBottom: 32,
+          marginBottom: 48,
           position: "relative",
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
         }}>
-        <Tooltip title="工作台">
-          <div
-            style={{
-              position: "absolute",
-              left: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 32,
-              height: 32,
-              cursor: "pointer",
-              borderRadius: 4,
-              transition: "background 0.2s",
-            }}
+        <Tooltip title="返回工作区">
+          <Button
+            type="text"
+            icon={<AppstoreOutlined style={{ fontSize: "20px" }} />}
+            style={{ position: "absolute", left: 0, height: 40, width: 40 }}
             onClick={() => router.push("/middle")}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.04)")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.backgroundColor = "transparent")
-            }>
-            <AppstoreOutlined style={{ fontSize: "18px" }} />
-          </div>
+          />
         </Tooltip>
         <div>
-          <Title level={2} style={{ marginBottom: 4 }}>
-            Swagger Merge Tool
+          <Title level={2} style={{ marginBottom: 8, fontWeight: 700 }}>
+            Swagger Efficiency Kit
           </Title>
-          <Text type="secondary">
-            多模块 Swagger 文档聚合 & Apifox 自动导入工具
+          <Text type="secondary" style={{ fontSize: 16 }}>
+            多模块聚合、URL 归一化与自动化导入流程
           </Text>
         </div>
       </div>
 
-      <Space direction="vertical" size="large" style={{ width: "100%" }}>
-        {/* Card 1: Link Generator */}
-        <Card
-          title={
-            <Space>
-              <LinkOutlined />
-              <span>导入链接生成器</span>
-            </Space>
-          }
-          extra={
-            <Button
-              type="text"
-              icon={<ReloadOutlined />}
-              onClick={() => {
-                form.resetFields();
-                handleGenerate();
-              }}>
-              重置
-            </Button>
-          }>
-          <Alert
-            message="使用说明"
-            description={
-              <ul>
-                <li>
-                  支持 <b>智能粘贴</b>: 直接粘贴完整 Swagger 地址 (如
-                  http://api.com/my-service/doc.html)，自动拆分 Target URL 和
-                  Prefix。
-                </li>
-                <li>生成的链接可直接用于 Apifox 的 'URL 导入' 功能。</li>
-              </ul>
-            }
-            type="info"
-            showIcon
-            style={{ marginBottom: 24 }}
-          />
-
-          <Form
-            form={form}
-            layout="vertical"
-            initialValues={INIT_VALUES}
-            onValuesChange={handleGenerate}>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 16,
-              }}>
-              <Form.Item
-                label="Target URL (通用模式)"
-                name="targetUrl"
-                tooltip="目标服务的根地址，例如 http://192.168.1.10:8080">
-                <Input
-                  placeholder="粘贴完整地址自动拆分..."
-                  onPaste={handleSmartPaste}
-                  allowClear
+      <Tabs
+        defaultActiveKey="generator"
+        size="large"
+        type="line"
+        items={[
+          {
+            key: "generator",
+            label: (
+              <Space>
+                <LinkOutlined />
+                导入链接生成器
+              </Space>
+            ),
+            children: (
+              <Card
+                bordered={false}
+                style={{
+                  borderRadius: 16,
+                  boxShadow: "0 4px 24px rgba(0,0,0,0.06)",
+                  background: "rgba(255,255,255,0.8)",
+                  backdropFilter: "blur(10px)",
+                }}
+                extra={
+                  <Button
+                    type="text"
+                    icon={<ReloadOutlined />}
+                    onClick={() => {
+                      form.resetFields();
+                      handleGenerate();
+                    }}>
+                    重置
+                  </Button>
+                }>
+                <Alert
+                  message="核心逻辑"
+                  description="支持智能粘贴与 DOC 模块快速解析。生成的链接可直接用于 Apifox 的 'URL 导入' 模式，自动识别并聚合各模块定义。"
+                  type="info"
+                  showIcon
+                  style={{ marginBottom: 32, borderRadius: 8 }}
                 />
-              </Form.Item>
-              <Form.Item
-                label="Quick Select (DOC 模块助记)"
-                name="docModuleId"
-                tooltip="快速从 'DOC' 分区同步已有的 URL 配置">
-                <Select
-                  showSearch
-                  placeholder="选择 DOC 模块快速回填"
-                  optionFilterProp="label"
-                  loading={loadingModules}
-                  allowClear
-                  options={moduleOptions}
-                  onChange={handleDocSelect}
-                />
-              </Form.Item>
-            </div>
 
-            <Form.Item label="API Prefix (可选)" name="apiPrefix">
-              <Input placeholder="自动提取或手动输入，例如 /api" />
-            </Form.Item>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 16,
-              }}>
-              <Form.Item label="超时时间 (ms)" name="timeout">
-                <InputNumber style={{ width: "100%" }} />
-              </Form.Item>
-              <Form.Item
-                label="调试限制 (Debug Limit)"
-                name="debugLimit"
-                tooltip="仅拉取前 N 个分组用于调试">
-                <InputNumber style={{ width: "100%" }} />
-              </Form.Item>
-            </div>
-
-            <Divider dashed />
-
-            <Paragraph strong>生成的导入链接</Paragraph>
-            <div
-              style={{
-                background: "#f5f5f5",
-                padding: 12,
-                borderRadius: 6,
-                marginBottom: 12,
-                wordBreak: "break-all",
-                fontFamily: "monospace",
-              }}>
-              {generatedLink || "等待输入..."}
-            </div>
-            <Space style={{ marginBottom: 16 }}>
-              <Button
-                type="primary"
-                icon={<CopyOutlined />}
-                onClick={() => copyToClipboard(generatedLink)}>
-                复制链接
-              </Button>
-              <Button
-                icon={<LinkOutlined />}
-                onClick={() => window.open(generatedLink, "_blank")}>
-                在浏览器打开
-              </Button>
-              <Button
-                icon={<RocketOutlined />}
-                onClick={handleTest}
-                loading={testLoading}>
-                测试连接 (预览)
-              </Button>
-            </Space>
-
-            {testResult && (
-              <Alert
-                message={testResult.success ? "连接成功" : "连接失败"}
-                type={testResult.success ? "success" : "error"}
-                showIcon
-                description={
+                <Form
+                  form={form}
+                  layout="vertical"
+                  initialValues={INIT_VALUES}
+                  onValuesChange={handleGenerate}>
                   <div
-                    style={{ maxHeight: 200, overflow: "auto", marginTop: 8 }}>
-                    <Typography.Text code>
-                      {JSON.stringify(testResult.data, null, 2)}
-                    </Typography.Text>
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 24,
+                    }}>
+                    <Form.Item
+                      label="Target URL (源域名)"
+                      name="targetUrl"
+                      tooltip="后端服务的 base path，支持智能解析">
+                      <Input
+                        size="large"
+                        placeholder="http://192.168.x.x:8080"
+                        onPaste={handleSmartPaste}
+                        allowClear
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      label="Quick Select (DOC 快捷填单)"
+                      name="docModuleId"
+                      tooltip="从 DOC 库中快速同步已有服务配置">
+                      <Select
+                        size="large"
+                        showSearch
+                        placeholder="搜索服务名快速回填"
+                        optionFilterProp="label"
+                        loading={loadingModules}
+                        allowClear
+                        options={moduleOptions}
+                        onChange={handleDocSelect}
+                      />
+                    </Form.Item>
                   </div>
-                }
-              />
-            )}
-          </Form>
-        </Card>
 
-        {/* Card 2: Webhook Generator */}
-        <Card
-          title={
-            <Space>
-              <RocketOutlined />
-              <span>Jenkins Webhook 生成器</span>
-            </Space>
-          }>
-          <Paragraph type="secondary">
-            生成 Jenkins Pipeline 脚本，构建成功后自动触发 Apifox 导入。
-          </Paragraph>
+                  <Form.Item label="API Prefix (前缀路径)" name="apiPrefix">
+                    <Input
+                      size="large"
+                      placeholder="自动提取或手动输入，例如 /api"
+                    />
+                  </Form.Item>
 
-          <Form
-            form={webhookForm}
-            layout="vertical"
-            onValuesChange={handleWebhookGenerate}>
-            <Form.Item
-              label="Apifox Project ID (必填)"
-              name="projectId"
-              required>
-              <Input placeholder="例如: 1234567" />
-            </Form.Item>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 24,
+                    }}>
+                    <Form.Item label="超时时间 (ms)" name="timeout">
+                      <InputNumber size="large" style={{ width: "100%" }} />
+                    </Form.Item>
+                    <Form.Item
+                      label="调试限制 (Debug Limit)"
+                      name="debugLimit"
+                      tooltip="设为 0 表示聚合全部分组">
+                      <InputNumber size="large" style={{ width: "100%" }} />
+                    </Form.Item>
+                  </div>
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr 1fr",
-                gap: 16,
-              }}>
-              <Form.Item label="Module ID (覆盖)" name="webhookModuleId">
-                <Select
-                  showSearch
-                  placeholder="选择模块覆盖"
-                  optionFilterProp="children"
-                  loading={loadingModules}
-                  allowClear
-                  filterOption={(input, option) =>
-                    (option?.label ?? "")
-                      .toLowerCase()
-                      .includes(input.toLowerCase())
-                  }
-                  options={moduleOptions}
-                />
-              </Form.Item>
-              <Form.Item label="Target URL (覆盖)" name="webhookTargetUrl">
-                <Input placeholder="URL" />
-              </Form.Item>
-              <Form.Item label="API Prefix (覆盖)" name="webhookApiPrefix">
-                <Input placeholder="/api" />
-              </Form.Item>
-            </div>
+                  <Divider dashed />
 
-            <Tabs
-              items={[
-                {
-                  key: "jenkins",
-                  label: "Jenkins Pipeline",
-                  children: (
-                    <>
-                      <Input.TextArea
-                        value={jenkinsScript}
-                        autoSize={{ minRows: 6, maxRows: 10 }}
-                        readOnly
-                        style={{
-                          fontFamily: "monospace",
-                          background: "#282c34",
-                          color: "#abb2bf",
-                        }}
-                      />
+                  <Paragraph strong style={{ fontSize: 16 }}>
+                    聚合导入链接 (Apifox 专用)
+                  </Paragraph>
+                  <div
+                    style={{
+                      background: "#f8f9fa",
+                      padding: "16px 20px",
+                      borderRadius: 12,
+                      marginBottom: 20,
+                      wordBreak: "break-all",
+                      fontFamily: "var(--font-mono)",
+                      border: "1px solid #eee",
+                      color: generatedLink ? "#1a1a1a" : "#999",
+                    }}>
+                    {generatedLink || "等待输入参数..."}
+                  </div>
+                  <Space size="middle">
+                    <Button
+                      type="primary"
+                      size="large"
+                      icon={<CopyOutlined />}
+                      disabled={!generatedLink}
+                      onClick={() => copyToClipboard(generatedLink)}>
+                      复制链接
+                    </Button>
+                    <Button
+                      size="large"
+                      icon={<LinkOutlined />}
+                      disabled={!generatedLink}
+                      onClick={() => window.open(generatedLink, "_blank")}>
+                      浏览器访问
+                    </Button>
+                    <Button
+                      size="large"
+                      icon={<RocketOutlined />}
+                      onClick={handleTest}
+                      loading={testLoading}
+                      disabled={!generatedLink}>
+                      测试连接
+                    </Button>
+                  </Space>
+
+                  {testResult && (
+                    <JsonDisplay
+                      data={testResult.data}
+                      success={testResult.success}
+                    />
+                  )}
+                </Form>
+              </Card>
+            ),
+          },
+          {
+            key: "webhook",
+            label: (
+              <Space>
+                <RocketOutlined />
+                CI/CD 自动化插件
+              </Space>
+            ),
+            children: (
+              <Card
+                bordered={false}
+                style={{
+                  borderRadius: 16,
+                  boxShadow: "0 4px 24px rgba(0,0,0,0.06)",
+                  background: "rgba(255,255,255,0.8)",
+                  backdropFilter: "blur(10px)",
+                }}>
+                <Paragraph style={{ fontSize: 15, marginBottom: 32 }}>
+                  在 Jenkins 构建流水线中加入以下脚本，当流水线
+                  <Text code>SUCCESS</Text> 后将自动更新 Apifox 文档。
+                </Paragraph>
+
+                <Form
+                  form={webhookForm}
+                  layout="vertical"
+                  onValuesChange={handleWebhookGenerate}>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 24,
+                      marginBottom: 12,
+                    }}>
+                    <Form.Item
+                      label="Apifox Project ID"
+                      name="projectId"
+                      required>
+                      <Input size="large" placeholder="例如: 1234567" />
+                    </Form.Item>
+                    <Form.Item label="Webhook 本地调试">
                       <Button
-                        type="primary"
-                        icon={<CopyOutlined />}
-                        style={{ marginTop: 12 }}
-                        onClick={() => copyToClipboard(jenkinsScript)}>
-                        复制脚本
+                        size="large"
+                        icon={<RocketOutlined />}
+                        block
+                        onClick={handleTestWebhook}
+                        loading={webhookTestLoading}>
+                        发送模拟 Webhook 测试
                       </Button>
-                    </>
-                  ),
-                },
-                {
-                  key: "shell",
-                  label: "Shell / Curl",
-                  children: (
-                    <>
-                      <Input.TextArea
-                        value={curlScript}
-                        autoSize={{ minRows: 4, maxRows: 8 }}
-                        readOnly
-                        style={{
-                          fontFamily: "monospace",
-                          background: "#282c34",
-                          color: "#abb2bf",
-                        }}
-                      />
-                      <Button
-                        type="primary"
-                        icon={<CopyOutlined />}
-                        style={{ marginTop: 12 }}
-                        onClick={() => copyToClipboard(curlScript)}>
-                        复制命令
-                      </Button>
-                    </>
-                  ),
-                },
-              ]}
-            />
-          </Form>
-        </Card>
-      </Space>
+                    </Form.Item>
+                  </div>
+
+                  {webhookTestResult && (
+                    <JsonDisplay
+                      data={webhookTestResult.data}
+                      success={webhookTestResult.success}
+                    />
+                  )}
+
+                  <Divider />
+
+                  <Tabs
+                    type="card"
+                    items={[
+                      {
+                        key: "jenkins",
+                        label: "Jenkins Pipeline",
+                        children: (
+                          <div style={{ position: "relative" }}>
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={<CopyOutlined />}
+                              style={{
+                                position: "absolute",
+                                right: 12,
+                                top: 12,
+                                color: "#888",
+                                zIndex: 10,
+                              }}
+                              onClick={() => copyToClipboard(jenkinsScript)}>
+                              Copy
+                            </Button>
+                            <Input.TextArea
+                              value={jenkinsScript}
+                              autoSize={{ minRows: 8, maxRows: 12 }}
+                              readOnly
+                              style={{
+                                fontFamily: "var(--font-mono)",
+                                background: "#2d2d2d",
+                                color: "#ccc",
+                                borderRadius: 12,
+                                padding: "20px",
+                              }}
+                            />
+                          </div>
+                        ),
+                      },
+                      {
+                        key: "shell",
+                        label: "Shell Console",
+                        children: (
+                          <div style={{ position: "relative" }}>
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={<CopyOutlined />}
+                              style={{
+                                position: "absolute",
+                                right: 12,
+                                top: 12,
+                                color: "#888",
+                                zIndex: 10,
+                              }}
+                              onClick={() => copyToClipboard(curlScript)}>
+                              Copy
+                            </Button>
+                            <Input.TextArea
+                              value={curlScript}
+                              autoSize={{ minRows: 6, maxRows: 10 }}
+                              readOnly
+                              style={{
+                                fontFamily: "var(--font-mono)",
+                                background: "#2d2d2d",
+                                color: "#ccc",
+                                borderRadius: 12,
+                                padding: "20px",
+                              }}
+                            />
+                          </div>
+                        ),
+                      },
+                    ]}
+                  />
+                </Form>
+              </Card>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }
