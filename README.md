@@ -27,19 +27,29 @@ npx prisma generate
 
 我们已将会员手册与技术细节拆分为以下专题，请点击查阅：
 
-### 🚀 [功能模块详解](./docs/features.md)
+### 🚀 [快速入门 (安装与部署)](./docs/deploy.md)
 
-了解项目、分类、名词定义及配套 Chrome 插件的核心能力。
+了解如何使用 Docker 容器化部署、数据库迁移以及生产环境上线流程。
 
-### 🔄 [Apifox & Swagger 自动同步指南](./docs/swagger-sync.md)
+### ⚙️ [环境配置指南](./docs/env-setup.md)
 
-针对超大型项目的自动同步策略、双层安全隔离及钉钉监控配置。
+详细的 `.env` 变量说明以及生产环境上线 CheckList (包含内网网关、Apifox 云端拉取等配置)。
+
+### 🔄 [Swagger 聚合与自动同步手册](./docs/swagger-sync-guide.md)
+
+针对微服务架构的自动同步策略、Jenkins 接入及钉钉监控配置。
+
+### 🧩 [功能模块详解](./docs/features.md)
+
+了解项目、分类、名词定义、团队导航的核心能力。
 
 ### ⌨️ [快捷键与命令面板](./docs/shortcuts.md)
 
-提升效率的高阶技巧：`Cmd + K` 命令面板及 Vim 风格快捷键说明。
+提升效率的高阶技巧：`Cmd + K` 命令面板说明。
 
-### 🧩 [Chrome 插件安装指南](./chrome-extension/README.md)
+---
+
+## 🧩 [Chrome 插件安装指南](./chrome-extension/README.md)
 
 配套浏览扩展，实现账号密码自动匹配。
 
