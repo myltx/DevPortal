@@ -238,7 +238,11 @@ export default function SwaggerToolPage() {
       const { origin, prefix } = parseSwaggerUrl(m.moduleUrl);
       form.setFieldsValue({
         targetUrl: origin,
-        apiPrefix: prefix || "/api", // Fallback to /api as requested
+        apiPrefix: prefix || "/api",
+      });
+      // 并同步更新 Webhook 表单中的名称
+      webhookForm.setFieldsValue({
+        projectName: m.projectName,
       });
       message.success(`已快速回填 ${m.moduleName} 的配置`);
 
@@ -338,12 +342,18 @@ export default function SwaggerToolPage() {
     if (!baseUrl) return;
 
     const values = webhookForm.getFieldsValue();
-    const { projectId, webhookTargetUrl, webhookApiPrefix, webhookModuleId } =
-      values;
+    const {
+      projectId,
+      webhookTargetUrl,
+      webhookApiPrefix,
+      webhookModuleId,
+      projectName,
+    } = values;
 
     const url = new URL(`${baseUrl}/api/webhook/jenkins`);
     url.searchParams.set("projectId", projectId || "YOUR_PROJECT_ID");
 
+    if (projectName) url.searchParams.set("projectName", projectName);
     if (webhookModuleId) url.searchParams.set("moduleId", webhookModuleId);
     if (webhookTargetUrl) url.searchParams.set("targetUrl", webhookTargetUrl);
     if (webhookApiPrefix) url.searchParams.set("apiPrefix", webhookApiPrefix);
@@ -558,31 +568,34 @@ export default function SwaggerToolPage() {
                     }}>
                     {generatedLink || "等待输入参数..."}
                   </div>
-                  <Space size="middle">
-                    <Button
-                      type="primary"
-                      size="large"
-                      icon={<CopyOutlined />}
-                      disabled={!generatedLink}
-                      onClick={() => copyToClipboard(generatedLink)}>
-                      复制链接
-                    </Button>
-                    <Button
-                      size="large"
-                      icon={<LinkOutlined />}
-                      disabled={!generatedLink}
-                      onClick={() => window.open(generatedLink, "_blank")}>
-                      浏览器访问
-                    </Button>
-                    <Button
-                      size="large"
-                      icon={<RocketOutlined />}
-                      onClick={handleTest}
-                      loading={testLoading}
-                      disabled={!generatedLink}>
-                      测试连接
-                    </Button>
-                  </Space>
+
+                  <div style={{ marginBottom: 24 }}>
+                    <Space size="middle">
+                      <Button
+                        type="primary"
+                        size="large"
+                        icon={<CopyOutlined />}
+                        disabled={!generatedLink}
+                        onClick={() => copyToClipboard(generatedLink)}>
+                        复制链接
+                      </Button>
+                      <Button
+                        size="large"
+                        icon={<LinkOutlined />}
+                        disabled={!generatedLink}
+                        onClick={() => window.open(generatedLink, "_blank")}>
+                        浏览器访问
+                      </Button>
+                      <Button
+                        size="large"
+                        icon={<RocketOutlined />}
+                        onClick={handleTest}
+                        loading={testLoading}
+                        disabled={!generatedLink}>
+                        测试连接
+                      </Button>
+                    </Space>
+                  </div>
 
                   {testResult && (
                     <JsonDisplay
@@ -632,20 +645,16 @@ export default function SwaggerToolPage() {
                       marginBottom: 12,
                     }}>
                     <Form.Item
+                      label="Project Name (项目中文名)"
+                      name="projectName"
+                      tooltip="填入后，钉钉通知将显示该项目名。支持中文。">
+                      <Input size="large" placeholder="例如: 智能政务系统" />
+                    </Form.Item>
+                    <Form.Item
                       label="Apifox Project ID"
                       name="projectId"
                       required>
                       <Input size="large" placeholder="例如: 1234567" />
-                    </Form.Item>
-                    <Form.Item label="Webhook 本地调试">
-                      <Button
-                        size="large"
-                        icon={<RocketOutlined />}
-                        block
-                        onClick={handleTestWebhook}
-                        loading={webhookTestLoading}>
-                        发送模拟 Webhook 测试
-                      </Button>
                     </Form.Item>
                   </div>
 
@@ -668,14 +677,36 @@ export default function SwaggerToolPage() {
                     </Form.Item>
                   </div>
 
-                  {webhookTestResult && (
-                    <JsonDisplay
-                      data={webhookTestResult.data}
-                      success={webhookTestResult.success}
-                    />
-                  )}
+                  <Divider dashed />
 
-                  <Divider />
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 16,
+                    }}>
+                    <Paragraph strong style={{ fontSize: 16, margin: 0 }}>
+                      自动化脚本 (Jenkins / cURL)
+                    </Paragraph>
+                    <Button
+                      type="default"
+                      icon={<RocketOutlined />}
+                      onClick={handleTestWebhook}
+                      loading={webhookTestLoading}
+                      disabled={!webhookUrl}>
+                      模拟发送测试
+                    </Button>
+                  </div>
+
+                  {webhookTestResult && (
+                    <div style={{ marginBottom: 20 }}>
+                      <JsonDisplay
+                        data={webhookTestResult.data}
+                        success={webhookTestResult.success}
+                      />
+                    </div>
+                  )}
 
                   <Tabs
                     type="card"

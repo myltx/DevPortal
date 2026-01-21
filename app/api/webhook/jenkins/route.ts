@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
     const apiPrefix = searchParams.get("apiPrefix");
     const debugLimit = searchParams.get("debugLimit");
     const timeout = searchParams.get("timeout");
+    const customProjectName = searchParams.get("projectName"); // 新增：项目中文名称
 
     if (!projectId) {
         return NextResponse.json({ error: "Missing required parameter: projectId" }, { status: 400 });
@@ -104,7 +105,7 @@ export async function POST(request: NextRequest) {
     });
 
     const responseText = await response.text();
-    let result: any;
+    let result: ApifoxImportResult;
     try {
         result = JSON.parse(responseText);
     } catch (e) {
@@ -146,8 +147,7 @@ export async function POST(request: NextRequest) {
                 }
 
                 const statsText = [
-                    `**接口统计**: ✨新增 ${counters.endpointCreated || 0} | 📝更新 ${counters.endpointUpdated || 0} | ❌失败 ${counters.endpointFailed || 0} | ⏩忽略 ${counters.endpointIgnored || 0}`,
-                    `**模型统计**: ✨新增 ${counters.schemaCreated || 0} | 📝更新 ${counters.schemaUpdated || 0} | ❌失败 ${counters.schemaFailed || 0} | ⏩忽略 ${counters.schemaIgnored || 0}`
+                    `**接口统计**: ✨新增 ${counters.newCount || 0} | 📝更新 ${counters.updatedCount || 0} | ⏩忽略 ${counters.ignoredCount || 0}`,
                 ].join("\n\n");
 
                 let errorText = "";
@@ -158,9 +158,9 @@ export async function POST(request: NextRequest) {
                 await sendDingTalkMessage(DINGTALK_WEBHOOK, DINGTALK_SECRET, {
                     msgtype: "markdown",
                     markdown: {
-                        title: `Apifox 同步成功`,
+                        title: `${customProjectName || "Apifox"} 同步成功`,
                         text: [
-                            `### ✅ Apifox 接口自动拉取同步成功`,
+                            `### ✅ ${customProjectName || "Apifox"} 接口同步成功`,
                             `---`,
                             `**项目 ID**: ${projectId}`,
                             moduleId ? `**模块 ID**: ${moduleId}` : "",
@@ -189,9 +189,9 @@ export async function POST(request: NextRequest) {
                 await sendDingTalkMessage(DINGTALK_WEBHOOK, DINGTALK_SECRET, {
                     msgtype: "markdown",
                     markdown: {
-                        title: `Apifox 同步失败`,
+                        title: `${customProjectName || "Apifox"} 同步失败`,
                         text: [
-                            `### ❌ Apifox 接口同步失败`,
+                            `### ❌ ${customProjectName || "Apifox"} 接口同步失败`,
                             `---`,
                             `**项目 ID**: ${projectId}`,
                             `**错误信息**: ${result?.errorMessage || result?.error?.message || "未知错误"}`,

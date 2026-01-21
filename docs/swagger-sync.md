@@ -18,6 +18,17 @@
 3. Apifox 收到通知后主动拉取数据。
    _注：这彻底解决了网关超时和 POST 负载过大的问题。_
 
+### 4. 接入配置步骤
+
+在 Jenkins 的 Webhook URL 中按以下格式设置：
+
+```bash
+http://[你的域名]/api/webhook/jenkins?projectId=[Apifox项目ID]&projectName=[项目中文名]
+```
+
+- **projectName (建议)**: 传入中文名后，钉钉通知将以此作为标题。如果不传，则默认显示 "Apifox"。
+- **projectId (必填)**: Apifox 项目的唯一标识。
+
 ## 3. 环境变量配置
 
 在 `.env` 中完成以下配置：
@@ -33,7 +44,7 @@ SWAGGER_EXPORT_SECRET=your_auth_token
 APIFOX_ACCESS_TOKEN=APS-xxxxxxxxxxxxxxxxx
 ```
 
-## 4. 钉钉监控
+## 5. 钉钉监控
 
 无论同步成功或失败，系统都会第一时间通过钉钉机器人通知：
 
