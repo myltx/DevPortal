@@ -6,22 +6,14 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    
     // 1. Extract Parameters
+    const searchParams = request.nextUrl.searchParams;
     const moduleIdStr = searchParams.get("moduleId");
     let targetUrl = searchParams.get("targetUrl");
     const apiPrefix = searchParams.get("apiPrefix") || undefined;
     const timeoutStr = searchParams.get("timeout");
     const debugLimitStr = searchParams.get("debugLimit");
-    const token = searchParams.get("token");
 
-    // 2. Auth Check (If secret is configured)
-    const exportSecret = process.env.SWAGGER_EXPORT_SECRET;
-    if (exportSecret && token !== exportSecret) {
-        return NextResponse.json({ error: "Unauthorized: Invalid or missing token" }, { status: 403 });
-    }
-    
     // 2. Resolve Module ID if present (Managed Mode)
     if (moduleIdStr) {
         const moduleId = parseInt(moduleIdStr, 10);

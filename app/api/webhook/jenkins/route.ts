@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
         console.warn("[JenkinsWebhook] PUBLIC_URL is not configured, falling back to local merge (risky for large data)");
     }
 
-    const exportUrl = new URL(`${PUBLIC_URL || ""}/api/tool/swagger-merge`);
+    const exportUrl = new URL(`${PUBLIC_URL || ""}/api/swagger/public-export`);
     exportUrl.searchParams.set("targetUrl", targetUrl);
     if (apiPrefix) exportUrl.searchParams.set("apiPrefix", apiPrefix);
     if (timeout) exportUrl.searchParams.set("timeout", timeout);
@@ -109,6 +109,18 @@ export async function POST(request: NextRequest) {
         result = JSON.parse(responseText);
     } catch (e) {
         console.error(`[JenkinsWebhook] Failed to parse Apifox response as JSON. Status: ${response.status}. Body preview: ${responseText.substring(0, 200)}...`);
+        
+        // 即使解析失败，也发个异常通知
+        if (DINGTALK_WEBHOOK) {
+            await sendDingTalkMessage(DINGTALK_WEBHOOK, DINGTALK_SECRET, {
+                msgtype: "markdown",
+                markdown: {
+                    title: `Apifox 同步异常`,
+                    text: `### ❌ Apifox 同步返回异常\n---\n**HTTP 状态码**: ${response.status}\n\n**响应预览**: ${responseText.substring(0, 200)}...`
+                }
+            });
+        }
+        
         return NextResponse.json({ 
             error: "Apifox returned non-JSON response", 
             status: response.status,
@@ -119,19 +131,18 @@ export async function POST(request: NextRequest) {
     if (response.ok) {
         console.log(`[JenkinsWebhook] Successfully updated Apifox project ${projectId}`);
         
-        // --- DingTalk Notification ---
+        // --- Success Notification ---
         if (DINGTALK_WEBHOOK) {
             try {
                 const counters = result?.data?.counters || {};
                 const errors = result?.data?.errors || [];
                 
-                // 构建文档链接: 域名 + /api/doc.html
                 let docUrl = targetUrl;
                 try {
                     const urlObj = new URL(targetUrl);
                     docUrl = `${urlObj.origin}/api/doc.html`;
-                } catch (e) {
-                    console.warn("[JenkinsWebhook] Failed to parse targetUrl for doc link:", e);
+                } catch (parseErr) {
+                    console.warn("[JenkinsWebhook] Failed to parse targetUrl for doc link:", parseErr);
                 }
 
                 const statsText = [
@@ -167,11 +178,35 @@ export async function POST(request: NextRequest) {
                 console.error("[JenkinsWebhook] DingTalk Notification failed:", notifyError.message);
             }
         }
-        // --- End DingTalk Notification ---
 
         return NextResponse.json({ success: true, apifoxResult: result });
     } else {
         console.error("[JenkinsWebhook] Apifox import failed:", result);
+        
+        // --- Failure Notification ---
+        if (DINGTALK_WEBHOOK) {
+            try {
+                await sendDingTalkMessage(DINGTALK_WEBHOOK, DINGTALK_SECRET, {
+                    msgtype: "markdown",
+                    markdown: {
+                        title: `Apifox 同步失败`,
+                        text: [
+                            `### ❌ Apifox 接口同步失败`,
+                            `---`,
+                            `**项目 ID**: ${projectId}`,
+                            `**错误信息**: ${result?.errorMessage || result?.error?.message || "未知错误"}`,
+                            `**错误代码**: ${result?.errorCode || "N/A"}`,
+                            `---`,
+                            `> **排查建议**: 请检查 PUBLIC_URL 是否连通，以及 SWAGGER_EXPORT_SECRET 是否匹配。`,
+                            `\n检测时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`
+                        ].join("\n\n")
+                    }
+                });
+            } catch (notifyError: any) {
+                console.error("[JenkinsWebhook] DingTalk Failure Notification failed:", notifyError.message);
+            }
+        }
+        
         return NextResponse.json({ error: "Apifox import failed", details: result }, { status: 502 });
     }
 
