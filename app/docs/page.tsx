@@ -12,11 +12,9 @@ import {
   Tooltip,
 } from "antd";
 import {
-  RocketOutlined,
   AppstoreOutlined,
   ChromeOutlined,
   ApiOutlined,
-  CheckCircleOutlined,
   CloudServerOutlined,
 } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
@@ -148,7 +146,7 @@ export default function DocsPage() {
               <Text strong>一键填充 (Auto-Fill)</Text>
               <br />
               <Text type="secondary" style={{ fontSize: 12 }}>
-                在 DevPortal 点击账号的 "填充"
+                在 DevPortal 点击账号的 &quot;填充&quot;
                 按钮，插件自动将账号密码填入当前的系统登录框。
               </Text>
             </Timeline.Item>
@@ -163,7 +161,7 @@ export default function DocsPage() {
           </Timeline>
         </Card>
 
-        {/* 4. Architecture */}
+        {/* Architecture */}
         <Card
           title={
             <Space>
@@ -181,6 +179,45 @@ export default function DocsPage() {
             <Tag color="#4285f4">Chrome Extension MV3</Tag>
           </Space>
         </Card>
+
+        <Divider orientation={"left" as "left" | "right" | "center"}>
+          📖 系统使用与维护手册
+        </Divider>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr 1fr",
+            gap: 16,
+          }}>
+          <Card
+            hoverable
+            size="small"
+            title="🚀 快速入门 (部署)"
+            onClick={() => router.push("/docs/preview?file=deploy.md")}>
+            <Text type="secondary">
+              了解 Docker 容器化部署及数据库初始化流程。
+            </Text>
+          </Card>
+          <Card
+            hoverable
+            size="small"
+            title="⚙️ 环境配置说明"
+            onClick={() => router.push("/docs/preview?file=env-setup.md")}>
+            <Text type="secondary">详尽的 .env 变量含义及上线 CheckList。</Text>
+          </Card>
+          <Card
+            hoverable
+            size="small"
+            title="🔄 Swagger 同步指南"
+            onClick={() =>
+              router.push("/docs/preview?file=swagger-sync-guide.md")
+            }>
+            <Text type="secondary">
+              针对微服务架构的自动同步策略与排错技巧。
+            </Text>
+          </Card>
+        </div>
       </Space>
 
       <Divider style={{ margin: "40px 0" }} />
