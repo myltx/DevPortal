@@ -58,6 +58,11 @@ export default function SwaggerToolPage() {
     data: any;
   } | null>(null);
 
+  const [appConfig, setAppConfig] = useState<{
+    jenkinsSecret: string;
+    publicUrl: string;
+  }>({ jenkinsSecret: "", publicUrl: "" });
+
   const INIT_VALUES = {
     timeout: 10000,
     debugLimit: 0,
@@ -67,6 +72,18 @@ export default function SwaggerToolPage() {
   useEffect(() => {
     // Client-side execution
     setBaseUrl(window.location.origin);
+
+    // Fetch Config
+    const fetchConfig = async () => {
+      try {
+        const res = await fetch("/api/tool/swagger/config");
+        const data = await res.json();
+        setAppConfig(data);
+      } catch (err) {
+        console.error("Failed to fetch app config", err);
+      }
+    };
+    fetchConfig();
 
     // Fetch Modules
     fetchModules();
@@ -331,12 +348,13 @@ export default function SwaggerToolPage() {
     setWebhookUrl(fullUrl);
 
     // Scripts
-    const secretPlaceHolder = "env.JENKINS_WEBHOOK_SECRET";
+    const secretValue =
+      appConfig.jenkinsSecret || "YOUR_JENKINS_WEBHOOK_SECRET";
 
     const groovy = `httpRequest(
     url: "${fullUrl}",
     httpMode: 'POST',
-    customHeaders: [[name: 'x-jenkins-token', value: ${secretPlaceHolder}]],
+    customHeaders: [[name: 'x-jenkins-token', value: '${secretValue}']],
     requestBody: '{"status": "SUCCESS"}',
     contentType: 'APPLICATION_JSON'
 )`;
@@ -344,7 +362,7 @@ export default function SwaggerToolPage() {
 
     const curl = `curl -X POST "${fullUrl}" \\
   -H "Content-Type: application/json" \\
-  -H "x-jenkins-token: YOUR_SECRET_TOKEN" \\
+  -H "x-jenkins-token: ${secretValue}" \\
   -d '{"status": "SUCCESS"}'`;
     setCurlScript(curl);
   };
@@ -359,7 +377,7 @@ export default function SwaggerToolPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-jenkins-token": "DEBUG_MODE_TOKEN", // Mock token for local debug
+          "x-jenkins-token": appConfig.jenkinsSecret, // Use the real token from config
         },
         body: JSON.stringify({
           status: "SUCCESS",
