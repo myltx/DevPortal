@@ -252,13 +252,6 @@ function mergeSwaggerDocs(docsList: { groupName: string; doc: SwaggerDoc }[]): S
                     }
                 });
                 
-                // Append remaining
-                Object.keys(operation.responses).forEach(k => {
-                     if (!targetKeys.includes(k)) {
-                         orderedResponses[k] = operation.responses![k];
-                     }
-                });
-                
                 operation.responses = orderedResponses;
             }
           }
