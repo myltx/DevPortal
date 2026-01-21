@@ -27,7 +27,6 @@ import {
 import * as API from "@/lib/api/project"; // Import API
 
 const { Title, Text, Paragraph } = Typography;
-const { Option } = Select;
 
 export default function SwaggerToolPage() {
   const router = useRouter(); // Initialize router
@@ -239,7 +238,7 @@ export default function SwaggerToolPage() {
       const { origin, prefix } = parseSwaggerUrl(m.moduleUrl);
       form.setFieldsValue({
         targetUrl: origin,
-        apiPrefix: prefix,
+        apiPrefix: prefix || "/api", // Fallback to /api as requested
       });
       message.success(`已快速回填 ${m.moduleName} 的配置`);
 
@@ -273,9 +272,14 @@ export default function SwaggerToolPage() {
     setGeneratedLink(url.toString());
 
     // Sync to Webhook form
-    if (targetUrl) webhookForm.setFieldsValue({ webhookTargetUrl: targetUrl });
-    if (apiPrefix) webhookForm.setFieldsValue({ webhookApiPrefix: apiPrefix });
+    if (targetUrl) {
+      webhookForm.setFieldsValue({ webhookTargetUrl: targetUrl });
+    }
+    if (apiPrefix) {
+      webhookForm.setFieldsValue({ webhookApiPrefix: apiPrefix });
+    }
 
+    // Force regeneration with the values we just set
     handleWebhookGenerate();
   };
 
@@ -288,7 +292,7 @@ export default function SwaggerToolPage() {
 
     form.setFieldsValue({
       targetUrl: origin,
-      apiPrefix: prefix,
+      apiPrefix: prefix || "/api",
     });
 
     message.success("智能粘贴成功: 已自动拆分域名和前缀");
@@ -615,6 +619,10 @@ export default function SwaggerToolPage() {
                 <Form
                   form={webhookForm}
                   layout="vertical"
+                  initialValues={{
+                    ...INIT_VALUES,
+                    webhookApiPrefix: "/api",
+                  }}
                   onValuesChange={handleWebhookGenerate}>
                   <div
                     style={{
@@ -638,6 +646,25 @@ export default function SwaggerToolPage() {
                         loading={webhookTestLoading}>
                         发送模拟 Webhook 测试
                       </Button>
+                    </Form.Item>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 24,
+                      marginBottom: 12,
+                    }}>
+                    <Form.Item
+                      label="Target URL (覆盖)"
+                      name="webhookTargetUrl">
+                      <Input size="large" placeholder="默认使用上方配置" />
+                    </Form.Item>
+                    <Form.Item
+                      label="API Prefix (覆盖)"
+                      name="webhookApiPrefix">
+                      <Input size="large" placeholder="默认使用上方配置" />
                     </Form.Item>
                   </div>
 

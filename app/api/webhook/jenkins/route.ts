@@ -9,13 +9,10 @@ const APIFOX_TOKEN = process.env.APIFOX_ACCESS_TOKEN;
 // Default Import Options (match original proxy)
 const DEFAULT_IMPORT_OPTIONS = {
   endpointOverwriteBehavior: "OVERWRITE_EXISTING",
-  updateEndpointFolder: true,
+  schemaOverwriteBehavior: "OVERWRITE_EXISTING",
+  updateFolderOfChangedEndpoint: true,
   prependBasePath: false,
-  deleteUnmatchedResources: true,
-  importSecurityScheme: true,
-  applyAuthToGlobalSecurity: true,
-  securityAssignmentMode: "ASSIGN_TO_COMPONENT",
-  defaultSecurityMode: "INHERIT_PARENT"
+  deleteUnmatchedResources: true
 };
 
 export async function POST(request: NextRequest) {
@@ -74,6 +71,11 @@ export async function POST(request: NextRequest) {
         }
     }
 
+    const payload = {
+      input: { url: importUrl },
+      options: importOptions,
+    };
+
     const response = await fetch(apifoxApiUrl, {
         method: "POST",
         headers: {
@@ -81,10 +83,7 @@ export async function POST(request: NextRequest) {
             "X-Apifox-Api-Version": "2024-03-28",
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-            input: { url: importUrl },
-            options: importOptions
-        })
+        body: JSON.stringify(payload),
     });
 
     const result = await response.json();
