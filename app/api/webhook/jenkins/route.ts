@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getMergedSwagger } from "@/lib/swagger-merge/fetcher";
 import { sendDingTalkMessage } from "@/lib/utils/dingtalk";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +8,8 @@ const JENKINS_SECRET = process.env.JENKINS_WEBHOOK_SECRET;
 const APIFOX_TOKEN = process.env.APIFOX_ACCESS_TOKEN;
 const DINGTALK_WEBHOOK = process.env.DINGTALK_WEBHOOK_URL;
 const DINGTALK_SECRET = process.env.DINGTALK_SECRET;
+const PUBLIC_URL = process.env.PUBLIC_URL; // 确保已配置公网域名
+const SWAGGER_EXPORT_SECRET = process.env.SWAGGER_EXPORT_SECRET; // 用于导出鉴权的密钥
 
 // Default Import Options (match original proxy)
 const DEFAULT_IMPORT_OPTIONS = {
@@ -54,22 +55,23 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Missing required parameter: targetUrl" }, { status: 400 });
     }
 
-    // 4. Fetch Swagger Locally (Support Local Debugging / Private Network)
-    // We fetch the merged swagger data on OUR server instead of letting Apifox cloud fetch it.
-    // This solves the 'Apifox Cloud cannot access Localhost' problem.
-    console.log(`[JenkinsWebhook] Merging swagger locally for target: ${targetUrl}`);
-    const mergedDocs = await getMergedSwagger({
-        targetUrl,
-        apiPrefix: apiPrefix || undefined,
-        timeout: timeout ? parseInt(timeout, 10) : undefined,
-        debugLimit: debugLimit ? parseInt(debugLimit, 10) : undefined
-    });
-
-    if (!mergedDocs) {
-        return NextResponse.json({ error: "Failed to fetch or merge swagger data locally" }, { status: 500 });
+    // 4. Construct Public Export URL
+    // 我们不再在本地进行合并和发送，而是生成一个公网可访问的 URL 让 Apifox 来拉取。
+    // 这解决了 4.7MB 超大负载导致的同步失败问题。
+    if (!PUBLIC_URL) {
+        console.warn("[JenkinsWebhook] PUBLIC_URL is not configured, falling back to local merge (risky for large data)");
     }
 
-    // 5. Call Apifox API (Push Mode)
+    const exportUrl = new URL(`${PUBLIC_URL || ""}/api/tool/swagger-merge`);
+    exportUrl.searchParams.set("targetUrl", targetUrl);
+    if (apiPrefix) exportUrl.searchParams.set("apiPrefix", apiPrefix);
+    if (timeout) exportUrl.searchParams.set("timeout", timeout);
+    if (debugLimit) exportUrl.searchParams.set("debugLimit", debugLimit);
+    if (SWAGGER_EXPORT_SECRET) exportUrl.searchParams.set("token", SWAGGER_EXPORT_SECRET);
+
+    console.log(`[JenkinsWebhook] Generated export URL for Apifox: ${exportUrl.toString()}`);
+
+    // 5. Call Apifox API (URL Mode)
     const apifoxApiUrl = `https://api.apifox.com/v1/projects/${projectId}/import-openapi`;
     
     // Construct Options
@@ -79,22 +81,17 @@ export async function POST(request: NextRequest) {
     if (moduleId) {
       importOptions.moduleId = parseInt(moduleId, 10);
     }
-    if (process.env.APIFOX_IMPORT_OPTIONS) {
-      try {
-        const envOptions = JSON.parse(process.env.APIFOX_IMPORT_OPTIONS);
-        Object.assign(importOptions, envOptions);
-      } catch (e) {
-        console.warn("Failed to parse APIFOX_IMPORT_OPTIONS", e);
-      }
-    }
-
-    // Payload uses 'String' mode for input
+    
+    // Payload uses 'URL' mode for input
     const payload = {
-      input: JSON.stringify(mergedDocs), // Send the content directly!
+      input: {
+        url: exportUrl.toString()
+      },
       options: importOptions,
     };
 
-    console.log(`[JenkinsWebhook] Pushing merged data to Apifox project ${projectId} (Push Mode)`);
+    const payloadStr = JSON.stringify(payload);
+    console.log(`[JenkinsWebhook] Requesting Apifox to pull from URL (Project: ${projectId})`);
 
     const response = await fetch(apifoxApiUrl, {
         method: "POST",
@@ -103,10 +100,21 @@ export async function POST(request: NextRequest) {
             "X-Apifox-Api-Version": "2024-03-28",
             "Content-Type": "application/json"
         },
-        body: JSON.stringify(payload),
+        body: payloadStr,
     });
 
-    const result = await response.json();
+    const responseText = await response.text();
+    let result: any;
+    try {
+        result = JSON.parse(responseText);
+    } catch (e) {
+        console.error(`[JenkinsWebhook] Failed to parse Apifox response as JSON. Status: ${response.status}. Body preview: ${responseText.substring(0, 200)}...`);
+        return NextResponse.json({ 
+            error: "Apifox returned non-JSON response", 
+            status: response.status,
+            bodyPreview: responseText.substring(0, 500) 
+        }, { status: 502 });
+    }
 
     if (response.ok) {
         console.log(`[JenkinsWebhook] Successfully updated Apifox project ${projectId}`);
@@ -117,6 +125,15 @@ export async function POST(request: NextRequest) {
                 const counters = result?.data?.counters || {};
                 const errors = result?.data?.errors || [];
                 
+                // 构建文档链接: 域名 + /api/doc.html
+                let docUrl = targetUrl;
+                try {
+                    const urlObj = new URL(targetUrl);
+                    docUrl = `${urlObj.origin}/api/doc.html`;
+                } catch (e) {
+                    console.warn("[JenkinsWebhook] Failed to parse targetUrl for doc link:", e);
+                }
+
                 const statsText = [
                     `**接口统计**: ✨新增 ${counters.endpointCreated || 0} | 📝更新 ${counters.endpointUpdated || 0} | ❌失败 ${counters.endpointFailed || 0} | ⏩忽略 ${counters.endpointIgnored || 0}`,
                     `**模型统计**: ✨新增 ${counters.schemaCreated || 0} | 📝更新 ${counters.schemaUpdated || 0} | ❌失败 ${counters.schemaFailed || 0} | ⏩忽略 ${counters.schemaIgnored || 0}`
@@ -130,13 +147,15 @@ export async function POST(request: NextRequest) {
                 await sendDingTalkMessage(DINGTALK_WEBHOOK, DINGTALK_SECRET, {
                     msgtype: "markdown",
                     markdown: {
-                        title: "Apifox 接口同步成功",
+                        title: `Apifox 同步成功`,
                         text: [
-                            `### ✅ Apifox 接口自动合并推送成功`,
+                            `### ✅ Apifox 接口自动拉取同步成功`,
                             `---`,
                             `**项目 ID**: ${projectId}`,
                             moduleId ? `**模块 ID**: ${moduleId}` : "",
-                            `**源地址**: [Swagger JSON](${targetUrl})`,
+                            `**接口文档**: [点击查看](${docUrl})`,
+                            `---`,
+                            `> **提示**: 本次同步使用 URL 模式处理，已绕过体积限制。`,
                             `---`,
                             statsText,
                             errorText,

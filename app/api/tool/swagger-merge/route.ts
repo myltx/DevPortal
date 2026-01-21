@@ -14,6 +14,13 @@ export async function GET(request: NextRequest) {
     const apiPrefix = searchParams.get("apiPrefix") || undefined;
     const timeoutStr = searchParams.get("timeout");
     const debugLimitStr = searchParams.get("debugLimit");
+    const token = searchParams.get("token");
+
+    // 2. Auth Check (If secret is configured)
+    const exportSecret = process.env.SWAGGER_EXPORT_SECRET;
+    if (exportSecret && token !== exportSecret) {
+        return NextResponse.json({ error: "Unauthorized: Invalid or missing token" }, { status: 403 });
+    }
     
     // 2. Resolve Module ID if present (Managed Mode)
     if (moduleIdStr) {

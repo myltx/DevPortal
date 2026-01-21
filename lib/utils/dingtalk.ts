@@ -56,7 +56,15 @@ export async function sendDingTalkMessage(
       body: JSON.stringify(message),
     });
 
-    const result = await response.json();
+    const responseText = await response.text();
+    let result: any;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error(`[DingTalk] Failed to parse response as JSON. Status: ${response.status}. Body: ${responseText}`);
+      throw new Error(`DingTalk returned non-JSON response: ${responseText.substring(0, 100)}`);
+    }
+
     if (result.errcode !== 0) {
       console.error("[DingTalk] Failed to send message:", result.errmsg);
     } else {
