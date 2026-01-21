@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMergedSwagger } from "@/lib/swagger-merge/fetcher";
+import { sendDingTalkMessage } from "@/lib/utils/dingtalk";
 
 export const dynamic = "force-dynamic";
 
 // Environment Variables (Configure these in .env)
 const JENKINS_SECRET = process.env.JENKINS_WEBHOOK_SECRET;
 const APIFOX_TOKEN = process.env.APIFOX_ACCESS_TOKEN;
+const DINGTALK_WEBHOOK = process.env.DINGTALK_WEBHOOK_URL;
+const DINGTALK_SECRET = process.env.DINGTALK_SECRET;
 
 // Default Import Options (match original proxy)
 const DEFAULT_IMPORT_OPTIONS = {
@@ -107,6 +110,46 @@ export async function POST(request: NextRequest) {
 
     if (response.ok) {
         console.log(`[JenkinsWebhook] Successfully updated Apifox project ${projectId}`);
+        
+        // --- DingTalk Notification ---
+        if (DINGTALK_WEBHOOK) {
+            try {
+                const counters = result?.data?.counters || {};
+                const errors = result?.data?.errors || [];
+                
+                const statsText = [
+                    `**接口统计**: ✨新增 ${counters.endpointCreated || 0} | 📝更新 ${counters.endpointUpdated || 0} | ❌失败 ${counters.endpointFailed || 0} | ⏩忽略 ${counters.endpointIgnored || 0}`,
+                    `**模型统计**: ✨新增 ${counters.schemaCreated || 0} | 📝更新 ${counters.schemaUpdated || 0} | ❌失败 ${counters.schemaFailed || 0} | ⏩忽略 ${counters.schemaIgnored || 0}`
+                ].join("\n\n");
+
+                let errorText = "";
+                if (errors.length > 0) {
+                    errorText = `\n\n> [!CAUTION]\n> **导入异常**: ${errors.map((e: any) => e.message).join("; ")}`;
+                }
+
+                await sendDingTalkMessage(DINGTALK_WEBHOOK, DINGTALK_SECRET, {
+                    msgtype: "markdown",
+                    markdown: {
+                        title: "Apifox 接口同步成功",
+                        text: [
+                            `### ✅ Apifox 接口自动合并推送成功`,
+                            `---`,
+                            `**项目 ID**: ${projectId}`,
+                            moduleId ? `**模块 ID**: ${moduleId}` : "",
+                            `**源地址**: [Swagger JSON](${targetUrl})`,
+                            `---`,
+                            statsText,
+                            errorText,
+                            `\n推送时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`
+                        ].filter(Boolean).join("\n\n")
+                    }
+                });
+            } catch (notifyError: any) {
+                console.error("[JenkinsWebhook] DingTalk Notification failed:", notifyError.message);
+            }
+        }
+        // --- End DingTalk Notification ---
+
         return NextResponse.json({ success: true, apifoxResult: result });
     } else {
         console.error("[JenkinsWebhook] Apifox import failed:", result);
