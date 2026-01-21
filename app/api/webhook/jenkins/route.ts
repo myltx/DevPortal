@@ -83,11 +83,14 @@ export async function POST(request: NextRequest) {
     // 5. Call Apifox API (URL Mode)
     const apifoxApiUrl = `https://api.apifox.com/v1/projects/${projectId}/import-openapi`;
     
-    // Construct Options (Minimal)
+    // Construct Options (Aligned with User Screenshot)
     const importOptions: any = {
-      endpointOverwriteBehavior: "OVERWRITE_EXISTING",
-      schemaOverwriteBehavior: "OVERWRITE_EXISTING",
-      updateFolderOfChangedEndpoint: true
+      endpointOverwriteBehavior: "AUTO_MERGE", // 匹配截图：智能合并
+      schemaOverwriteBehavior: "AUTO_MERGE",   // 匹配截图：智能合并
+      updateFolderOfChangedEndpoint: true,   // 匹配截图：更新接口所在目录
+      deleteUnmatchedResources: true,        // 匹配截图：删除不在数据源中的资源
+      prependBasePath: false,                // 匹配截图：接口路径加上 basePath (未开启)
+      importMode: "incrementalUpdate",       // 强制增量更新
     };
     if (moduleId) {
       importOptions.moduleId = parseInt(moduleId, 10);
