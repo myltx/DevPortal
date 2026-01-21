@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getMergedSwagger } from "@/lib/swagger-merge/fetcher";
 
 export const dynamic = "force-dynamic";
 
@@ -8,8 +9,8 @@ const APIFOX_TOKEN = process.env.APIFOX_ACCESS_TOKEN;
 
 // Default Import Options (match original proxy)
 const DEFAULT_IMPORT_OPTIONS = {
-  endpointOverwriteBehavior: "OVERWRITE_EXISTING",
-  schemaOverwriteBehavior: "OVERWRITE_EXISTING",
+  endpointOverwriteBehavior: "AUTO_MERGE",
+  schemaOverwriteBehavior: "AUTO_MERGE",
   updateFolderOfChangedEndpoint: true,
   prependBasePath: false,
   deleteUnmatchedResources: true
@@ -36,45 +37,61 @@ export async function POST(request: NextRequest) {
     const targetUrl = searchParams.get("targetUrl");
     const apiPrefix = searchParams.get("apiPrefix");
     const debugLimit = searchParams.get("debugLimit");
+    const timeout = searchParams.get("timeout");
 
     if (!projectId) {
-        return NextResponse.json({ error: "Missing required parameter: projectId (Apifox Project ID)" }, { status: 400 });
+        return NextResponse.json({ error: "Missing required parameter: projectId" }, { status: 400 });
     }
 
     if (!APIFOX_TOKEN) {
         return NextResponse.json({ error: "Server misconfiguration: APIFOX_ACCESS_TOKEN is missing" }, { status: 500 });
     }
 
-    // 4. Construct Callback URL (The URL Apifox will fetch from)
-    // We point back to OUR /api/tool/swagger-merge endpoint
-    const baseUrl = process.env.PUBLIC_URL || request.nextUrl.origin;
-    const callbackUrlOb = new URL(`${baseUrl}/api/tool/swagger-merge`);
-    
-    if (moduleId) callbackUrlOb.searchParams.set("moduleId", moduleId);
-    if (targetUrl) callbackUrlOb.searchParams.set("targetUrl", targetUrl);
-    if (apiPrefix) callbackUrlOb.searchParams.set("apiPrefix", apiPrefix);
-    if (debugLimit) callbackUrlOb.searchParams.set("debugLimit", debugLimit);
-
-    const importUrl = callbackUrlOb.toString();
-    console.log(`[JenkinsWebhook] Triggering Apifox import from: ${importUrl}`);
-
-    // 5. Call Apifox API
-    const apifoxApiUrl = `https://api.apifox.com/v1/projects/${projectId}/import-openapi`;
-    
-    // Allow overriding options via ENV
-    let importOptions = DEFAULT_IMPORT_OPTIONS;
-    if (process.env.APIFOX_IMPORT_OPTIONS) {
-        try {
-            importOptions = { ...DEFAULT_IMPORT_OPTIONS, ...JSON.parse(process.env.APIFOX_IMPORT_OPTIONS) };
-        } catch (e) {
-            console.warn("Failed to parse APIFOX_IMPORT_OPTIONS", e);
-        }
+    if (!targetUrl) {
+        return NextResponse.json({ error: "Missing required parameter: targetUrl" }, { status: 400 });
     }
 
+    // 4. Fetch Swagger Locally (Support Local Debugging / Private Network)
+    // We fetch the merged swagger data on OUR server instead of letting Apifox cloud fetch it.
+    // This solves the 'Apifox Cloud cannot access Localhost' problem.
+    console.log(`[JenkinsWebhook] Merging swagger locally for target: ${targetUrl}`);
+    const mergedDocs = await getMergedSwagger({
+        targetUrl,
+        apiPrefix: apiPrefix || undefined,
+        timeout: timeout ? parseInt(timeout, 10) : undefined,
+        debugLimit: debugLimit ? parseInt(debugLimit, 10) : undefined
+    });
+
+    if (!mergedDocs) {
+        return NextResponse.json({ error: "Failed to fetch or merge swagger data locally" }, { status: 500 });
+    }
+
+    // 5. Call Apifox API (Push Mode)
+    const apifoxApiUrl = `https://api.apifox.com/v1/projects/${projectId}/import-openapi`;
+    
+    // Construct Options
+    const importOptions: any = {
+      ...DEFAULT_IMPORT_OPTIONS,
+    };
+    if (moduleId) {
+      importOptions.moduleId = parseInt(moduleId, 10);
+    }
+    if (process.env.APIFOX_IMPORT_OPTIONS) {
+      try {
+        const envOptions = JSON.parse(process.env.APIFOX_IMPORT_OPTIONS);
+        Object.assign(importOptions, envOptions);
+      } catch (e) {
+        console.warn("Failed to parse APIFOX_IMPORT_OPTIONS", e);
+      }
+    }
+
+    // Payload uses 'String' mode for input
     const payload = {
-      input: { url: importUrl },
+      input: JSON.stringify(mergedDocs), // Send the content directly!
       options: importOptions,
     };
+
+    console.log(`[JenkinsWebhook] Pushing merged data to Apifox project ${projectId} (Push Mode)`);
 
     const response = await fetch(apifoxApiUrl, {
         method: "POST",
@@ -89,6 +106,7 @@ export async function POST(request: NextRequest) {
     const result = await response.json();
 
     if (response.ok) {
+        console.log(`[JenkinsWebhook] Successfully updated Apifox project ${projectId}`);
         return NextResponse.json({ success: true, apifoxResult: result });
     } else {
         console.error("[JenkinsWebhook] Apifox import failed:", result);
