@@ -15,7 +15,7 @@
     "docker:pack": "npm run docker:build:server && npm run docker:save",
     "docker:dev": "docker compose up -d --build",
     "docker:stop": "docker compose down",
-    "extension:pack": "node scripts/pack-extension.js"
+    "extension:pack": "node scripts/pack-extension.mjs"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",

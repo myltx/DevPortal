@@ -9,29 +9,33 @@ const { Title, Paragraph } = Typography;
 export default function SysConfigPage() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [version, setVersion] = useState("");
 
-  // Move fetchConfigs inside useEffect or use useCallback
+  // Load configs once on mount
   useEffect(() => {
     const fetchConfigs = async () => {
       try {
         const res = await fetch("/api/system-config");
         if (res.ok) {
           const data = await res.json();
-          // 如果数据库没有数据，默认显示 1.0
-          if (!data.extension_version) {
-            data.extension_version = "1.0";
-          }
-          form.setFieldsValue(data);
+          console.log("SysConfig Loaded:", data);
+
+          // Set version for display
+          setVersion(data.extension_version || "1.0");
+
+          // Set form values (only editable ones)
+          form.setFieldsValue({
+            extension_download_url: data.extension_download_url || "",
+          });
         }
       } catch (error) {
         console.error("Failed to load configs", error);
       }
     };
     fetchConfigs();
-  }, [form]);
+  }, []); // Empty dependency array -> Run once
 
   interface ConfigValues {
-    extension_version: string;
     extension_download_url?: string;
   }
 
@@ -70,21 +74,26 @@ export default function SysConfigPage() {
         管理全站通用的系统参数，更新后即时生效 (无需重启服务)。
       </Paragraph>
 
-      <Card title="Chrome 扩展配置" bordered={false} style={{ marginTop: 24 }}>
+      <Card
+        title="Chrome 扩展配置"
+        variant="borderless"
+        style={{ marginTop: 24 }}>
         <Form
           form={form}
           layout="vertical"
           onFinish={onFinish}
           initialValues={{
-            extension_version: "1.0",
             extension_download_url: "",
           }}>
           <Form.Item
-            name="extension_version"
             label="当前版本号 (Latest Version)"
-            extra="客户端会自动检测此版本号，若高于本地版本则提示更新。"
-            rules={[{ required: false }]}>
-            <Input placeholder="例如: 1.0" style={{ maxWidth: 300 }} disabled />
+            extra="客户端会自动检测此版本号，若高于本地版本则提示更新。">
+            <Input
+              value={version}
+              placeholder="正在获取版本..."
+              style={{ maxWidth: 300, background: "#f5f5f5", color: "#666" }}
+              readOnly
+            />
             <div style={{ marginTop: 4, color: "#faad14", fontSize: 12 }}>
               ℹ️ 版本号已由服务器 manifest.json 托管，无需手动配置。
             </div>

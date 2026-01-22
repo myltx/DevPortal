@@ -54,6 +54,8 @@ async function loadCredentials(tabId) {
 
     loadingEl.style.display = "none";
 
+    checkUpdate(); // Check for updates (Always check regardless of data)
+
     if (data.length === 0) {
       const emptyMsg = `<div style='text-align:center;color:#999;margin-top:20px;'>未找到匹配凭据：<br><b>${hostname}</b></div>`;
       listEl.innerHTML = emptyMsg;
@@ -68,8 +70,6 @@ async function loadCredentials(tabId) {
     } else {
       document.getElementById("header-title").textContent = "凭据列表";
     }
-
-    checkUpdate(); // Check for updates silently
 
     renderList(data);
     renderText(data);
@@ -91,18 +91,32 @@ async function checkUpdate() {
     const baseUrl = new URL(API_URL).origin;
     const versionApiUrl = `${baseUrl}/api/extension-version`;
 
+    console.log("Checking update...", { currentVersion, versionApiUrl });
+
     const res = await fetch(versionApiUrl);
-    if (!res.ok) return;
+    if (!res.ok) {
+      console.error("Update check failed: Server returned", res.status);
+      return;
+    }
 
     const remoteData = await res.json();
     const latestVersion = remoteData.version;
     const downloadUrl = remoteData.downloadUrl;
 
+    console.log("Version Info:", {
+      latestVersion,
+      currentVersion,
+      downloadUrl,
+    });
+
     if (compareVersions(latestVersion, currentVersion) > 0) {
+      console.log("Update available! Showing banner.");
       showUpdateBanner(latestVersion, downloadUrl);
+    } else {
+      console.log("No update needed.");
     }
   } catch (e) {
-    console.warn("Update check failed", e);
+    console.error("Update check exception:", e);
   }
 }
 
