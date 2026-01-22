@@ -4,17 +4,20 @@ import React, { useEffect, useState } from "react";
 import { Avatar, Empty } from "antd";
 import { useRouter } from "next/navigation";
 import {
-  ProjectOutlined,
-  AppstoreOutlined,
-  FileTextOutlined,
   RocketOutlined,
   ArrowRightOutlined,
   SearchOutlined,
-  DashboardOutlined,
+  AppstoreOutlined,
 } from "@ant-design/icons";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { useKBar } from "kbar";
+import {
+  APP_REGISTRY,
+  AppRegistryItem,
+  STORAGE_KEYS,
+  getDefaultAppKeys,
+} from "@/lib/config/app-registry";
 
 // --- Interfaces ---
 interface Project {
@@ -49,43 +52,30 @@ export default function MiddlePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [visibleApps, setVisibleApps] = useState<AppRegistryItem[]>([]);
 
-  // --- Apps Config ---
-  const apps = [
-    {
-      title: "项目空间",
-      desc: "浏览各行业项目详情",
-      icon: <AppstoreOutlined className="text-xl" />,
-      color: "text-emerald-500",
-      bg: "bg-emerald-500/10",
-      path: "/projectSite",
-      primary: true,
-    },
-    {
-      title: "Swagger 工具",
-      desc: "API 文档聚合与导入", // Shortened
-      icon: <ProjectOutlined className="text-xl" />, // Keeping ProjectOutlined or using FunctionOutlined
-      color: "text-blue-500",
-      bg: "bg-blue-500/10",
-      path: "/tool/swagger",
-    },
-    {
-      title: "系统后台",
-      desc: "系统管理与监控中心", // Shortened
-      icon: <DashboardOutlined className="text-xl" />,
-      color: "text-amber-500",
-      bg: "bg-amber-500/10",
-      path: "/dashboard",
-    },
-    {
-      title: "技术文档",
-      desc: "查阅系统开发与API文档",
-      icon: <FileTextOutlined className="text-xl" />,
-      color: "text-cyan-500",
-      bg: "bg-cyan-500/10",
-      path: "/docs",
-    },
-  ];
+  // --- Load Configs ---
+  useEffect(() => {
+    // 1. Get Keys (Local or Default)
+    let keys: string[] = getDefaultAppKeys();
+    if (typeof window !== "undefined") {
+      const local = localStorage.getItem(STORAGE_KEYS.DASHBOARD_APPS);
+      if (local) {
+        try {
+          keys = JSON.parse(local);
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+
+    // 2. Map Keys to Registry Items (Preserve Order)
+    const filteredApps = keys
+      .map((k) => APP_REGISTRY.find((item) => item.key === k))
+      .filter((item): item is AppRegistryItem => !!item);
+
+    setVisibleApps(filteredApps);
+  }, []);
 
   const fetchStats = async () => {
     setLoading(true);
@@ -136,9 +126,9 @@ export default function MiddlePage() {
         {/* 1. Applications Grid */}
         <section className="mb-16">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {apps.map((app) => (
+            {visibleApps.map((app) => (
               <div
-                key={app.title}
+                key={app.key}
                 onClick={() => router.push(app.path)}
                 className="group relative bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden">
                 {/* Decoration gradient for primary item */}

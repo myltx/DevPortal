@@ -20,7 +20,6 @@ import { useRouter } from "next/navigation";
 import { ThemeSwitch } from "@/components/theme/ThemeSwitch";
 import AreaManagerDrawer from "./AreaManagerDrawer";
 import ProjectManagerDrawer from "./ProjectManagerDrawer";
-import PreferenceModal from "./PreferenceModal";
 
 const { Option } = Select;
 
@@ -48,7 +47,6 @@ const ProjectSiteHeader: React.FC<ProjectSiteHeaderProps> = ({
   const router = useRouter();
   const [areaDrawerOpen, setAreaDrawerOpen] = useState(false);
   const [projectTabDrawerOpen, setProjectTabDrawerOpen] = useState(false);
-  const [preferenceModalOpen, setPreferenceModalOpen] = useState(false); // Added State
 
   return (
     <div
@@ -165,18 +163,8 @@ const ProjectSiteHeader: React.FC<ProjectSiteHeaderProps> = ({
                     onClick: () => setProjectTabDrawerOpen(true),
                   },
                   {
-                    key: "area",
                     label: "地区管理",
                     onClick: () => setAreaDrawerOpen(true),
-                  },
-                  {
-                    type: "divider",
-                  },
-                  {
-                    key: "preference",
-                    label: "个人偏好",
-                    icon: <SettingOutlined />, // Reusing icon or new one
-                    onClick: () => setPreferenceModalOpen(true),
                   },
                 ],
               }}>
@@ -217,10 +205,7 @@ const ProjectSiteHeader: React.FC<ProjectSiteHeaderProps> = ({
         activeClassId={activeClassId}
       />
 
-      <PreferenceModal // Added
-        open={preferenceModalOpen}
-        onClose={() => setPreferenceModalOpen(false)}
-      />
+
 
       <div style={{ flex: 1 }} />
 

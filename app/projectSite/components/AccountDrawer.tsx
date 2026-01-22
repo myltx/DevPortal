@@ -19,6 +19,7 @@ import {
 } from "antd";
 import { CopyOutlined } from "@ant-design/icons";
 import * as API from "@/lib/api/project";
+import { STORAGE_KEYS } from "@/lib/config/app-registry";
 import { Account, ProjectModule } from "@/lib/types";
 import { extractAccountsFromText } from "@/lib/moduleDescribeNormalizer";
 
@@ -83,7 +84,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
   }, []);
 
   // Preference Key (Matches PreferenceModal)
-  const STORAGE_KEY = "account_default_view_preference";
+  const STORAGE_KEY = STORAGE_KEYS.ACCOUNT_VIEW_PREF;
 
   const moduleId = (moduleData?.id || moduleData?.moduleId) as
     | number
@@ -265,7 +266,9 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
 
     const account = String(item.account || "").trim();
     const password = String(item.password || "").trim();
-    const accountInfo = item.accountInfo ? String(item.accountInfo).trim() : undefined;
+    const accountInfo = item.accountInfo
+      ? String(item.accountInfo).trim()
+      : undefined;
     const remark = (() => {
       const row = String(item.remark || "").trim();
       if (row) return row;
@@ -469,7 +472,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
               onChange={(e) => {
                 const newList = [...accountList];
                 const index = newList.findIndex(
-                  (item) => item.id === record.id
+                  (item) => item.id === record.id,
                 );
                 if (index > -1) {
                   newList[index] = {
@@ -497,7 +500,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
               onChange={(e) => {
                 const newList = [...accountList];
                 const index = newList.findIndex(
-                  (item) => item.id === record.id
+                  (item) => item.id === record.id,
                 );
                 if (index > -1) {
                   newList[index] = {
@@ -510,11 +513,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
             />
           );
         }
-        return (
-          <Space>
-            {renderCopyCell(text)}
-          </Space>
-        );
+        return <Space>{renderCopyCell(text)}</Space>;
       },
     },
     {
@@ -528,7 +527,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
               onChange={(e) => {
                 const newList = [...accountList];
                 const index = newList.findIndex(
-                  (item) => item.id === record.id
+                  (item) => item.id === record.id,
                 );
                 if (index > -1) {
                   newList[index] = {
@@ -541,11 +540,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
             />
           );
         }
-        return (
-          <Space>
-            {renderCopyCell(text)}
-          </Space>
-        );
+        return <Space>{renderCopyCell(text)}</Space>;
       },
     },
     {
@@ -561,7 +556,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
               onChange={(e) => {
                 const newList = [...accountList];
                 const index = newList.findIndex(
-                  (item) => item.id === record.id
+                  (item) => item.id === record.id,
                 );
                 if (index > -1) {
                   newList[index] = {
@@ -652,7 +647,8 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
     const p = String(item.password || "").trim();
     if (!a || !p) return { type: "invalid", label: "无效" };
     const key = `${a}\u0000${p}`;
-    if (allExistingKeySet.has(key)) return { type: "existing", label: "已存在" };
+    if (allExistingKeySet.has(key))
+      return { type: "existing", label: "已存在" };
     if ((importItemKeyCounts.get(key) || 0) > 1)
       return { type: "duplicate", label: "重复" };
     return { type: "new", label: "将导入" };
@@ -689,10 +685,12 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
     _idx: idx,
   }));
 
-  const importTableDataSource = importTableAllDataSource.filter((record: any) => {
-    if (importFilter === "all") return true;
-    return getImportItemStatus(record).type === importFilter;
-  });
+  const importTableDataSource = importTableAllDataSource.filter(
+    (record: any) => {
+      if (importFilter === "all") return true;
+      return getImportItemStatus(record).type === importFilter;
+    },
+  );
 
   const importVisibleCount = importTableDataSource.length;
 
@@ -732,7 +730,9 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
       render: (val: string, record: any) => (
         <Input
           value={val}
-          onChange={(e) => updateImportItem(record._idx, { account: e.target.value })}
+          onChange={(e) =>
+            updateImportItem(record._idx, { account: e.target.value })
+          }
         />
       ),
     },
@@ -742,7 +742,9 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
       render: (val: string, record: any) => (
         <Input
           value={val}
-          onChange={(e) => updateImportItem(record._idx, { password: e.target.value })}
+          onChange={(e) =>
+            updateImportItem(record._idx, { password: e.target.value })
+          }
         />
       ),
     },
@@ -752,7 +754,9 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
       render: (val: string, record: any) => (
         <Input
           value={val}
-          onChange={(e) => updateImportItem(record._idx, { remark: e.target.value })}
+          onChange={(e) =>
+            updateImportItem(record._idx, { remark: e.target.value })
+          }
           placeholder={importBatchRemark || "批次备注"}
         />
       ),
@@ -819,7 +823,9 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
                       message={`检测到文本中可识别 ${extractedFromCurrentText.length} 条账号（可导入 ${importableFromCurrentTextCount} 条）`}
                       action={
                         <Space>
-                          <Button size="small" onClick={() => openImportModal("paste")}>
+                          <Button
+                            size="small"
+                            onClick={() => openImportModal("paste")}>
                             粘贴覆盖
                           </Button>
                           <Button
@@ -877,9 +883,15 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
                           justifyContent: "space-between",
                         }}>
                         <Space wrap>
-                          <Tag color="blue">识别 {extractedFromCurrentText.length} 条</Tag>
-                          <Tag color="green">已存在 {existingFromCurrentTextCount} 条</Tag>
-                          <Tag color="orange">可导入 {importableFromCurrentTextCount} 条</Tag>
+                          <Tag color="blue">
+                            识别 {extractedFromCurrentText.length} 条
+                          </Tag>
+                          <Tag color="green">
+                            已存在 {existingFromCurrentTextCount} 条
+                          </Tag>
+                          <Tag color="orange">
+                            可导入 {importableFromCurrentTextCount} 条
+                          </Tag>
                           <span style={{ color: "#999" }}>
                             仅用于提示/导入，不会修改原文
                           </span>
@@ -903,7 +915,9 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
                             “从当前文本导入”，在导入弹窗中处理。
                           </>
                         ) : (
-                          <>未识别到可用的账号/密码结构（仍可保留原文手动维护账号列表）。</>
+                          <>
+                            未识别到可用的账号/密码结构（仍可保留原文手动维护账号列表）。
+                          </>
                         )}
                       </div>
                     </Card>
@@ -1022,11 +1036,13 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
               optionType="button"
               buttonStyle="solid"
             />
-              <Button
-                onClick={() => setImportItems(buildImportItemsFromText(moduleDescribeText))}
-                disabled={!moduleDescribeText}>
-                重新带入当前文本
-              </Button>
+            <Button
+              onClick={() =>
+                setImportItems(buildImportItemsFromText(moduleDescribeText))
+              }
+              disabled={!moduleDescribeText}>
+              重新带入当前文本
+            </Button>
           </Space>
 
           <Alert
@@ -1081,7 +1097,9 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
           ) : null}
 
           <Space wrap>
-            <span style={{ color: "#666" }}>批次备注（默认写入 remark，可逐行覆盖）：</span>
+            <span style={{ color: "#666" }}>
+              批次备注（默认写入 remark，可逐行覆盖）：
+            </span>
             <Input
               value={importBatchRemark}
               onChange={(e) => setImportBatchRemark(e.target.value)}
@@ -1143,23 +1161,27 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
                 <div style={{ wordBreak: "break-all" }}>
                   <div>
                     <span style={{ color: "#666" }}>账号描述：</span>
-                    {String(importItems[splitTargetIndex].accountInfo || "").trim() ||
-                      "-"}
+                    {String(
+                      importItems[splitTargetIndex].accountInfo || "",
+                    ).trim() || "-"}
                   </div>
                   <div>
                     <span style={{ color: "#666" }}>账号：</span>
-                    {String(importItems[splitTargetIndex].account || "").trim() ||
-                      "-"}
+                    {String(
+                      importItems[splitTargetIndex].account || "",
+                    ).trim() || "-"}
                   </div>
                   <div>
                     <span style={{ color: "#666" }}>密码：</span>
-                    {String(importItems[splitTargetIndex].password || "").trim() ||
-                      "-"}
+                    {String(
+                      importItems[splitTargetIndex].password || "",
+                    ).trim() || "-"}
                   </div>
                   <div>
                     <span style={{ color: "#666" }}>备注：</span>
-                    {String(importItems[splitTargetIndex].remark || "").trim() ||
-                      "-"}
+                    {String(
+                      importItems[splitTargetIndex].remark || "",
+                    ).trim() || "-"}
                   </div>
                   <div style={{ marginTop: 8, color: "#999" }}>
                     已自动把上面这条的完整内容带入到下方输入框，你可以直接在下方编辑并换行拆分。
@@ -1192,7 +1214,9 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
             description={
               <div>
                 <div style={{ marginBottom: 8, color: "#666" }}>
-                  建议使用 “账号描述: 账号-密码” 的方式（用冒号把描述与账号密码分隔开），账号描述建议按 “-” 分层，例如：
+                  建议使用 “账号描述: 账号-密码”
+                  的方式（用冒号把描述与账号密码分隔开），账号描述建议按 “-”
+                  分层，例如：
                 </div>
                 <pre
                   style={{
@@ -1204,7 +1228,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
                     whiteSpace: "pre-wrap",
                     wordBreak: "break-all",
                   }}>
-{`服务商-测试服务中心: 13391902603-Ecare@133919
+                  {`服务商-测试服务中心: 13391902603-Ecare@133919
 服务商-生产环境: 13391902608-&Flfit)2@ry1`}
                 </pre>
                 <div style={{ marginTop: 8 }}>
