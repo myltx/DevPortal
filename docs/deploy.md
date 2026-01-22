@@ -310,7 +310,7 @@ graph TD
     subgraph Local ["💻 本地环境 (Mac M-Chip)"]
         direction TB
         Code[Source Code] --> |1. npm run build:prod| NextDist[.next-prod 文件夹]:::artifact
-        NextDist --> |2. COPY| DockerBuild[Docker Build (x86)]
+        NextDist --> |2. COPY| DockerBuild["Docker Build (x86)"]
         Pkg[package.json] --> |3. npm ci --prod| DockerBuild
         DockerBuild --> |4. docker save| TarFile[dev-portal.tar]:::artifact
     end
