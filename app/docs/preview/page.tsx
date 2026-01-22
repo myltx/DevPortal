@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Typography, Card, Button, Spin, Empty, Breadcrumb, Space } from "antd";
 import { ArrowLeftOutlined, FileTextOutlined } from "@ant-design/icons";
 
 const { Title, Paragraph } = Typography;
 
-export default function DocPreviewPage() {
+function PreviewContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const fileName = searchParams.get("file");
@@ -116,5 +116,18 @@ export default function DocPreviewPage() {
         )}
       </Card>
     </div>
+  );
+}
+
+export default function DocPreviewPage() {
+  return (
+    <Suspense
+      fallback={
+        <div style={{ textAlign: "center", padding: "50px" }}>
+          <Spin size="large" tip="Loading..." />
+        </div>
+      }>
+      <PreviewContent />
+    </Suspense>
   );
 }
