@@ -218,9 +218,9 @@ export async function POST(request: NextRequest) {
                             `\n`,
                             tableStats,
                             errorText,
-                            `\n> **策略**: 智能合并 (Smart Merge)`,
-                            `> **说明**: 自动同步包含结构标准化 (如排序)，可能导致"修改"计数增加。`,
-                            `推送时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`
+                            `\n**策略**: 智能合并 (Smart Merge)`,
+                            `\n**说明**: 自动同步包含结构标准化 (如排序)，可能导致"修改"计数增加。`,
+                            `\n**推送时间**: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`
                         ].filter(Boolean).join("\n")
                     }
                 });
