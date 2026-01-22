@@ -189,7 +189,8 @@ export async function POST(request: NextRequest) {
                             `\n`,
                             tableStats,
                             errorText,
-                            `\n> **提示**: 自动同步会对文档结构进行标准化优化 (如排序)，因此"修改"数可能包含结构调整。`,
+                            `\n> **策略**: 智能合并 (Smart Merge)`,
+                            `> **说明**: 自动同步包含结构标准化 (如排序)，可能导致"修改"计数增加。`,
                             `推送时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`
                         ].filter(Boolean).join("\n")
                     }

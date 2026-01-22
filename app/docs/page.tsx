@@ -228,14 +228,49 @@ export default function DocsPage() {
               针对微服务架构的自动同步策略与排错技巧。
             </Text>
           </Card>
+          <Card
+            hoverable
+            size="small"
+            title="✨ 功能模块详解"
+            onClick={() => router.push("/docs/preview?file=features.md")}>
+            <Text type="secondary">
+              深入了解项目管理、对象定义及团队导航等核心能力。
+            </Text>
+          </Card>
+          <Card
+            hoverable
+            size="small"
+            title="🧩 插件安装手册"
+            onClick={() => router.push("/docs/preview?file=extension.md")}>
+            <Text type="secondary">
+              Chrome 扩展的详细安装步骤与 Zero-Config 更新机制说明。
+            </Text>
+          </Card>
+          <Card
+            hoverable
+            size="small"
+            title="⌨️ 快捷键说明"
+            onClick={() => router.push("/docs/preview?file=shortcuts.md")}>
+            <Text type="secondary">
+              掌握 Cmd+K 等全局快捷键，提升系统操作效率。
+            </Text>
+          </Card>
+          <Card
+            hoverable
+            size="small"
+            title="📅 版本迭代规划"
+            onClick={() => router.push("/docs/preview?file=roadmap.md")}>
+            <Text type="secondary">
+              查看 DevPortal 的未来功能路线图与开发计划。
+            </Text>
+          </Card>
         </div>
+        <Divider style={{ margin: "40px 0" }} />
+
+        <Paragraph style={{ textAlign: "center", color: "#999" }}>
+          © {new Date().getFullYear()} DevPortal Internal System
+        </Paragraph>
       </Space>
-
-      <Divider style={{ margin: "40px 0" }} />
-
-      <Paragraph style={{ textAlign: "center", color: "#999" }}>
-        © {new Date().getFullYear()} DevPortal Internal System
-      </Paragraph>
     </div>
   );
 }
