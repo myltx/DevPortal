@@ -8,15 +8,9 @@ import {
   Button,
   message,
   Typography,
-  Checkbox,
   Radio,
   Divider,
-  Row,
-  Col,
-  Select,
 } from "antd";
-
-const { Option } = Select;
 import { SaveOutlined } from "@ant-design/icons";
 import {
   APP_REGISTRY,
@@ -125,76 +119,163 @@ export default function SysConfigPage() {
         variant="borderless"
         style={{ marginTop: 24 }}>
         <Form layout="vertical">
-          <Form.Item label="首页仪表盘排版 (支持排序，最多 4 个)">
-            <div
-              style={{
-                background: "#fafafa",
-                padding: "16px",
-                borderRadius: "8px",
-                border: "1px solid #f0f0f0",
-              }}>
-              {[0, 1, 2, 3].map((index) => {
-                const currentValue = dashboardApps[index];
-                return (
+          <Form.Item label="首页仪表盘排版 (拖拽排序，最多 4 个)">
+            {/* 1. Selected List (Draggable) */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 12, color: "#999", marginBottom: 8 }}>
+                已选模块 ({dashboardApps.length}/4) - 按住拖拽可调整顺序
+              </div>
+
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                {dashboardApps.map((key, index) => {
+                  const app = APP_REGISTRY.find((a) => a.key === key);
+                  if (!app) return null;
+                  return (
+                    <div
+                      key={key}
+                      draggable
+                      onDragStart={(e) =>
+                        e.dataTransfer.setData("dragIndex", String(index))
+                      }
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const dragIndex = Number(
+                          e.dataTransfer.getData("dragIndex"),
+                        );
+                        if (dragIndex === index) return;
+                        const newApps = [...dashboardApps];
+                        const [moved] = newApps.splice(dragIndex, 1);
+                        newApps.splice(index, 0, moved);
+                        setDashboardApps(newApps);
+                      }}
+                      style={{
+                        width: 140,
+                        height: 90,
+                        border: "1px solid #d9d9d9",
+                        borderRadius: 8,
+                        background: "#fff",
+                        padding: 12,
+                        cursor: "move",
+                        position: "relative",
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        userSelect: "none",
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+                      }}>
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 4,
+                          right: 6,
+                          cursor: "pointer",
+                          color: "#ff4d4f",
+                          padding: 4,
+                        }}
+                        onClick={() => {
+                          setDashboardApps(
+                            dashboardApps.filter((k) => k !== key),
+                          );
+                        }}>
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="3">
+                          <path d="M18 6L6 18M6 6l12 12" />
+                        </svg>
+                      </div>
+                      <div style={{ fontSize: 24, marginBottom: 8 }}>
+                        {app.icon}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 500,
+                          textAlign: "center",
+                          lineHeight: 1.2,
+                        }}>
+                        {app.title}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {dashboardApps.length === 0 && (
                   <div
-                    key={index}
                     style={{
-                      marginBottom: 12,
+                      width: "100%",
+                      height: 80,
+                      border: "1px dashed #d9d9d9",
+                      borderRadius: 8,
                       display: "flex",
                       alignItems: "center",
+                      justifyContent: "center",
+                      color: "#ccc",
+                      background: "#fafafa",
                     }}>
-                    <span
-                      style={{
-                        width: 60,
-                        color: "#666",
-                        fontWeight: 500,
-                        marginRight: 8,
-                      }}>
-                      位置 {index + 1}
-                    </span>
-                    <Select
-                      style={{ flex: 1 }}
-                      placeholder="（空位）"
-                      allowClear
-                      value={currentValue}
-                      onChange={(val) => {
-                        const tempSlots = [...dashboardApps];
-                        // Pad with empty strings if needed to ensure index accessibility
-                        while (tempSlots.length <= index) tempSlots.push("");
-
-                        if (val) {
-                          tempSlots[index] = val;
-                          // Standardize: Filter out empty strings to keep list compact
-                          setDashboardApps(tempSlots.filter(Boolean));
-                        } else {
-                          // Remove item at index
-                          tempSlots.splice(index, 1);
-                          setDashboardApps(tempSlots.filter(Boolean));
-                        }
-                      }}>
-                      {APP_REGISTRY.map((app) => {
-                        const isSelectedElsewhere =
-                          dashboardApps.includes(app.key) &&
-                          app.key !== currentValue;
-                        return (
-                          <Option
-                            key={app.key}
-                            value={app.key}
-                            disabled={isSelectedElsewhere}>
-                            <span style={{ marginRight: 8 }}>{app.title}</span>
-                            <span style={{ color: "#999", fontSize: 12 }}>
-                              {app.desc}
-                            </span>
-                          </Option>
-                        );
-                      })}
-                    </Select>
+                    暂未选择任何模块（将使用默认配置）
                   </div>
-                );
-              })}
+                )}
+              </div>
             </div>
-            <div style={{ marginTop: 8, color: "#999", fontSize: 12 }}>
-              通过下拉框选择每个位置显示的内容。若要调整顺序，可直接修改对应位置的选项。
+
+            <Divider dashed style={{ margin: "16px 0" }} />
+
+            {/* 2. Available Pool */}
+            <div>
+              <div style={{ fontSize: 12, color: "#999", marginBottom: 8 }}>
+                全部可用模块 (点击添加)
+              </div>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {APP_REGISTRY.map((app) => {
+                  const isSelected = dashboardApps.includes(app.key);
+                  const isFull = dashboardApps.length >= 4;
+                  const disabled = !isSelected && isFull;
+
+                  return (
+                    <div
+                      key={app.key}
+                      onClick={() => {
+                        if (isSelected) return; // Already present
+                        if (isFull) {
+                          message.warning(
+                            "最多只能选择 4 个，请先移除已选模块",
+                          );
+                          return;
+                        }
+                        setDashboardApps([...dashboardApps, app.key]);
+                      }}
+                      style={{
+                        padding: "6px 16px",
+                        background: isSelected
+                          ? "#e6f7ff"
+                          : disabled
+                            ? "#f5f5f5"
+                            : "#fff",
+                        border: `1px solid ${
+                          isSelected ? "#1890ff" : "#d9d9d9"
+                        }`,
+                        borderRadius: 20,
+                        cursor:
+                          disabled || isSelected ? "not-allowed" : "pointer",
+                        opacity: disabled ? 0.5 : 1,
+                        color: isSelected ? "#1890ff" : "rgba(0,0,0,0.85)",
+                        fontSize: 13,
+                        transition: "all 0.2s",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}>
+                      {app.icon} {app.title} {isSelected && "✓"}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </Form.Item>
 

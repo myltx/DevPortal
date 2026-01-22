@@ -117,7 +117,12 @@ export const APP_REGISTRY: AppRegistryItem[] = [
 
 // --- Default Configuration ---
 
-export const DEFAULT_APP_KEYS = ["project", "swagger", "admin", "docs"];
+export const DEFAULT_APP_KEYS = [
+  "project",
+  "admin-object",
+  "admin-project",
+  "admin",
+];
 
 export const getDefaultAppKeys = (): string[] => {
   if (typeof window === "undefined") return DEFAULT_APP_KEYS;
