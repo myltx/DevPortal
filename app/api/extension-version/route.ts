@@ -44,8 +44,24 @@ export async function GET(request: Request) {
     });
     
     // 3. Construct default URL relative to current server
-    // request.url is the full API URL (e.g. http://localhost:3000/api/extension-version)
-    const serverOrigin = new URL(request.url).origin;
+    let serverOrigin = "";
+    
+    // Priority 1: Environment Variable (Best for behind Proxy/Docker)
+    if (process.env.PUBLIC_URL) {
+      serverOrigin = process.env.PUBLIC_URL;
+    } 
+    // Priority 2: Proxy Headers (Standard)
+    else {
+      const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+      const proto = request.headers.get("x-forwarded-proto") || "http";
+      if (host) {
+        serverOrigin = `${proto}://${host}`;
+      } else {
+        // Priority 3: Fallback to Request URL (Internal Network)
+        serverOrigin = new URL(request.url).origin;
+      }
+    }
+    
     const defaultDownloadUrl = `${serverOrigin}/extension/chrome-extension-latest.zip`;
 
     // 4. Fallback to DB version if FS failed (optional, for backward compatibility)
