@@ -21,6 +21,8 @@ README.md
 # Explicitly ensure cache is ignored (redundant but safe)
 .next/cache
 .next/dev
+.next-prod/cache
+.next-prod/dev
 
 
 .git
