@@ -28,40 +28,19 @@ export default function SysConfigPage() {
 
   // Personal Prefs State
   const [dashboardApps, setDashboardApps] = useState<string[]>([]);
-  const [accountView, setAccountView] = useState("text");
+  const [accountView, setAccountView] = useState("table");
 
   // Load configs once on mount
   useEffect(() => {
     const fetchConfigs = async () => {
-      // 1. Load Server Configs
-      try {
-        const res = await fetch("/api/system-config");
-        if (res.ok) {
-          const data = await res.json();
-          setVersion(data.extension_version || "1.0");
-          form.setFieldsValue({
-            extension_download_url: data.extension_download_url || "",
-          });
-        }
-      } catch (error) {
-        console.error("Failed to load server configs", error);
-      }
+      // ...
 
       // 2. Load Local Personal Prefs
       if (typeof window !== "undefined") {
-        const loadedApps = localStorage.getItem(STORAGE_KEYS.DASHBOARD_APPS);
-        if (loadedApps) {
-          try {
-            setDashboardApps(JSON.parse(loadedApps));
-          } catch (e) {
-            setDashboardApps(getDefaultAppKeys());
-          }
-        } else {
-          setDashboardApps(getDefaultAppKeys());
-        }
+        // ...
 
         const loadedView = localStorage.getItem(STORAGE_KEYS.ACCOUNT_VIEW_PREF);
-        setAccountView(loadedView || "text");
+        setAccountView(loadedView || "table");
       }
     };
     fetchConfigs();

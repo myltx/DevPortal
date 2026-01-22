@@ -122,7 +122,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
       // Default reset
       setEditingKey("");
 
-      // Load preference or default to "text"
+      // Load preference or default to "table"
       const savedTab = localStorage.getItem(STORAGE_KEY);
       setActiveTab(savedTab === "text" ? "text" : "table");
 
@@ -132,7 +132,9 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
 
   const handleTabChange = (key: string) => {
     setActiveTab(key);
-    localStorage.setItem(STORAGE_KEY, key);
+    // Note: Do NOT save to localStorage here.
+    // The preference should only be set globally in SysConfig.
+    // Switching tabs here is temporary for the current view session.
   };
 
   const openAddModal = () => {
