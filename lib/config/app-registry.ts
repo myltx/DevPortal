@@ -7,6 +7,7 @@ import {
   TagsOutlined,
   DatabaseOutlined,
   ApiOutlined,
+  HistoryOutlined,
 } from "@ant-design/icons";
 import React from "react";
 
@@ -103,6 +104,15 @@ export const APP_REGISTRY: AppRegistryItem[] = [
     color: "text-blue-600",
     bg: "bg-blue-600/10",
     path: "/doc",
+  },
+  {
+    key: "admin-apifox-logs",
+    title: "Apifox 同步日志",
+    desc: "追踪接口自动化同步历史与详情",
+    icon: React.createElement(HistoryOutlined, { className: "text-xl" }),
+    color: "text-rose-500",
+    bg: "bg-rose-500/10",
+    path: "/apifox-logs",
   },
   {
     key: "sys-config",

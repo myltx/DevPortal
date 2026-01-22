@@ -11,6 +11,7 @@ import {
   BookOutlined,
   FunctionOutlined,
   SettingOutlined,
+  HistoryOutlined,
 } from "@ant-design/icons";
 import { useRouter, usePathname } from "next/navigation";
 import { ThemeSwitch } from "@/components/theme/ThemeSwitch";
@@ -49,6 +50,12 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       icon: <BookOutlined />,
       label: "API 文档",
       onClick: () => router.push("/doc"),
+    },
+    {
+      key: "/apifox-logs",
+      icon: <HistoryOutlined />,
+      label: "同步日志",
+      onClick: () => router.push("/apifox-logs"),
     },
     {
       key: "/sysConfig",

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendDingTalkMessage } from "@/lib/utils/dingtalk";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -127,9 +128,20 @@ export async function POST(request: NextRequest) {
     try {
         result = JSON.parse(responseText);
     } catch {
-        // ... (Error handling omitted for brevity, keeping same logic) ...
-        console.error(`[JenkinsWebhook] Failed to parse Apifox response as JSON. Status: ${response.status}. Body preview: ${responseText.substring(0, 200)}...`);
+        const errorMsg = `Failed to parse Apifox response as JSON. Status: ${response.status}`;
+        console.error(`[JenkinsWebhook] ${errorMsg}. Body preview: ${responseText.substring(0, 200)}...`);
         
+        // Log to database even on parse error
+        await prisma.apifoxSyncLog.create({
+            data: {
+                projectId: projectId,
+                projectName: customProjectName,
+                status: "FAILURE",
+                errorMessage: errorMsg,
+                rawResponse: responseText
+            }
+        });
+
         if (DINGTALK_WEBHOOK) {
             await sendDingTalkMessage(DINGTALK_WEBHOOK, DINGTALK_SECRET, {
                 msgtype: "markdown",
@@ -149,6 +161,23 @@ export async function POST(request: NextRequest) {
     if (response.ok) {
         console.log(`[JenkinsWebhook] Successfully updated Apifox project ${projectId}`);
         
+        const stats = result?.data?.counters || {};
+        
+        // Log success to database
+        await prisma.apifoxSyncLog.create({
+            data: {
+                projectId: projectId,
+                projectName: customProjectName,
+                status: "SUCCESS",
+                endpointCreated: stats.endpointCreated || 0,
+                endpointUpdated: stats.endpointUpdated || 0,
+                endpointIgnored: stats.endpointIgnored || 0,
+                schemaCreated: stats.schemaCreated || 0,
+                schemaUpdated: stats.schemaUpdated || 0,
+                rawResponse: JSON.stringify(result)
+            }
+        });
+
         // --- Success Notification ---
         if (DINGTALK_WEBHOOK) {
             try {
@@ -205,6 +234,17 @@ export async function POST(request: NextRequest) {
 
         console.error("[JenkinsWebhook] Apifox import failed:", result);
         
+        // Log failure to database
+        await prisma.apifoxSyncLog.create({
+            data: {
+                projectId: projectId,
+                projectName: customProjectName,
+                status: "FAILURE",
+                errorMessage: result?.errorMessage || result?.error?.message || "未知错误",
+                rawResponse: JSON.stringify(result)
+            }
+        });
+
         // --- Failure Notification ---
         if (DINGTALK_WEBHOOK) {
             try {
@@ -234,6 +274,20 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error("[JenkinsWebhook] Error:", error.message);
+    // Attempt local error logging if possible
+    try {
+        // We might not have projectId here if error happened early
+        if (request.nextUrl.searchParams.get("projectId")) {
+             await prisma.apifoxSyncLog.create({
+                data: {
+                    projectId: request.nextUrl.searchParams.get("projectId") || "unknown",
+                    projectName: request.nextUrl.searchParams.get("projectName") || "unknown",
+                    status: "FAILURE",
+                    errorMessage: error.message
+                }
+            });
+        }
+    } catch {}
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

@@ -45,16 +45,16 @@ model Project {
 }
 
 model Module {
-  id                Int       @id @default(autoincrement())
-  moduleName        String?   @map("module_name")
-  moduleUrl         String?   @map("module_url")
-  typeName          String?   @map("type_name")
-  projectId         Int?      @map("project_id")
-  createTime        DateTime? @map("create_time")
-  updateTime        DateTime? @map("update_time")
-  moduleDescribe    String?   @map("module_describe") @db.Text
-  remark            String?   @db.Text
-  areaName          String?   @map("area_name") // Kept for legacy compatibility (Dual Write)
+  id             Int       @id @default(autoincrement())
+  moduleName     String?   @map("module_name")
+  moduleUrl      String?   @map("module_url")
+  typeName       String?   @map("type_name")
+  projectId      Int?      @map("project_id")
+  createTime     DateTime? @map("create_time")
+  updateTime     DateTime? @map("update_time")
+  moduleDescribe String?   @map("module_describe") @db.Text
+  remark         String?   @db.Text
+  areaName       String?   @map("area_name") // Kept for legacy compatibility (Dual Write)
 
   // New Relation
   areaId Int?  @map("area_id")
@@ -64,13 +64,13 @@ model Module {
 }
 
 model Account {
-  id       Int     @id @default(autoincrement())
-  account  String?
-  password String?
+  id          Int     @id @default(autoincrement())
+  account     String?
+  password    String?
   // 账号描述：用于保存“角色/归属/用途”等业务信息（例如：乡镇民政-马桥街道）
   accountInfo String? @map("account_info") @db.Text
-  remark   String?
-  moduleId Int?    @map("module_id")
+  remark      String?
+  moduleId    Int?    @map("module_id")
 
   @@map("account")
 }
@@ -142,4 +142,27 @@ model AuditLog {
   createdAt   DateTime @default(now()) @map("created_at")
 
   @@map("audit_log")
+}
+
+model ApifoxSyncLog {
+  id          Int     @id @default(autoincrement())
+  projectId   String  @map("project_id")
+  projectName String? @map("project_name")
+  status      String // "SUCCESS" | "FAILURE"
+
+  // 接口统计
+  endpointCreated Int @default(0) @map("endpoint_created")
+  endpointUpdated Int @default(0) @map("endpoint_updated")
+  endpointIgnored Int @default(0) @map("endpoint_ignored")
+
+  // 数据模型统计
+  schemaCreated Int @default(0) @map("schema_created")
+  schemaUpdated Int @default(0) @map("schema_updated")
+
+  errorMessage String? @map("error_message") @db.Text
+  rawResponse  String? @map("raw_response") @db.LongText // 存储完整 JSON
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("apifox_sync_log")
 }
