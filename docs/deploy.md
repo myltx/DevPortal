@@ -5,8 +5,17 @@
 > **我们已切换为 Docker 容器化部署方案**。这可以完美避开系统环境不兼容的问题。
 
 > [!NOTE]
-> 当前 `web/Dockerfile` **不会在容器里执行 `next build`**，而是直接复制已生成的 `.next` 构建产物。
-> 因此若选择“上传代码到服务器再 `docker compose up --build`”，请确保上传内容里包含已构建好的 `.next`（建议在本地先 `npm run build`）。
+> 当前 `Dockerfile` **不会在容器里执行 `next build`**，而是直接复制已生成的 `.next-prod` 构建产物到容器内的 `.next`。
+> 因此无论你选择“离线镜像包部署”还是“服务器端 docker build”，都必须先在本地完成 `npm run build:prod`（或直接运行 `npm run docker:pack`）。
+
+## 0. 文件说明（建议必读）
+
+- `docker-compose.yml`：偏开发/本机使用（可能包含 `build:`）。
+- `docker-compose.prod.yml`：偏服务器使用（应为 `image: dev-portal:latest`，配合 `dev-portal.tar` 离线部署）。
+- 在服务器上你可以：
+  - **方案 A（推荐）**：把 `docker-compose.prod.yml` 改名为 `docker-compose.yml`，之后直接 `docker compose up -d ...`。
+  - **方案 B**：保留 `docker-compose.prod.yml`，每次都用 `-f docker-compose.prod.yml` 指定。
+- `server-deploy.sh`：部署辅助脚本（会在当前目录查找 `dev-portal.tar`、compose、`.env` 并执行更新/重建）。
 
 ## 1. 前置要求
 
@@ -22,16 +31,30 @@ docker compose version
 
 ## 2. 部署步骤
 
-1.  **准备构建产物并上传**:
-    - 推荐：在本地执行 `npm run build:prod` 后，将生成的 `.next-prod` 目录重命名为 `.next` 并上传（或者直接使用生成的 `dev-portal.tar`，见下文）。
-    - 理由：`build:prod` 专为生产环境构建，且不会覆盖您本地开发用的 `.next` 目录。
-    - 或者：使用下方第 6 节“本地构建并上传 (离线部署)”直接上传镜像包（更稳定，最推荐）。
+1.  **推荐方式：离线镜像包部署（最稳定）**:
+    - 在本地执行 `npm run docker:pack` 生成 `dev-portal.tar`（不会影响本地开发用的 `.next`）。
+    - 上传到服务器（放到同一个目录）：`dev-portal.tar` + `docker-compose.prod.yml`（可改名为 `docker-compose.yml`）+ `.env` + 可选 `server-deploy.sh`。
+    - 服务器侧（不使用脚本时）执行：
+      ```bash
+      docker load -i dev-portal.tar
+      docker compose -f docker-compose.yml up -d --force-recreate
+      ```
+    - 服务器侧（使用脚本时）执行：
+      ```bash
+      chmod +x server-deploy.sh
+      ./server-deploy.sh
+      # 选择「2. 更新应用（加载 tar 并重建）」
+      ```
 
-2.  **构建并启动**:
-    进入目录并运行：
+2.  **备选方式：服务器端 docker build（不推荐）**:
+    - 你仍然需要先在本地执行 `npm run build:prod`，并将生成的目录 **保持为 `.next-prod`（不要改名）** 一起上传到服务器。
+    - 然后在服务器目录中运行 `docker compose up -d --build`。
+    - 注意：如果你修改的是 `NEXT_PUBLIC_*`（例如 `NEXT_PUBLIC_DEFAULT_APPS`），它属于“构建时注入”，仅改服务器 `.env` 不会让前端生效，必须重新打包镜像。
+
+3.  **构建并启动（仅当你不使用 server-deploy.sh 时）**:
+    进入包含 `docker-compose.yml` 的目录并运行：
 
     ```bash
-    cd web
     # 方式 1: 如果文件名是 docker-compose.yml (标准)
     docker compose up -d
 
@@ -41,11 +64,57 @@ docker compose version
 
     _(如果是第一次运行，构建过程可能需要几分钟)_
 
-3.  **验证**:
+4.  **验证**:
     ```bash
     docker compose ps
     ```
     状态应为 `Up`。访问 `http://服务器IP:3001` 即可。
+
+## 2.1 验证与排障（强烈建议）
+
+### 2.1.1 验证“是否真的更新成功”
+
+离线部署时，务必确认 **新 tar 已成功 load**、且 **容器已使用新镜像重建**：
+
+```bash
+# 1) 上传文件是否完整（大小/时间是否符合预期）
+ls -lh dev-portal.tar
+
+# 2) load 成功标志：输出应包含 "Loaded image: dev-portal:latest"
+docker load -i dev-portal.tar
+
+# 3) 镜像是否更新（Id/Created 应变化）
+docker image inspect dev-portal:latest --format '{{.Id}} {{.Created}}'
+
+# 4) 容器是否已切到新镜像（Image ID 应与上面一致）
+docker inspect dev-portal --format '{{.Image}} {{.Config.Image}} {{.State.StartedAt}}'
+```
+
+> [!TIP]
+> 如果 `docker load` 失败，但你仍继续执行了 `docker compose up ...`，最终只会“重建旧容器”，页面看起来就会“一直没变化”。
+
+### 2.1.2 常见问题：`docker load` 报 `no space left on device`
+
+这代表服务器磁盘空间不足（常见在 Docker 数据目录所在分区）。建议按顺序处理：
+
+```bash
+# 看磁盘/镜像占用
+df -h
+docker system df
+
+# 清理无用资源（按需，慎用 -a）
+docker container prune -f
+docker image prune -f
+docker builder prune -f
+# docker image prune -a -f
+```
+
+### 2.1.3 常见误区：只改服务器 `.env` 但前端没变化
+
+如果你修改的是 `NEXT_PUBLIC_*`（例如 `NEXT_PUBLIC_DEFAULT_APPS`），它属于 **构建时注入**：
+
+- 仅在服务器修改 `.env` 不会改变已打包进镜像的前端内容；
+- 需要重新在本地执行 `npm run docker:pack` 并上传新的 `dev-portal.tar` 再更新。
 
 ## 3. 常用命令
 
@@ -63,8 +132,12 @@ docker compose version
   ```
 - **更新代码后重新部署**:
   ```bash
-  # 拉取/更新代码后
-  docker compose up -d --build
+  # 方式 A（离线镜像包）：上传新的 dev-portal.tar 后
+  docker load -i dev-portal.tar
+  docker compose up -d --force-recreate
+
+  # 方式 B（服务器端 build）：拉取/更新代码后
+  # docker compose up -d --build
   ```
 
 ## 3.1 Prisma 数据库迁移（强烈建议保留）
