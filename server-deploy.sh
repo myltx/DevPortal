@@ -61,12 +61,18 @@ info "将使用 Compose 文件：$COMPOSE_FILE"
 function load_image() {
     if [ -f "$IMAGE_TAR" ]; then
         info "从 $IMAGE_TAR 加载镜像..."
-        docker load -i "$IMAGE_TAR"
+        if ! docker load -i "$IMAGE_TAR"; then
+            error "镜像加载失败（常见原因：磁盘空间不足或 tar 包损坏）。"
+            return 1
+        fi
+
         if docker image inspect "$IMAGE_NAME" >/dev/null 2>&1; then
             info "当前镜像信息：$(docker image inspect "$IMAGE_NAME" --format '{{.Id}} {{.Created}}')"
-        else
-            warn "未找到镜像：$IMAGE_NAME（docker load 可能未包含该 tag）"
+            return 0
         fi
+
+        warn "docker load 已执行，但未找到镜像：$IMAGE_NAME（tar 内可能没有该 tag）。"
+        return 1
     else
         error "未找到 $IMAGE_TAR！"
         return 1
@@ -312,7 +318,7 @@ function rollback_from_backup() {
 function first_setup() {
     info "开始首次部署..."
     check_env
-    load_image
+    load_image || return 1
     info "启动服务..."
     $COMPOSE_CMD -f $COMPOSE_FILE up -d
     info "完成！请访问 http://localhost:3001（或服务器 IP）。"
@@ -328,7 +334,7 @@ function update_app() {
     else
         info "已跳过备份。"
     fi
-    load_image
+    load_image || return 1
     info "重建容器..."
     $COMPOSE_CMD -f $COMPOSE_FILE up -d --force-recreate
     if docker inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
