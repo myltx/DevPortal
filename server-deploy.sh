@@ -30,10 +30,21 @@ else
 fi
 
 function detect_compose_file() {
-    if [ -f "docker-compose.yml" ]; then
-        COMPOSE_FILE="docker-compose.yml"
-    elif [ -f "docker-compose.prod.yml" ]; then
+    # Allow override (recommended for servers)
+    if [ -n "${FORCE_COMPOSE_FILE:-}" ]; then
+        if [ -f "$FORCE_COMPOSE_FILE" ]; then
+            COMPOSE_FILE="$FORCE_COMPOSE_FILE"
+            return 0
+        fi
+        error "FORCE_COMPOSE_FILE 指定的文件不存在：$FORCE_COMPOSE_FILE"
+        return 1
+    fi
+
+    # Prefer prod compose when both exist, to avoid accidentally using a build-based compose file.
+    if [ -f "docker-compose.prod.yml" ]; then
         COMPOSE_FILE="docker-compose.prod.yml"
+    elif [ -f "docker-compose.yml" ]; then
+        COMPOSE_FILE="docker-compose.yml"
     else
         error "未找到 docker-compose.yml 或 docker-compose.prod.yml！"
         return 1
@@ -43,12 +54,19 @@ function detect_compose_file() {
 
 # Detect Compose File
 detect_compose_file || exit 1
+info "当前工作目录：$(pwd)"
+info "将使用 Compose 文件：$COMPOSE_FILE"
 
 # Functions
 function load_image() {
     if [ -f "$IMAGE_TAR" ]; then
         info "从 $IMAGE_TAR 加载镜像..."
         docker load -i "$IMAGE_TAR"
+        if docker image inspect "$IMAGE_NAME" >/dev/null 2>&1; then
+            info "当前镜像信息：$(docker image inspect "$IMAGE_NAME" --format '{{.Id}} {{.Created}}')"
+        else
+            warn "未找到镜像：$IMAGE_NAME（docker load 可能未包含该 tag）"
+        fi
     else
         error "未找到 $IMAGE_TAR！"
         return 1
@@ -313,6 +331,9 @@ function update_app() {
     load_image
     info "重建容器..."
     $COMPOSE_CMD -f $COMPOSE_FILE up -d --force-recreate
+    if docker inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
+        info "容器使用的镜像 ID：$(docker inspect "$CONTAINER_NAME" --format '{{.Image}}')"
+    fi
     info "更新完成。"
 }
 
