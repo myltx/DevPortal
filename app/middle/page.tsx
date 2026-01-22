@@ -40,7 +40,7 @@ interface DashboardStats {
     nouns: number;
   };
   recentProjects: Project[];
-  recentAccounts: any[];
+  recentAccounts: unknown[];
 }
 
 function cn(...inputs: (string | undefined | null | false)[]) {
@@ -62,8 +62,11 @@ export default function MiddlePage() {
       const local = localStorage.getItem(STORAGE_KEYS.DASHBOARD_APPS);
       if (local) {
         try {
-          keys = JSON.parse(local);
-        } catch (e) {
+          const parsed = JSON.parse(local);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            keys = parsed;
+          }
+        } catch {
           // ignore
         }
       }

@@ -38,6 +38,29 @@ export default function SysConfigPage() {
       // 2. Load Local Personal Prefs
       if (typeof window !== "undefined") {
         // ...
+        const defaultApps = getDefaultAppKeys()
+          .filter((k) => APP_REGISTRY.some((a) => a.key === k))
+          .slice(0, 4);
+
+        const loadedAppsRaw = localStorage.getItem(STORAGE_KEYS.DASHBOARD_APPS);
+        if (loadedAppsRaw) {
+          try {
+            const parsed = JSON.parse(loadedAppsRaw);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              const validKeys = parsed
+                .filter((k): k is string => typeof k === "string")
+                .filter((k) => APP_REGISTRY.some((a) => a.key === k))
+                .slice(0, 4);
+              setDashboardApps(validKeys);
+            } else {
+              setDashboardApps(defaultApps);
+            }
+          } catch {
+            setDashboardApps(defaultApps);
+          }
+        } else {
+          setDashboardApps(defaultApps);
+        }
 
         const loadedView = localStorage.getItem(STORAGE_KEYS.ACCOUNT_VIEW_PREF);
         setAccountView(loadedView || "table");
@@ -79,10 +102,25 @@ export default function SysConfigPage() {
   };
 
   const handleSavePersonal = () => {
-    localStorage.setItem(
-      STORAGE_KEYS.DASHBOARD_APPS,
-      JSON.stringify(dashboardApps),
-    );
+    const defaultApps = getDefaultAppKeys()
+      .filter((k) => APP_REGISTRY.some((a) => a.key === k))
+      .slice(0, 4);
+    const normalizedApps = dashboardApps
+      .filter((k) => APP_REGISTRY.some((a) => a.key === k))
+      .slice(0, 4);
+
+    const isSameAsDefault =
+      normalizedApps.length === defaultApps.length &&
+      normalizedApps.every((k, i) => k === defaultApps[i]);
+
+    if (normalizedApps.length === 0 || isSameAsDefault) {
+      localStorage.removeItem(STORAGE_KEYS.DASHBOARD_APPS);
+    } else {
+      localStorage.setItem(
+        STORAGE_KEYS.DASHBOARD_APPS,
+        JSON.stringify(normalizedApps),
+      );
+    }
     localStorage.setItem(STORAGE_KEYS.ACCOUNT_VIEW_PREF, accountView);
     message.success("个人偏好已保存 (刷新生效)");
   };
