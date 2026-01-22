@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "云滃公共配置[内网]",
-  "version": "1.0",
+  "version": "1.1",
   "description": "Inner-source credential matcher for DevPortal",
   "permissions": ["activeTab", "scripting", "sidePanel", "tabs"],
   "host_permissions": ["<all_urls>"],

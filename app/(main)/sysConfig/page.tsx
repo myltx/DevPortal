@@ -43,7 +43,7 @@ export default function SysConfigPage() {
         headers: {
           "Content-Type": "application/json",
           "x-user-name": encodeURIComponent(
-            localStorage.getItem("currentUser") || "Unknown"
+            localStorage.getItem("currentUser") || "Unknown",
           ),
         },
         body: JSON.stringify(values),
@@ -83,15 +83,26 @@ export default function SysConfigPage() {
             name="extension_version"
             label="当前版本号 (Latest Version)"
             extra="客户端会自动检测此版本号，若高于本地版本则提示更新。"
-            rules={[{ required: true, message: "请输入版本号" }]}>
-            <Input placeholder="例如: 1.0" style={{ maxWidth: 300 }} />
+            rules={[{ required: false }]}>
+            <Input placeholder="例如: 1.0" style={{ maxWidth: 300 }} disabled />
+            <div style={{ marginTop: 4, color: "#faad14", fontSize: 12 }}>
+              ℹ️ 版本号已由服务器 manifest.json 托管，无需手动配置。
+            </div>
           </Form.Item>
 
           <Form.Item
             name="extension_download_url"
             label="下载地址 (Download URL)"
-            extra="点击更新提示后跳转的链接 (支持 HTTP/HTTPS 链接)。">
-            <Input placeholder="http://..." />
+            extra={
+              <span>
+                点击更新提示后跳转的链接。
+                <br />
+                <span style={{ color: "#faad14" }}>
+                  留空则默认使用本机地址：/extension/chrome-extension-latest.zip
+                </span>
+              </span>
+            }>
+            <Input placeholder="默认为本机最新版，需要使用 CDN 或 OSS 时可在此覆盖" />
           </Form.Item>
 
           <Form.Item>

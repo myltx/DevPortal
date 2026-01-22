@@ -1,10 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
+import fs from "fs";
+import path from "path";
 
 export const dynamic = "force-dynamic";
 
-const ALLOWED_KEYS = new Set(["extension_version", "extension_download_url"]);
+// Remove extension_version from writable keys
+const ALLOWED_KEYS = new Set(["extension_download_url"]);
+
+function getManifestVersion(): string | null {
+  try {
+    const manifestPath = path.join(process.cwd(), "chrome-extension", "manifest.json");
+    if (fs.existsSync(manifestPath)) {
+      const content = fs.readFileSync(manifestPath, "utf-8");
+      const manifest = JSON.parse(content);
+      return manifest.version || null;
+    }
+  } catch (error) {
+    console.error("Failed to read manifest.json:", error);
+  }
+  return null;
+}
 
 export async function GET() {
   try {
@@ -20,6 +37,12 @@ export async function GET() {
       acc[curr.configKey] = curr.configValue || "";
       return acc;
     }, {} as Record<string, string>);
+
+    // Override version with actual file version
+    const fileVersion = getManifestVersion();
+    if (fileVersion) {
+      result["extension_version"] = fileVersion;
+    }
 
     return NextResponse.json(result);
   } catch (error) {
@@ -60,7 +83,6 @@ export async function POST(request: NextRequest) {
             const oldValue = currentMap.get(key) || "(empty)";
             if (oldValue !== value) {
                 const labelMap: Record<string, string> = {
-                    extension_version: "Chrome扩展版本号",
                     extension_download_url: "下载地址"
                 };
                 const label = labelMap[key] || key;
@@ -76,9 +98,7 @@ export async function POST(request: NextRequest) {
               configKey: key,
               configValue: value,
               description:
-                key === "extension_version"
-                  ? "Chrome扩展版本号"
-                  : "扩展下载地址",
+              description: "扩展下载地址",
             },
           })
         );

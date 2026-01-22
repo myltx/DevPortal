@@ -51,7 +51,8 @@ next-env.d.ts
 /public/openapi.json
 
 # chrome extension
-chrome-extension.*
+/chrome-extension.*
+!/public/extension/
 /chrome-extension/module.json
 
 # reports (contains sensitive data when UNSAFE)

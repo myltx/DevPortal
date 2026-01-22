@@ -28,6 +28,8 @@ RUN npm ci && npx prisma generate && npm prune --production && npm cache clean -
 # They are platform-independent
 COPY .next .next
 COPY public public
+# 2.1 Copy Chrome Extension (Required for version reading in API)
+COPY chrome-extension chrome-extension
 
 # 3. Permissions
 RUN chown -R nextjs:nodejs /app/.next

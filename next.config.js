@@ -13,7 +13,7 @@ const nextConfig = {
   outputFileTracingExcludes: {
     "next-server": ["**/*.tar", "**/.docker_temp_*", "**/.next/cache/**"],
   },
-  webpack: (config, { dev, isServer }) => {
+  webpack: (config, { dev }) => {
     if (!dev) {
       // Disable source maps completely in production
       config.devtool = false;

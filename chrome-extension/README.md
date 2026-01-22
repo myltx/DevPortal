@@ -1,4 +1,4 @@
-# DevPortal Chrome 扩展 (Credential Matcher)
+# DevPortal Chrome 扩展 (Credential Matcher) v1.1
 
 专为 DevPortal 开发的辅助工具，用于在浏览器侧边栏自动匹配并展示当前网站的相关凭据（账号/密码）。
 
@@ -25,6 +25,34 @@
     - 点击左上角的 “加载已解压的扩展程序” (Load unpacked)。
     - 选择本项目中的 `chrome-extension` 目录。
 5.  **固定图标**：安装完成后，建议将插件图标固定在浏览器工具栏，方便快速通过点击图标打开侧边栏 (Side Panel)。
+
+## 📤 打包与发布
+
+本项目已集成**全自动打包与版本管理**流程，只需一个命令即可完成版本更新与发布。
+
+### 1. 执行打包命令
+
+```bash
+npm run extension:pack
+```
+
+### 2. 交互式流程
+
+脚本会引导你进行以下两步操作：
+
+1.  **确认版本**：脚本读取当前 `manifest.json` 版本，你可以输入新版本号（如 `1.2`）或直接回车保持不变。
+2.  **自动归档**：脚本会自动更新 `manifest.json`，清理无用文件，并生成以下两个文件到 `public/extension/` 目录：
+    - `chrome-extension-v{version}.zip` (版本存档)
+    - `chrome-extension-latest.zip` (**最新版永久链接**)
+
+### 3. 在线更新机制 (Zero Config)
+
+插件内置了版本自检功能，当你将生成的文件部署到服务器后：
+
+- **服务端**：`public/extension/chrome-extension-latest.zip` 始终指向最新版。
+- **自动检测**：API 接口 (`/api/extension-version`) 会自动读取服务器上的 `manifest.json` 版本。
+- **无需配置**：如果你未在系统配置中指定下载链接，API 会自动返回当前服务器的 `latest.zip` 地址。
+- **用户感知**：当用户打开插件时，若发现服务器版本高于本地版本，会自动弹出更新提示，点击即可通过 `latest.zip` 链接下载。
 
 ## ⚙️ 配置说明
 

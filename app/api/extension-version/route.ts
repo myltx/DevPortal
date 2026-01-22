@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import fs from "fs";
+import path from "path";
 
 export const dynamic = "force-dynamic"; // No caching
 
@@ -16,29 +18,55 @@ function getExtensionCorsHeaders(request: Request): Record<string, string> {
   return {};
 }
 
+function getManifestVersion(): string | null {
+  try {
+    const manifestPath = path.join(process.cwd(), "chrome-extension", "manifest.json");
+    if (fs.existsSync(manifestPath)) {
+      const content = fs.readFileSync(manifestPath, "utf-8");
+      const manifest = JSON.parse(content);
+      return manifest.version || null;
+    }
+  } catch (error) {
+    console.error("Failed to read manifest.json:", error);
+  }
+  return null;
+}
+
 export async function GET(request: Request) {
   const corsHeaders = getExtensionCorsHeaders(request);
   try {
-    // Try to fetch from DB
-    const versionConfig = await prisma.systemConfig.findUnique({
-      where: { configKey: "extension_version" },
-    });
+    // 1. Try to read from manifest.json (Source of Truth)
+    const fsVersion = getManifestVersion();
 
+    // 2. Get download URL from DB (optional override)
     const urlConfig = await prisma.systemConfig.findUnique({
       where: { configKey: "extension_download_url" },
     });
+    
+    // 3. Construct default URL relative to current server
+    // request.url is the full API URL (e.g. http://localhost:3000/api/extension-version)
+    const serverOrigin = new URL(request.url).origin;
+    const defaultDownloadUrl = `${serverOrigin}/extension/chrome-extension-latest.zip`;
+
+    // 4. Fallback to DB version if FS failed (optional, for backward compatibility)
+    let dbVersion = null;
+    if (!fsVersion) {
+      const versionConfig = await prisma.systemConfig.findUnique({
+         where: { configKey: "extension_version" },
+      });
+      dbVersion = versionConfig?.configValue;
+    }
 
     return NextResponse.json(
       {
-      version: versionConfig?.configValue || "1.0", // Default to 1.0
-      downloadUrl: urlConfig?.configValue || "",
-      forceUpdate: false,
+        version: fsVersion || dbVersion || "1.0",
+        downloadUrl: urlConfig?.configValue || defaultDownloadUrl,
+        forceUpdate: false,
       },
       { headers: corsHeaders }
     );
   } catch (error) {
     console.error("Failed to fetch extension version:", error);
-    // Fallback on error
     return NextResponse.json(
       {
         version: "1.0",
