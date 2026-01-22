@@ -97,7 +97,6 @@ export async function POST(request: NextRequest) {
             create: {
               configKey: key,
               configValue: value,
-              description:
               description: "扩展下载地址",
             },
           })
