@@ -18,18 +18,19 @@ interface ApifoxImportResult {
     error?: { message: string };
     data?: {
         counters?: {
-            newCount: number;
-            updatedCount: number;
-            ignoredCount: number;
-        };
-        modelCounters?: {
-            newCount: number;
-            updatedCount: number;
-            ignoredCount: number;
+            endpointCreated?: number;
+            endpointUpdated?: number;
+            endpointFailed?: number;
+            endpointIgnored?: number;
+            schemaCreated?: number;
+            schemaUpdated?: number;
+            schemaFailed?: number;
+            schemaIgnored?: number;
         };
         errors?: Array<{ message: string }>;
     };
 }
+
 
 export async function POST(request: NextRequest) {
   try {
@@ -126,9 +127,9 @@ export async function POST(request: NextRequest) {
     try {
         result = JSON.parse(responseText);
     } catch {
+        // ... (Error handling omitted for brevity, keeping same logic) ...
         console.error(`[JenkinsWebhook] Failed to parse Apifox response as JSON. Status: ${response.status}. Body preview: ${responseText.substring(0, 200)}...`);
         
-        // 即使解析失败，也发个异常通知
         if (DINGTALK_WEBHOOK) {
             await sendDingTalkMessage(DINGTALK_WEBHOOK, DINGTALK_SECRET, {
                 msgtype: "markdown",
@@ -138,7 +139,6 @@ export async function POST(request: NextRequest) {
                 }
             });
         }
-        
         return NextResponse.json({ 
             error: "Apifox returned non-JSON response", 
             status: response.status,
@@ -152,8 +152,7 @@ export async function POST(request: NextRequest) {
         // --- Success Notification ---
         if (DINGTALK_WEBHOOK) {
             try {
-                const counters = result?.data?.counters;
-                const modelCounters = result?.data?.modelCounters;
+                const stats = result?.data?.counters || {};
                 const errors = result?.data?.errors || [];
                 
                 let docUrl = targetUrl || "";
@@ -162,17 +161,15 @@ export async function POST(request: NextRequest) {
                         const urlObj = new URL(targetUrl);
                         docUrl = `${urlObj.origin}/api/doc.html`;
                     }
-                } catch {
-                    // Ignore parse error
-                }
+                } catch { /* Ignore */ }
 
-                const endpointStats = counters
-                    ? `**接口统计**: ✨新增 ${counters.newCount || 0} | 📝更新 ${counters.updatedCount || 0} | ⏩忽略 ${counters.ignoredCount || 0}`
-                    : "";
-                
-                const modelStats = modelCounters
-                    ? `**模型统计**: ✨新增 ${modelCounters.newCount || 0} | 📝更新 ${modelCounters.updatedCount || 0} | ⏩忽略 ${modelCounters.ignoredCount || 0}`
-                    : "";
+                // Improved Markdown Table Layout
+                const tableStats = [
+                    `| 类型 | 新增 | 修改 | 无变化 |`,
+                    `| :--- | :--- | :--- | :--- |`,
+                    `| 接口/文档 | ${stats.endpointCreated || 0} | ${stats.endpointUpdated || 0} | ${stats.endpointIgnored || 0} |`,
+                    `| 数据模型 | ${stats.schemaCreated || 0} | ${stats.schemaUpdated || 0} | ${stats.schemaIgnored || 0} |`
+                ].join("\n");
 
                 let errorText = "";
                 if (errors.length > 0) {
@@ -189,13 +186,12 @@ export async function POST(request: NextRequest) {
                             `**项目 ID**: ${projectId}`,
                             moduleId ? `**模块 ID**: ${moduleId}` : "",
                             `**接口文档**: [点击查看](${docUrl})`,
-                            `---`,
-                            endpointStats,
-                            modelStats,
+                            `\n`,
+                            tableStats,
                             errorText,
-                            `> **提示**: 本次同步使用 URL 模式处理，已绕过体积限制。`,
-                            `\n推送时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`
-                        ].filter(Boolean).join("\n\n")
+                            `\n> **提示**: 同步策略已恢复为智能合并 (Smart Merge)。`,
+                            `推送时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`
+                        ].filter(Boolean).join("\n")
                     }
                 });
             } catch (notifyError: any) {
@@ -205,6 +201,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ success: true, apifoxResult: result });
     } else {
+
         console.error("[JenkinsWebhook] Apifox import failed:", result);
         
         // --- Failure Notification ---
