@@ -28,6 +28,7 @@ RUN npm ci && npx prisma generate && npm prune --production && npm cache clean -
 # They are platform-independent
 COPY .next .next
 COPY public public
+COPY docs docs
 # 2.1 Copy Chrome Extension (Required for version reading in API)
 COPY chrome-extension chrome-extension
 
