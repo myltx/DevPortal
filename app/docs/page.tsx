@@ -10,12 +10,14 @@ import {
   Divider,
   Space,
   Tooltip,
+  Button,
 } from "antd";
 import {
   AppstoreOutlined,
   ChromeOutlined,
   ApiOutlined,
   CloudServerOutlined,
+  DownloadOutlined,
 } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 
@@ -137,6 +139,15 @@ export default function DocsPage() {
               <ChromeOutlined />
               <span>浏览器扩展: DevPortal Helper</span>
             </Space>
+          }
+          extra={
+            <Button
+              type="primary"
+              icon={<DownloadOutlined />}
+              href="/extension/chrome-extension-latest.zip"
+              target="_blank">
+              下载插件 (Latest)
+            </Button>
           }>
           <Paragraph>
             配合 DevPortal 使用的 Chrome 插件，打通 Web 端与浏览器操作。
