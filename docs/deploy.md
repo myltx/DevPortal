@@ -23,9 +23,9 @@ docker compose version
 ## 2. 部署步骤
 
 1.  **准备构建产物并上传**:
-
-    - 推荐：在本地执行 `npm run build` 后，将包含 `.next` 的 `web` 目录上传至服务器。
-    - 或者：使用下方第 6 节“本地构建并上传 (离线部署)”直接上传镜像包（更稳定，不依赖服务器网络）。
+    - 推荐：在本地执行 `npm run build:prod` 后，将生成的 `.next-prod` 目录重命名为 `.next` 并上传（或者直接使用生成的 `dev-portal.tar`，见下文）。
+    - 理由：`build:prod` 专为生产环境构建，且不会覆盖您本地开发用的 `.next` 目录。
+    - 或者：使用下方第 6 节“本地构建并上传 (离线部署)”直接上传镜像包（更稳定，最推荐）。
 
 2.  **构建并启动**:
     进入目录并运行：
@@ -177,12 +177,12 @@ _(注意：需要本地也安装 Docker)_
 
     ```bash
     npm run docker:pack
-    # 等待完成后，当前目录会生成 dev-portal.tar
+    # 该命令会自动运行 npm run build:prod 并打包成 dev-portal.tar
+    # 且不会影响您本地正在运行的开发环境 (.next)
     ```
 
 2.  **上传文件**:
     您需要上传可以通过离线部署的 **两个核心文件**：
-
     - `dev-portal.tar` (镜像包)
     - `docker-compose.prod.yml` (**生产环境专用配置**，请在服务器上重命名为 `docker-compose.yml`)
 
@@ -309,7 +309,7 @@ graph TD
 
     subgraph Local ["💻 本地环境 (Mac M-Chip)"]
         direction TB
-        Code[Source Code] --> |1. npm run build| NextDist[.next 文件夹]:::artifact
+        Code[Source Code] --> |1. npm run build:prod| NextDist[.next-prod 文件夹]:::artifact
         NextDist --> |2. COPY| DockerBuild[Docker Build (x86)]
         Pkg[package.json] --> |3. npm ci --prod| DockerBuild
         DockerBuild --> |4. docker save| TarFile[dev-portal.tar]:::artifact
@@ -335,19 +335,18 @@ graph TD
 ### 构建流程图解
 
 1.  **本地编译 (Local Build)**:
-
-    - 在您的 Mac 上利用原生 CPU 性能执行 `npm run build`。
-    - **产出**: `.next` 文件夹（包含通用的 JS/CSS/HTML 产物）。
+    - 在您的 Mac 上利用原生 CPU 性能执行 `npm run build:prod`。
+    - **产出**: `.next-prod` 文件夹（包含通用的 JS/CSS/HTML 产物）。
+    - **隔离**: 此过程**不影响**您本地 `.next` 目录（即不影响 `npm run dev`）。
     - _注意：此时本地的 `node_modules` 是 Mac 版的，不会被打包。_
 
 2.  **Docker 依赖安装 (Container Install)**:
-
     - Docker 构建时，会自动忽略本地的 `node_modules`。
     - 在容器内部（Linux x86 环境）执行 `npm ci --only=production`。
     - **产出**: 纯正的 Linux 版 `node_modules`（完美支持 Sharp, Prisma 等原生库）。
 
 3.  **产物注入 (Injection)**:
-    - 最后将第 1 步生成的 `.next` 文件夹复制进容器。
+    - 最后将第 1 步生成的 `.next-prod` 文件夹复制进容器（自动重命名为 `.next`）。
     - 结果：获得了一个既包含最新代码，又拥有正确底层依赖的完美镜像。
 
 ## 8. 公司内网部署与分发指南

@@ -1,4 +1,6 @@
 const nextConfig = {
+  // Allow custom build directory to separate dev (.next) and prod (.next-prod)
+  distDir: process.env.BUILD_DIR || ".next",
   output: "standalone",
   productionBrowserSourceMaps: false,
   compress: false, // Sometimes helps with "Invalid string length" on large static pages
