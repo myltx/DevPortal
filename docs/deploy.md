@@ -109,7 +109,29 @@ docker builder prune -f
 # docker image prune -a -f
 ```
 
-### 2.1.3 常见误区：只改服务器 `.env` 但前端没变化
+### 2.1.3 常见原因：反复 `docker load` 导致旧镜像堆积
+
+即使每次加载的都是同一个 tag（例如 `dev-portal:latest`），`docker load` 也会导入一份“新的镜像内容”，原先的镜像会变成 **dangling（无 tag）**，如果不清理会持续占用磁盘。
+
+排查与处理建议：
+
+```bash
+# 1) 查看 dev-portal 镜像与大小
+docker image ls | head
+docker image ls | rg "dev-portal"
+
+# 2) 查看 dangling 镜像数量/大小（重点）
+docker image ls -f dangling=true
+
+# 3) 安全清理：只删 dangling（推荐）
+docker image prune -f
+```
+
+> [!TIP]
+> 如果你使用 `server-deploy.sh`，在“更新应用（加载 tar 并重建）”后会提示是否清理，
+> 也可以在菜单中选择「6. 清理未使用镜像」。
+
+### 2.1.4 常见误区：只改服务器 `.env` 但前端没变化
 
 如果你修改的是 `NEXT_PUBLIC_*`（例如 `NEXT_PUBLIC_DEFAULT_APPS`），它属于 **构建时注入**：
 

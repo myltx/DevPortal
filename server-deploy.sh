@@ -7,6 +7,9 @@ CONTAINER_NAME="dev-portal"
 BACKUP_DIR="backups"
 # 只保留最近 N 份备份（默认 1 份）
 BACKUP_KEEP=1
+# 为“上一版本镜像”打固定 tag，便于区分/回滚/删除
+# 例如：dev-portal:previous
+PREVIOUS_TAG_SUFFIX="previous"
 
 # Colors
 GREEN='\033[0;32m'
@@ -334,11 +337,71 @@ function update_app() {
     else
         info "已跳过备份。"
     fi
+
+    # 记录更新前的镜像 ID（用于在新版本启动成功后，精确删除旧镜像，避免磁盘堆积）
+    local prev_image_id=""
+    if docker image inspect "$IMAGE_NAME" >/dev/null 2>&1; then
+        prev_image_id=$(docker image inspect "$IMAGE_NAME" --format '{{.Id}}' 2>/dev/null || true)
+    fi
+
+    # 可选：给“上一版本镜像”打固定 tag（dev-portal:previous），避免变成 dangling 难以识别
+    local prev_image_tag=""
+    if [ -n "$prev_image_id" ]; then
+        local image_repo previous_tag
+        image_repo="${IMAGE_NAME%:*}"
+        previous_tag="${image_repo}:${PREVIOUS_TAG_SUFFIX}"
+
+        read -p "是否为当前镜像创建上一版本 tag（$previous_tag）？[Y/n] " do_tag
+        do_tag=${do_tag:-Y}
+        if [[ "$do_tag" =~ ^[Yy]$ ]]; then
+            if docker tag "$prev_image_id" "$previous_tag" >/dev/null 2>&1; then
+                prev_image_tag="$previous_tag"
+                info "已创建上一版本镜像 tag：$prev_image_tag"
+            else
+                warn "创建上一版本 tag 失败（可能是 Docker 运行异常或镜像不存在）。"
+            fi
+        fi
+    fi
+
     load_image || return 1
     info "重建容器..."
     $COMPOSE_CMD -f $COMPOSE_FILE up -d --force-recreate
+    local current_container_image_id=""
     if docker inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
-        info "容器使用的镜像 ID：$(docker inspect "$CONTAINER_NAME" --format '{{.Image}}')"
+        current_container_image_id=$(docker inspect "$CONTAINER_NAME" --format '{{.Image}}' 2>/dev/null || true)
+        info "容器使用的镜像 ID：$current_container_image_id"
+    fi
+
+    # 精确删除“上一次的镜像”（被新 load 覆盖后通常会变成 dangling），比全量 prune 更可控
+    if [ -n "$prev_image_id" ] && [ -n "$current_container_image_id" ] && [ "$prev_image_id" != "$current_container_image_id" ]; then
+        echo ""
+        warn "检测到旧镜像（更新前）：$prev_image_id"
+        warn "新镜像（当前容器使用）：$current_container_image_id"
+        if [ -n "$prev_image_tag" ]; then
+            info "旧镜像已被标记为上一版本 tag：$prev_image_tag（可用于回滚/对比/删除）"
+            read -p "是否保留该回滚 tag（不保留则会删除对应旧镜像）？[Y/n] " keep_tag
+            keep_tag=${keep_tag:-Y}
+            if [[ ! "$keep_tag" =~ ^[Yy]$ ]]; then
+                if docker image rm "$prev_image_tag" >/dev/null 2>&1; then
+                    info "已删除回滚 tag（及对应旧镜像）：$prev_image_tag"
+                else
+                    warn "删除回滚 tag 失败（可能仍被其他容器引用或存在其他 tag 关联）。"
+                fi
+            fi
+        else
+            read -p "是否删除旧镜像（精确删除上一版本，释放磁盘）？[Y/n] " rm_prev
+            rm_prev=${rm_prev:-Y}
+            if [[ "$rm_prev" =~ ^[Yy]$ ]]; then
+                if docker image rm "$prev_image_id" >/dev/null 2>&1; then
+                    info "已删除旧镜像：$prev_image_id"
+                else
+                    warn "删除旧镜像失败（可能仍被其他容器引用或有其他 tag 关联）。"
+                    warn "你可以稍后在菜单中选择「6. 清理未使用镜像」再处理 dangling。"
+                fi
+            else
+                warn "已跳过删除旧镜像。"
+            fi
+        fi
     fi
     info "更新完成。"
 }
@@ -357,8 +420,68 @@ function shell_access() {
 }
 
 function prune_images() {
-    info "清理未使用的镜像（dangling）..."
-    docker image prune -f
+    local lines
+    lines=$(docker image ls -f dangling=true --format '{{.ID}}|{{.Size}}|{{.CreatedSince}}' 2>/dev/null || true)
+
+    if [ -z "$lines" ]; then
+        info "未发现 dangling 镜像，无需清理。"
+        return 0
+    fi
+
+    echo "以下为可安全清理的 dangling 镜像（通常来自反复 docker load / 重复构建导致旧镜像失去 tag）："
+    local i=1
+    local ids=()
+    while IFS= read -r line; do
+        [ -z "$line" ] && continue
+        local id size created
+        id="${line%%|*}"
+        size="${line#*|}"; size="${size%%|*}"
+        created="${line##*|}"
+        ids+=("$id")
+        printf "%2d) %s  %s  %s\n" "$i" "$id" "$size" "$created"
+        i=$((i + 1))
+    done <<< "$lines"
+
+    echo ""
+    echo "输入 a 删除全部；输入序号（如：1 3 5）删除指定；输入 q 取消"
+    read -p "请选择: " choice
+    choice=${choice:-a}
+
+    if [[ "$choice" =~ ^[Qq]$ ]]; then
+        warn "已取消清理。"
+        return 0
+    fi
+
+    if [[ "$choice" =~ ^[Aa]$ ]]; then
+        info "开始清理全部 dangling 镜像..."
+        # shellcheck disable=SC2046
+        docker image rm $(docker image ls -f dangling=true -q) >/dev/null 2>&1 || true
+        info "清理完成。"
+        return 0
+    fi
+
+    local selected=()
+    local token
+    for token in $choice; do
+        if ! [[ "$token" =~ ^[0-9]+$ ]]; then
+            warn "忽略无效输入：$token"
+            continue
+        fi
+        if [ "$token" -lt 1 ] || [ "$token" -gt "${#ids[@]}" ]; then
+            warn "序号超出范围：$token"
+            continue
+        fi
+        selected+=("${ids[$((token - 1))]}")
+    done
+
+    if [ "${#selected[@]}" -eq 0 ]; then
+        warn "未选择任何有效镜像，跳过清理。"
+        return 0
+    fi
+
+    info "开始删除选中的 dangling 镜像..."
+    docker image rm "${selected[@]}" >/dev/null 2>&1 || true
+    info "清理完成。"
 }
 
 # Main Menu
