@@ -8,6 +8,7 @@ import {
   ArrowRightOutlined,
   SearchOutlined,
   AppstoreOutlined,
+  ClockCircleOutlined,
 } from "@ant-design/icons";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -18,6 +19,13 @@ import {
   STORAGE_KEYS,
   getDefaultAppKeys,
 } from "@/lib/config/app-registry";
+import {
+  clearRecentVisits,
+  getFrequentVisits,
+  getRecentVisits,
+  recordRecentVisit,
+  RecentVisitEntry,
+} from "@/lib/client/recent-visits";
 
 // --- Interfaces ---
 interface Project {
@@ -53,6 +61,15 @@ export default function MiddlePage() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [visibleApps, setVisibleApps] = useState<AppRegistryItem[]>([]);
+  const [recentVisitedModules, setRecentVisitedModules] = useState<
+    RecentVisitEntry[]
+  >([]);
+  const [frequentVisitedModules, setFrequentVisitedModules] = useState<
+    RecentVisitEntry[]
+  >([]);
+  const [projectSectionMode, setProjectSectionMode] = useState<
+    "visited" | "updated"
+  >("visited");
 
   // --- Load Configs ---
   useEffect(() => {
@@ -99,6 +116,12 @@ export default function MiddlePage() {
     fetchStats();
   }, []);
 
+  // Load local visit data
+  useEffect(() => {
+    setRecentVisitedModules(getRecentVisits({ kind: "module", limit: 5 }));
+    setFrequentVisitedModules(getFrequentVisits({ kind: "module", limit: 6 }));
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#fafafa] text-gray-900 font-sans selection:bg-gray-200">
       <div className="max-w-[1000px] mx-auto px-6 py-16">
@@ -132,7 +155,16 @@ export default function MiddlePage() {
             {visibleApps.map((app) => (
               <div
                 key={app.key}
-                onClick={() => router.push(app.path)}
+                onClick={() => {
+                  recordRecentVisit({
+                    id: `app:${app.key}`,
+                    kind: "app",
+                    title: app.title,
+                    path: app.path,
+                    meta: { appKey: app.key },
+                  });
+                  router.push(app.path);
+                }}
                 className="group relative bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden">
                 {/* Decoration gradient for primary item */}
                 {app.primary && (
@@ -168,22 +200,196 @@ export default function MiddlePage() {
           </div>
         </section>
 
-        {/* 2. Recent Projects */}
+        {/* 2. Modules / Projects */}
         <section className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-6 px-2">
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-              <RocketOutlined className="mr-2 text-gray-400" />
-              最近更新项目
-            </h2>
-            <button
-              onClick={() => router.push("/projectSite")}
-              className="text-xs font-medium text-gray-500 hover:text-gray-900 transition-colors px-3 py-1 rounded-full hover:bg-gray-100">
-              查看全部
-            </button>
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                {projectSectionMode === "visited" ? (
+                  <ClockCircleOutlined className="mr-2 text-gray-400" />
+                ) : (
+                  <RocketOutlined className="mr-2 text-gray-400" />
+                )}
+                {projectSectionMode === "visited" ? "最近访问模块" : "最近更新项目"}
+              </h2>
+
+              <div className="inline-flex rounded-full border border-gray-200 bg-white p-0.5 shadow-sm">
+                <button
+                  onClick={() => setProjectSectionMode("visited")}
+                  className={cn(
+                    "px-3 py-1 text-xs font-medium rounded-full transition-colors",
+                    projectSectionMode === "visited"
+                      ? "bg-gray-900 text-white"
+                      : "text-gray-500 hover:text-gray-900",
+                  )}>
+                  最近访问
+                </button>
+                <button
+                  onClick={() => setProjectSectionMode("updated")}
+                  className={cn(
+                    "px-3 py-1 text-xs font-medium rounded-full transition-colors",
+                    projectSectionMode === "updated"
+                      ? "bg-gray-900 text-white"
+                      : "text-gray-500 hover:text-gray-900",
+                  )}>
+                  最近更新
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {projectSectionMode === "visited" && (
+                <button
+                  onClick={() => {
+                    clearRecentVisits();
+                    setRecentVisitedModules([]);
+                    setFrequentVisitedModules([]);
+                  }}
+                  className="text-xs font-medium text-gray-400 hover:text-gray-900 transition-colors px-3 py-1 rounded-full hover:bg-gray-100">
+                  清空记录
+                </button>
+              )}
+              <button
+                onClick={() => router.push("/projectSite")}
+                className="text-xs font-medium text-gray-500 hover:text-gray-900 transition-colors px-3 py-1 rounded-full hover:bg-gray-100">
+                查看项目空间
+              </button>
+            </div>
           </div>
 
           <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] overflow-hidden">
-            {loading ? (
+            {projectSectionMode === "visited" ? (
+              <div className="p-6">
+                {frequentVisitedModules.length > 0 && (
+                  <div className="mb-5">
+                    <div className="text-xs font-medium text-gray-400 mb-2">
+                      常用模块（按访问次数）
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {frequentVisitedModules.map((x) => {
+                        const typeName =
+                          typeof x.meta?.typeName === "string"
+                            ? x.meta.typeName
+                            : undefined;
+                        return (
+                        <button
+                          key={x.id}
+                          onClick={() => {
+                            recordRecentVisit({
+                              id: x.id,
+                              kind: "module",
+                              title: x.title,
+                              path: x.path,
+                              meta: x.meta,
+                            });
+                            setRecentVisitedModules(
+                              getRecentVisits({ kind: "module", limit: 5 }),
+                            );
+                            setFrequentVisitedModules(
+                              getFrequentVisits({ kind: "module", limit: 6 }),
+                            );
+                            router.push(x.path);
+                          }}
+                          className="px-3 py-1 text-xs font-medium rounded-full bg-gray-50 hover:bg-gray-100 text-gray-700 transition-colors">
+                          {x.title}
+                          {typeName ? ` · ${typeName}` : ""}
+                        </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {recentVisitedModules.length > 0 ? (
+                  <div className="divide-y divide-gray-50 -mx-6">
+                    {recentVisitedModules.map((x) => {
+                      const typeName =
+                        typeof x.meta?.typeName === "string"
+                          ? x.meta.typeName
+                          : undefined;
+                      const areaName =
+                        typeof x.meta?.areaName === "string"
+                          ? x.meta.areaName
+                          : undefined;
+                      return (
+                        <div
+                          key={x.id}
+                          onClick={() => {
+                            recordRecentVisit({
+                              id: x.id,
+                              kind: "module",
+                              title: x.title,
+                              path: x.path,
+                              meta: x.meta,
+                            });
+                            setRecentVisitedModules(
+                              getRecentVisits({ kind: "module", limit: 5 }),
+                            );
+                            setFrequentVisitedModules(
+                              getFrequentVisits({ kind: "module", limit: 6 }),
+                            );
+                            router.push(x.path);
+                          }}
+                          className="group px-6 py-4 hover:bg-gray-50/80 transition-colors cursor-pointer flex items-center gap-5">
+                          <Avatar
+                            shape="square"
+                            size={48}
+                            className="bg-blue-50 text-blue-600 font-semibold border border-blue-100 rounded-xl flex-shrink-0">
+                            {x.title?.[0]?.toUpperCase()}
+                          </Avatar>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-3 mb-1.5">
+                              <h4 className="text-base font-semibold text-gray-900 truncate">
+                                {x.title}
+                              </h4>
+                              {typeName && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">
+                                  {typeName}
+                                </span>
+                              )}
+                              {areaName && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-gray-50 text-gray-500">
+                                  {areaName}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm text-gray-500 truncate max-w-[420px]">
+                                上次访问：
+                                {new Date(x.lastVisitedAt).toLocaleString()}（
+                                {x.visitCount} 次）
+                              </p>
+                              <span className="text-xs text-gray-300 font-mono whitespace-nowrap group-hover:text-gray-400 transition-colors">
+                                {new Date(x.lastVisitedAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="pl-4 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                            <ArrowRightOutlined className="text-gray-400" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-6 text-center">
+                    <Empty
+                      description="暂无访问记录（从项目空间打开账号抽屉/复制链接/跳转模块后会出现在这里）"
+                      image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    />
+                    <div className="mt-4">
+                      <button
+                        onClick={() => router.push("/projectSite")}
+                        className="text-xs font-medium text-gray-500 hover:text-gray-900 transition-colors px-3 py-1 rounded-full hover:bg-gray-100">
+                        去项目空间
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : loading ? (
               <div className="p-8 space-y-6">
                 {[...Array(3)].map((_, i) => (
                   <div key={i} className="flex gap-4">
@@ -200,11 +406,17 @@ export default function MiddlePage() {
                 {stats.recentProjects.slice(0, 5).map((item) => (
                   <div
                     key={item.id}
-                    onClick={() =>
-                      router.push(
-                        `/projectSite?classId=${item.classId}&projectId=${item.id}`,
-                      )
-                    }
+                    onClick={() => {
+                      const path = `/projectSite?classId=${item.classId}&projectId=${item.id}`;
+                      recordRecentVisit({
+                        id: `project:${item.id}`,
+                        kind: "project",
+                        title: item.projectName || `项目 ${item.id}`,
+                        path,
+                        meta: { projectId: item.id, classId: item.classId },
+                      });
+                      router.push(path);
+                    }}
                     className="group p-6 hover:bg-gray-50/80 transition-colors cursor-pointer flex items-center gap-5">
                     <Avatar
                       shape="square"

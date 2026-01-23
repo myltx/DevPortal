@@ -8,11 +8,9 @@ import {
   Col,
   Tabs,
   Menu,
-  Avatar,
   Tooltip,
   Popconfirm,
   message,
-  Spin,
   Skeleton,
   Empty,
   Tag,
@@ -33,7 +31,6 @@ import {
   Project,
   Area,
   ClassInfo,
-  ProjectModule,
   EnvOption,
 } from "@/lib/types";
 
@@ -41,11 +38,30 @@ import * as API from "@/lib/api/project";
 import ProjectSiteHeader from "./components/ProjectSiteHeader";
 import EditProjectDrawer from "./components/EditProjectDrawer";
 import AccountDrawer from "./components/AccountDrawer";
+import { recordRecentVisit } from "@/lib/client/recent-visits";
+
+type ModuleCard = {
+  moduleId: number;
+  typeName?: string;
+  moduleName?: string;
+  moduleUrl?: string;
+  remark?: string;
+  describe?: string;
+  [key: string]: unknown;
+};
+
+type AreaGroup = {
+  areaName?: string;
+  list: ModuleCard[];
+  sort?: number;
+  [key: string]: unknown;
+};
 
 const ProjectSiteContent: React.FC = () => {
   const [formInline] = Form.useForm();
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const lastRecordedProjectRef = useRef<string>("");
 
   // State
   const [activeClassId, setActiveClassId] = useState<string>("");
@@ -54,7 +70,7 @@ const ProjectSiteContent: React.FC = () => {
 
   // Data State
   const [projectIdOptions, setProjectIdOptions] = useState<Project[]>([]);
-  const [cardList, setCardList] = useState<ProjectModule[]>([]);
+  const [cardList, setCardList] = useState<AreaGroup[]>([]);
   const [selectedAreaIndex, setSelectedAreaIndex] = useState("0");
   const [areaList, setAreaList] = useState<Area[]>([]);
   const [classInfoList, setClassInfoList] = useState<ClassInfo[]>([]);
@@ -70,13 +86,13 @@ const ProjectSiteContent: React.FC = () => {
 
   // Drawer States
   const [projectDrawerVisible, setProjectDrawerVisible] = useState(false);
-  const [currentModule, setCurrentModule] = useState<ProjectModule | null>(
+  const [currentModule, setCurrentModule] = useState<ModuleCard | null>(
     null
   ); // For Edit Project
 
   const [accountDrawerVisible, setAccountDrawerVisible] = useState(false);
   const [currentAccountModule, setCurrentAccountModule] =
-    useState<ProjectModule | null>(null); // For Account Drawer
+    useState<ModuleCard | null>(null); // For Account Drawer
 
   // --- Params ---
   const searchParams = useSearchParams();
@@ -155,10 +171,10 @@ const ProjectSiteContent: React.FC = () => {
       };
       const res = await API.projectList(payload);
       if (res.success) {
-        const list = res.data
-          .map((item: any, index: number) => {
+        const list = (res.data as AreaGroup[])
+          .map((item, index: number) => {
             // Sort inner list by environment (case-insensitive)
-            const sortedList = [...(item.list || [])].sort((a: any, b: any) => {
+            const sortedList = [...(item.list || [])].sort((a, b) => {
               const envOrder: Record<string, number> = {
                 prod: 1,
                 gray: 2,
@@ -187,7 +203,7 @@ const ProjectSiteContent: React.FC = () => {
               sort: sortIndex,
             };
           })
-          .sort((a: any, b: any) => a.sort - b.sort);
+          .sort((a, b) => Number(a.sort) - Number(b.sort));
         setCardList(list);
       } else {
         setCardList([]);
@@ -217,6 +233,35 @@ const ProjectSiteContent: React.FC = () => {
     fetchProjectList();
   }, [fetchProjectList]);
 
+  // Record project visit (local)
+  useEffect(() => {
+    if (!activeProjectId) return;
+    const project = projectIdOptions.find(
+      (p) => String(p.id) === String(activeProjectId),
+    );
+    if (!project?.projectName) return;
+
+    const classId = activeClassId || paramClassId || "";
+    const recordKey = `${String(classId)}::${String(activeProjectId)}`;
+    if (lastRecordedProjectRef.current === recordKey) return;
+    lastRecordedProjectRef.current = recordKey;
+
+    const path = classId
+      ? `/projectSite?classId=${classId}&projectId=${activeProjectId}`
+      : `/projectSite?projectId=${activeProjectId}`;
+
+    recordRecentVisit({
+      id: `project:${activeProjectId}`,
+      kind: "project",
+      title: project.projectName,
+      path,
+      meta: {
+        projectId: Number(activeProjectId),
+        classId: classId ? Number(classId) : undefined,
+      },
+    });
+  }, [activeProjectId, activeClassId, paramClassId, projectIdOptions]);
+
   // Reset scroll and selection when project changes
   useEffect(() => {
     if (scrollContainerRef.current) {
@@ -224,6 +269,17 @@ const ProjectSiteContent: React.FC = () => {
     }
     setSelectedAreaIndex("0");
   }, [activeProjectId]);
+
+  // If URL contains a module hash, scroll it into view after render.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash;
+    if (!hash || !hash.startsWith("#module-")) return;
+    const id = hash.slice(1);
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [cardList, activeProjectId]);
 
   // --- Handlers ---
 
@@ -236,14 +292,44 @@ const ProjectSiteContent: React.FC = () => {
     fetchProjectList();
   };
 
-  const handleShowProjectDrawer = (data?: any) => {
+  const handleShowProjectDrawer = (data?: ModuleCard | null) => {
     setCurrentModule(data || null);
     setProjectDrawerVisible(true);
   };
 
-  const handleShowAccountDrawer = (moduleData: any) => {
+  const handleShowAccountDrawer = (moduleData: ModuleCard) => {
     setCurrentAccountModule(moduleData);
     setAccountDrawerVisible(true);
+  };
+
+  const recordModuleVisit = (card: ModuleCard, areaName?: string) => {
+    if (!card?.moduleId) return;
+
+    const classId = activeClassId || paramClassId || "";
+    const projectId = activeProjectId || paramProjectId || "";
+    const query = new URLSearchParams();
+    if (classId) query.set("classId", String(classId));
+    if (projectId) query.set("projectId", String(projectId));
+    const qs = query.toString();
+    const path = qs
+      ? `/projectSite?${qs}#module-${card.moduleId}`
+      : `/projectSite#module-${card.moduleId}`;
+
+    recordRecentVisit({
+      id: `module:${card.moduleId}`,
+      kind: "module",
+      title: card.moduleName || `模块 ${card.moduleId}`,
+      path,
+      meta: {
+        moduleId: card.moduleId,
+        moduleName: card.moduleName,
+        moduleUrl: card.moduleUrl,
+        typeName: card.typeName,
+        areaName,
+        projectId: projectId ? Number(projectId) : undefined,
+        classId: classId ? Number(classId) : undefined,
+      },
+    });
   };
 
   const handleDeleteProject = async (id: number) => {
@@ -273,7 +359,7 @@ const ProjectSiteContent: React.FC = () => {
     try {
       document.execCommand("copy");
       message.success("复制成功");
-    } catch (err) {
+    } catch {
       message.error("复制失败");
     }
     document.body.removeChild(input);
@@ -458,7 +544,7 @@ const ProjectSiteContent: React.FC = () => {
                         </div>
 
                         <Row gutter={[16, 16]}>
-                          {item.list.map((card: any) => {
+                          {item.list.map((card: ModuleCard) => {
                             const env = envOption.find(
                               (e) => e.value === card.typeName
                             );
@@ -504,18 +590,19 @@ const ProjectSiteContent: React.FC = () => {
                                 xl={8}
                                 xxl={6}
                                 key={card.id || card.moduleId}>
-                                <Card
-                                  hoverable
-                                  className="project-card"
-                                  styles={{ body: { padding: "16px" } }}
-                                  style={{
-                                    borderRadius: 12,
-                                    border: "1px solid var(--border-color)",
-                                    transition: "all 0.2s",
-                                    height: "100%",
-                                    display: "flex",
-                                    flexDirection: "column",
-                                  }}>
+                                <div id={`module-${card.moduleId}`}>
+                                  <Card
+                                    hoverable
+                                    className="project-card"
+                                    styles={{ body: { padding: "16px" } }}
+                                    style={{
+                                      borderRadius: 12,
+                                      border: "1px solid var(--border-color)",
+                                      transition: "all 0.2s",
+                                      height: "100%",
+                                      display: "flex",
+                                      flexDirection: "column",
+                                    }}>
                                   <div
                                     style={{
                                       display: "flex",
@@ -596,9 +683,10 @@ const ProjectSiteContent: React.FC = () => {
                                           type="text"
                                           size="small"
                                           icon={<InfoCircleOutlined />}
-                                          onClick={() =>
-                                            handleShowAccountDrawer(card)
-                                          }
+                                          onClick={() => {
+                                            recordModuleVisit(card, item.areaName);
+                                            handleShowAccountDrawer(card);
+                                          }}
                                           style={{
                                             color: "var(--foreground)",
                                             opacity: 0.6,
@@ -611,9 +699,10 @@ const ProjectSiteContent: React.FC = () => {
                                           type="text"
                                           size="small"
                                           icon={<CopyOutlined />}
-                                          onClick={() =>
-                                            handleCopyUrl(card.moduleUrl)
-                                          }
+                                          onClick={() => {
+                                            recordModuleVisit(card, item.areaName);
+                                            handleCopyUrl(card.moduleUrl);
+                                          }}
                                           style={{
                                             color: "var(--foreground)",
                                             opacity: 0.6,
@@ -627,12 +716,16 @@ const ProjectSiteContent: React.FC = () => {
                                           icon={<GlobalOutlined />}
                                           href={card.moduleUrl}
                                           target="_blank"
+                                          onClick={() =>
+                                            recordModuleVisit(card, item.areaName)
+                                          }
                                           style={{ color: envColor }} // Use enviroment color for the main action
                                         />
                                       </Tooltip>
                                     </div>
                                   </div>
-                                </Card>
+                                  </Card>
+                                </div>
                               </Col>
                             );
                           })}

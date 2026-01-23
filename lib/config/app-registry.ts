@@ -30,6 +30,7 @@ export const STORAGE_KEYS = {
   DASHBOARD_APPS: "devportal_dashboard_apps",
   PROJECT_SITE_PREFS: "devportal_project_site_prefs",
   ACCOUNT_VIEW_PREF: "account_default_view_preference",
+  RECENT_VISITS: "devportal_recent_visits",
 };
 
 export const ACCOUNT_VIEW_OPTIONS = [

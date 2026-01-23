@@ -15,6 +15,7 @@ import {
 } from "@ant-design/icons";
 import { useRouter, usePathname } from "next/navigation";
 import { ThemeSwitch } from "@/components/theme/ThemeSwitch";
+import { recordRecentVisit } from "@/lib/client/recent-visits";
 
 const { Header, Sider, Content } = Layout;
 
@@ -31,37 +32,85 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       key: "/dashboard",
       icon: <DashboardOutlined />,
       label: "系统监控", // New Homepage
-      onClick: () => router.push("/dashboard"),
+      onClick: () => {
+        recordRecentVisit({
+          id: "app:/dashboard",
+          kind: "app",
+          title: "系统监控",
+          path: "/dashboard",
+        });
+        router.push("/dashboard");
+      },
     },
     {
       key: "/project",
       icon: <ProjectOutlined />,
       label: "名词管理",
-      onClick: () => router.push("/project"),
+      onClick: () => {
+        recordRecentVisit({
+          id: "app:/project",
+          kind: "app",
+          title: "名词管理",
+          path: "/project",
+        });
+        router.push("/project");
+      },
     },
     {
       key: "/objectPage",
       icon: <FunctionOutlined />,
       label: "对象定义",
-      onClick: () => router.push("/objectPage"),
+      onClick: () => {
+        recordRecentVisit({
+          id: "app:/objectPage",
+          kind: "app",
+          title: "对象定义",
+          path: "/objectPage",
+        });
+        router.push("/objectPage");
+      },
     },
     {
       key: "/doc",
       icon: <BookOutlined />,
       label: "API 文档",
-      onClick: () => router.push("/doc"),
+      onClick: () => {
+        recordRecentVisit({
+          id: "app:/doc",
+          kind: "app",
+          title: "API 文档",
+          path: "/doc",
+        });
+        router.push("/doc");
+      },
     },
     {
       key: "/apifox-logs",
       icon: <HistoryOutlined />,
       label: "同步日志",
-      onClick: () => router.push("/apifox-logs"),
+      onClick: () => {
+        recordRecentVisit({
+          id: "app:/apifox-logs",
+          kind: "app",
+          title: "同步日志",
+          path: "/apifox-logs",
+        });
+        router.push("/apifox-logs");
+      },
     },
     {
       key: "/sysConfig",
       icon: <SettingOutlined />,
       label: "系统配置",
-      onClick: () => router.push("/sysConfig"),
+      onClick: () => {
+        recordRecentVisit({
+          id: "app:/sysConfig",
+          kind: "app",
+          title: "系统配置",
+          path: "/sysConfig",
+        });
+        router.push("/sysConfig");
+      },
     },
   ];
 
@@ -135,7 +184,15 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 marginRight: 16,
                 transition: "background 0.2s",
               }}
-              onClick={() => router.push("/middle")}
+              onClick={() => {
+                recordRecentVisit({
+                  id: "app:/middle",
+                  kind: "app",
+                  title: "工作台",
+                  path: "/middle",
+                });
+                router.push("/middle");
+              }}
               onMouseEnter={(e) =>
                 (e.currentTarget.style.backgroundColor = "var(--bg-hover)")
               }
