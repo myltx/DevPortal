@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Table,
   Tag,
@@ -13,6 +13,10 @@ import {
   Card,
   Typography,
   message,
+  Statistic,
+  Row,
+  Col,
+  Pagination,
 } from "antd";
 import {
   SearchOutlined,
@@ -31,6 +35,12 @@ const ApifoxLogsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
+  const [stats, setStats] = useState<{
+    total: number;
+    success: number;
+    failure: number;
+    projectCount: number;
+  } | null>(null);
 
   // Modal for raw JSON
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -41,6 +51,10 @@ const ApifoxLogsPage: React.FC = () => {
   const [cleanupToken, setCleanupToken] = useState("");
   const [cleanupLoading, setCleanupLoading] = useState(false);
 
+  const tableSectionRef = useRef<HTMLDivElement | null>(null);
+  const paginationRef = useRef<HTMLDivElement | null>(null);
+  const [tableBodyY, setTableBodyY] = useState<number>(420);
+
   const fetchLogs = async (page = 1, pageSize = 10) => {
     setLoading(true);
     try {
@@ -48,6 +62,7 @@ const ApifoxLogsPage: React.FC = () => {
       const params = new URLSearchParams({
         page: String(page),
         pageSize: String(pageSize),
+        withStats: "1",
         ...Object.fromEntries(
           Object.entries(values).filter(([_, v]) => v != null && v !== ""),
         ),
@@ -58,6 +73,7 @@ const ApifoxLogsPage: React.FC = () => {
       if (result.success) {
         setData(result.data.records);
         setTotal(result.data.total);
+        setStats(result.data.stats || null);
       }
     } catch (error) {
       console.error("Failed to fetch logs:", error);
@@ -69,6 +85,37 @@ const ApifoxLogsPage: React.FC = () => {
   useEffect(() => {
     fetchLogs();
   }, []);
+
+  const recalcTableBodyY = useCallback(() => {
+    const root = tableSectionRef.current;
+    if (!root) return;
+
+    const sectionHeight = root.getBoundingClientRect().height;
+    const paginationHeight = paginationRef.current
+      ? paginationRef.current.getBoundingClientRect().height
+      : 56;
+
+    const thead = root.querySelector(".ant-table-thead") as HTMLElement | null;
+    const headerHeight = thead ? thead.getBoundingClientRect().height : 55;
+
+    // Keep a small buffer for borders/gaps.
+    const nextY = Math.max(220, Math.floor(sectionHeight - paginationHeight - headerHeight - 16));
+    setTableBodyY(nextY);
+  }, []);
+
+  useLayoutEffect(() => {
+    const raf = requestAnimationFrame(recalcTableBodyY);
+    window.addEventListener("resize", recalcTableBodyY);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", recalcTableBodyY);
+    };
+  }, [recalcTableBodyY]);
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(recalcTableBodyY);
+    return () => cancelAnimationFrame(raf);
+  }, [data.length, pagination.current, pagination.pageSize, recalcTableBodyY]);
 
   const runCleanup = async () => {
     setCleanupLoading(true);
@@ -166,18 +213,34 @@ const ApifoxLogsPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: 24 }}>
+    <div
+      style={{
+        // MainLayout.Content 默认有 padding: 24；这里用负 margin 抵消，避免 height:100% 时触发外层滚动
+        // 同时把 padding 还回来，保证页面内边距一致
+        margin: -24,
+        padding: 24,
+        boxSizing: "border-box",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        minHeight: 0,
+      }}>
       <div
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           gap: 12,
-          marginBottom: 24,
+          marginBottom: 12,
         }}>
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          Apifox 同步日志
-        </Typography.Title>
+        <div>
+          <Typography.Title level={5} style={{ margin: 0 }}>
+            同步日志
+          </Typography.Title>
+          <Typography.Text type="secondary">
+            用于快速查看 Jenkins 自动同步到 Apifox 的最近结果
+          </Typography.Text>
+        </div>
         <Button
           danger
           icon={<DeleteOutlined />}
@@ -186,7 +249,37 @@ const ApifoxLogsPage: React.FC = () => {
         </Button>
       </div>
 
-      <Card variant="borderless" style={{ marginBottom: 16 }}>
+      {stats && (
+        <Card
+          variant="borderless"
+          style={{ marginBottom: 12 }}
+          styles={{ body: { padding: "12px 16px" } }}>
+          <Row gutter={[16, 8]}>
+            <Col xs={12} sm={8} md={6} lg={5}>
+              <Statistic title="项目数" value={stats.projectCount} />
+            </Col>
+            <Col xs={12} sm={8} md={6} lg={5}>
+              <Statistic title="总记录" value={stats.total} />
+            </Col>
+            <Col xs={12} sm={8} md={6} lg={5}>
+              <Statistic
+                title="成功"
+                value={stats.success}
+                valueStyle={{ color: "var(--primary)" }}
+              />
+            </Col>
+            <Col xs={12} sm={8} md={6} lg={5}>
+              <Statistic
+                title="失败"
+                value={stats.failure}
+                valueStyle={{ color: "var(--text-muted)" }}
+              />
+            </Col>
+          </Row>
+        </Card>
+      )}
+
+      <Card variant="borderless" style={{ marginBottom: 12 }}>
         <Form
           form={form}
           layout="inline"
@@ -221,20 +314,40 @@ const ApifoxLogsPage: React.FC = () => {
         </Form>
       </Card>
 
-      <Table
-        columns={columns}
-        dataSource={data}
-        rowKey="id"
-        loading={loading}
-        pagination={{
-          ...pagination,
-          total,
-          showSizeChanger: true,
-          showTotal: (t) => `共 ${t} 条记录`,
-        }}
-        onChange={handleTableChange}
-        bordered
-      />
+      <div style={{ flex: 1, minHeight: 0 }}>
+        <div
+          ref={tableSectionRef}
+          style={{ height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <Table
+              columns={columns}
+              dataSource={data}
+              rowKey="id"
+              loading={loading}
+              pagination={false}
+              bordered
+              sticky
+              scroll={{ y: tableBodyY, x: true }}
+            />
+          </div>
+
+          <div ref={paginationRef} style={{ paddingTop: 12 }}>
+            <Pagination
+              current={pagination.current}
+              pageSize={pagination.pageSize}
+              total={total}
+              showSizeChanger
+              showTotal={(t) => `共 ${t} 条记录`}
+              onChange={(page, pageSize) => {
+                const next = { current: page, pageSize };
+                setPagination(next);
+                fetchLogs(page, pageSize);
+              }}
+              style={{ display: "flex", justifyContent: "flex-end" }}
+            />
+          </div>
+        </div>
+      </div>
 
       <Modal
         title="同步详情 (原始响应)"
