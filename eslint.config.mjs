@@ -9,9 +9,12 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    ".next-prod/**",
     "out/**",
     "build/**",
     "next-env.d.ts",
+    ".docker_temp_*/**",
+    "*.tar",
   ]),
 ]);
 

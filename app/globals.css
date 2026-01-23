@@ -3,6 +3,17 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --page-bg: #fafafa;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --border-color: rgba(0, 0, 0, 0.08);
+  --border-color-hover: rgba(0, 0, 0, 0.12);
+  --text-strong: #111827;
+  --text-muted: #6b7280;
+  --text-muted-2: #9ca3af;
+  --selection-bg: rgba(0, 0, 0, 0.12);
+  --shadow-1: 0 2px 10px rgba(0, 0, 0, 0.06);
+  --shadow-2: 0 12px 32px rgba(0, 0, 0, 0.12);
   --font-geist-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
   --font-geist-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
@@ -20,9 +31,26 @@
 
 
 .dark {
-  --background: #0a0a0a;
+  --background: #0b0f14;
   --foreground: #ededed;
-  --bg-hover: rgba(255, 255, 255, 0.1);
+  --page-bg: #0b0f14;
+  --surface: #111827;
+  --surface-2: #151c2b;
+  --border-color: rgba(255, 255, 255, 0.14);
+  --border-color-hover: rgba(255, 255, 255, 0.22);
+  --text-strong: #f3f4f6;
+  --text-muted: rgba(237, 237, 237, 0.72);
+  --text-muted-2: rgba(237, 237, 237, 0.55);
+  --selection-bg: rgba(255, 255, 255, 0.18);
+  --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 10px 30px rgba(0, 0, 0, 0.45);
+  --shadow-2: 0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 24px 60px rgba(0, 0, 0, 0.6);
+  --bg-hover: rgba(255, 255, 255, 0.08);
+}
+
+::selection {
+  background: var(--selection-bg);
 }
 
 
@@ -32,28 +60,46 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Reusable surface card (theme-aware) */
+.surface-card {
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-1);
+  transition:
+    box-shadow 0.3s ease,
+    transform 0.3s ease,
+    border-color 0.3s ease,
+    background 0.3s ease;
+}
+.surface-card:hover {
+  box-shadow: var(--shadow-2);
+  border-color: var(--border-color-hover);
+  background: var(--surface-2);
+}
+
 
 
 /* Project Card Styles (Matching Middle Card) */
 .project-card {
-  border: 1px solid rgba(0, 0, 0, 0.04) !important;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08) !important;
+  border: 1px solid var(--border-color) !important;
+  background: var(--surface) !important;
+  box-shadow: var(--shadow-1) !important;
   transition: all 0.3s ease !important;
 }
 
 .project-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12) !important;
+  box-shadow: var(--shadow-2) !important;
 }
 
 .dark .project-card {
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  background: #141414 !important;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid var(--border-color) !important;
+  background: var(--surface) !important;
+  box-shadow: var(--shadow-1) !important;
 }
 
 .dark .project-card:hover {
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4) !important;
+  box-shadow: var(--shadow-2) !important;
 }
 
 /* Helper for Spin to fill height */
