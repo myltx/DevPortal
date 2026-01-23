@@ -12,6 +12,7 @@ import {
   Select,
   Card,
   Typography,
+  message,
 } from "antd";
 import {
   SearchOutlined,
@@ -19,6 +20,7 @@ import {
   EyeOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
 
 const { Option } = Select;
@@ -33,6 +35,11 @@ const ApifoxLogsPage: React.FC = () => {
   // Modal for raw JSON
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedLog, setSelectedLog] = useState<any>(null);
+
+  // Manual cleanup modal
+  const [cleanupModalOpen, setCleanupModalOpen] = useState(false);
+  const [cleanupToken, setCleanupToken] = useState("");
+  const [cleanupLoading, setCleanupLoading] = useState(false);
 
   const fetchLogs = async (page = 1, pageSize = 10) => {
     setLoading(true);
@@ -62,6 +69,36 @@ const ApifoxLogsPage: React.FC = () => {
   useEffect(() => {
     fetchLogs();
   }, []);
+
+  const runCleanup = async () => {
+    setCleanupLoading(true);
+    try {
+      const res = await fetch("/api/apifox-logs/cleanup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-cleanup-token": cleanupToken,
+        },
+      });
+
+      const result = await res.json().catch(() => null);
+      if (!res.ok || !result?.success) {
+        message.error(result?.error || "清理失败");
+        return;
+      }
+
+      message.success(
+        `清理完成：删除 ${result.data.deletedTotal} 条，项目数 ${result.data.projectCount}，耗时 ${result.data.durationMs}ms`,
+      );
+      setCleanupModalOpen(false);
+      fetchLogs(1, pagination.pageSize);
+    } catch (error) {
+      console.error("Cleanup failed:", error);
+      message.error("清理失败");
+    } finally {
+      setCleanupLoading(false);
+    }
+  };
 
   const handleTableChange = (pag: any) => {
     setPagination(pag);
@@ -130,9 +167,24 @@ const ApifoxLogsPage: React.FC = () => {
 
   return (
     <div style={{ padding: 24 }}>
-      <Typography.Title level={4} style={{ marginBottom: 24 }}>
-        Apifox 同步日志
-      </Typography.Title>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          marginBottom: 24,
+        }}>
+        <Typography.Title level={4} style={{ margin: 0 }}>
+          Apifox 同步日志
+        </Typography.Title>
+        <Button
+          danger
+          icon={<DeleteOutlined />}
+          onClick={() => setCleanupModalOpen(true)}>
+          清理日志
+        </Button>
+      </div>
 
       <Card variant="borderless" style={{ marginBottom: 16 }}>
         <Form
@@ -224,6 +276,26 @@ const ApifoxLogsPage: React.FC = () => {
             </pre>
           </div>
         )}
+      </Modal>
+
+      <Modal
+        title="清理 Apifox 同步日志"
+        open={cleanupModalOpen}
+        onCancel={() => setCleanupModalOpen(false)}
+        okText="确认清理"
+        okButtonProps={{ danger: true, loading: cleanupLoading }}
+        onOk={runCleanup}>
+        <div style={{ marginBottom: 12 }}>
+          将执行一次全库清理：对每个项目仅保留最近 10 条推送日志（条数可通过环境变量调整）。
+        </div>
+        <div style={{ marginBottom: 8 }}>
+          如服务端配置了清理口令，请在下方输入（可留空）。
+        </div>
+        <Input.Password
+          placeholder="清理口令（可选）"
+          value={cleanupToken}
+          onChange={(e) => setCleanupToken(e.target.value)}
+        />
       </Modal>
     </div>
   );

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendDingTalkMessage } from "@/lib/utils/dingtalk";
 import { prisma } from "@/lib/prisma";
+import { apifoxSyncLogService } from "@/services/apifoxSyncLogService";
 
 export const dynamic = "force-dynamic";
 
@@ -141,6 +142,11 @@ export async function POST(request: NextRequest) {
                 rawResponse: responseText
             }
         });
+        try {
+            await apifoxSyncLogService.cleanupByProjectId(projectId);
+        } catch (e: any) {
+            console.warn("[JenkinsWebhook] Apifox log cleanup failed:", e?.message || e);
+        }
 
         if (DINGTALK_WEBHOOK) {
             await sendDingTalkMessage(DINGTALK_WEBHOOK, DINGTALK_SECRET, {
@@ -177,6 +183,11 @@ export async function POST(request: NextRequest) {
                 rawResponse: JSON.stringify(result)
             }
         });
+        try {
+            await apifoxSyncLogService.cleanupByProjectId(projectId);
+        } catch (e: any) {
+            console.warn("[JenkinsWebhook] Apifox log cleanup failed:", e?.message || e);
+        }
 
         // --- Success Notification ---
         if (DINGTALK_WEBHOOK) {
@@ -244,6 +255,11 @@ export async function POST(request: NextRequest) {
                 rawResponse: JSON.stringify(result)
             }
         });
+        try {
+            await apifoxSyncLogService.cleanupByProjectId(projectId);
+        } catch (e: any) {
+            console.warn("[JenkinsWebhook] Apifox log cleanup failed:", e?.message || e);
+        }
 
         // --- Failure Notification ---
         if (DINGTALK_WEBHOOK) {
@@ -278,14 +294,20 @@ export async function POST(request: NextRequest) {
     try {
         // We might not have projectId here if error happened early
         if (request.nextUrl.searchParams.get("projectId")) {
+             const pid = request.nextUrl.searchParams.get("projectId") || "unknown";
              await prisma.apifoxSyncLog.create({
                 data: {
-                    projectId: request.nextUrl.searchParams.get("projectId") || "unknown",
+                    projectId: pid,
                     projectName: request.nextUrl.searchParams.get("projectName") || "unknown",
                     status: "FAILURE",
                     errorMessage: error.message
                 }
             });
+            try {
+                await apifoxSyncLogService.cleanupByProjectId(pid);
+            } catch (e: any) {
+                console.warn("[JenkinsWebhook] Apifox log cleanup failed:", e?.message || e);
+            }
         }
     } catch {}
     return NextResponse.json({ error: error.message }, { status: 500 });
