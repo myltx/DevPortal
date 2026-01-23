@@ -1,5 +1,18 @@
 #!/bin/bash
 
+# 兼容：若被 `sh server-deploy.sh` / `source server-deploy.sh` 等方式误用，
+# 先自举切换到 bash，避免后续 bash-only 语法（如 [[ ]]/local/数组）触发莫名其妙的语法错误。
+if [ -z "${BASH_VERSION:-}" ]; then
+    if command -v bash >/dev/null 2>&1; then
+        exec bash "$0" "$@"
+    elif [ -x /bin/bash ]; then
+        exec /bin/bash "$0" "$@"
+    else
+        echo "[ERROR] 当前脚本需要 bash 执行，请使用：bash ./server-deploy.sh" >&2
+        exit 1
+    fi
+fi
+
 # Configuration
 IMAGE_TAR="dev-portal.tar"
 IMAGE_NAME="dev-portal:latest"
