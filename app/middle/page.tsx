@@ -122,6 +122,17 @@ export default function MiddlePage() {
     setFrequentVisitedModules(getFrequentVisits({ kind: "module", limit: 6 }));
   }, []);
 
+  const openModuleEntry = (entry: RecentVisitEntry) => {
+    const moduleUrl =
+      typeof entry.meta?.moduleUrl === "string" ? entry.meta.moduleUrl : "";
+
+    if (moduleUrl) {
+      window.open(moduleUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+    router.push(entry.path);
+  };
+
   return (
     <div className="min-h-screen bg-[#fafafa] text-gray-900 font-sans selection:bg-gray-200">
       <div className="max-w-[1000px] mx-auto px-6 py-16">
@@ -288,7 +299,7 @@ export default function MiddlePage() {
                             setFrequentVisitedModules(
                               getFrequentVisits({ kind: "module", limit: 6 }),
                             );
-                            router.push(x.path);
+                            openModuleEntry(x);
                           }}
                           className="px-3 py-1 text-xs font-medium rounded-full bg-gray-50 hover:bg-gray-100 text-gray-700 transition-colors">
                           {x.title}
@@ -328,7 +339,7 @@ export default function MiddlePage() {
                             setFrequentVisitedModules(
                               getFrequentVisits({ kind: "module", limit: 6 }),
                             );
-                            router.push(x.path);
+                            openModuleEntry(x);
                           }}
                           className="group px-6 py-4 hover:bg-gray-50/80 transition-colors cursor-pointer flex items-center gap-5">
                           <Avatar
