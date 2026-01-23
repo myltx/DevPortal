@@ -1,14 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { Avatar, Empty } from "antd";
+import React, { useState } from "react";
+import { Empty, Tooltip } from "antd";
 import { useRouter } from "next/navigation";
 import {
-  RocketOutlined,
   ArrowRightOutlined,
   SearchOutlined,
   AppstoreOutlined,
-  ClockCircleOutlined,
 } from "@ant-design/icons";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -20,60 +18,52 @@ import {
   getDefaultAppKeys,
 } from "@/lib/config/app-registry";
 import {
-  clearRecentVisits,
+  clearRecentVisitsByKind,
   getFrequentVisits,
   getRecentVisits,
   recordRecentVisit,
   RecentVisitEntry,
 } from "@/lib/client/recent-visits";
 
-// --- Interfaces ---
-interface Project {
-  id: number;
-  projectName: string;
-  projectDescribe: string;
-  createTime: string;
-  updateTime: string;
-  area?: {
-    name: string;
-  };
-  classId?: number;
-}
-
-interface DashboardStats {
-  counts: {
-    projects: number;
-    modules: number;
-    accounts: number;
-    nouns: number;
-  };
-  recentProjects: Project[];
-  recentAccounts: unknown[];
-}
-
 function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
+const ENV_META: Record<
+  string,
+  { label: string; className: string; dotClassName: string }
+> = {
+  prod: {
+    label: "生产",
+    className: "bg-emerald-50 text-emerald-700 border-emerald-100",
+    dotClassName: "bg-emerald-500",
+  },
+  gray: {
+    label: "灰度",
+    className: "bg-slate-50 text-slate-700 border-slate-100",
+    dotClassName: "bg-slate-500",
+  },
+  test: {
+    label: "测试",
+    className: "bg-blue-50 text-blue-700 border-blue-100",
+    dotClassName: "bg-blue-500",
+  },
+  dev: {
+    label: "开发",
+    className: "bg-amber-50 text-amber-700 border-amber-100",
+    dotClassName: "bg-amber-500",
+  },
+  demo: {
+    label: "演示",
+    className: "bg-rose-50 text-rose-700 border-rose-100",
+    dotClassName: "bg-rose-500",
+  },
+};
+
 export default function MiddlePage() {
   const { query } = useKBar();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [visibleApps, setVisibleApps] = useState<AppRegistryItem[]>([]);
-  const [recentVisitedModules, setRecentVisitedModules] = useState<
-    RecentVisitEntry[]
-  >([]);
-  const [frequentVisitedModules, setFrequentVisitedModules] = useState<
-    RecentVisitEntry[]
-  >([]);
-  const [projectSectionMode, setProjectSectionMode] = useState<
-    "visited" | "updated"
-  >("visited");
-
-  // --- Load Configs ---
-  useEffect(() => {
-    // 1. Get Keys (Local or Default)
+  const [visibleApps] = useState<AppRegistryItem[]>(() => {
     let keys: string[] = getDefaultAppKeys();
     if (typeof window !== "undefined") {
       const local = localStorage.getItem(STORAGE_KEYS.DASHBOARD_APPS);
@@ -89,42 +79,53 @@ export default function MiddlePage() {
       }
     }
 
-    // 2. Map Keys to Registry Items (Preserve Order)
-    const filteredApps = keys
+    return keys
       .map((k) => APP_REGISTRY.find((item) => item.key === k))
       .filter((item): item is AppRegistryItem => !!item);
+  });
 
-    setVisibleApps(filteredApps);
-  }, []);
-
-  const fetchStats = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/dashboard/stats");
-      if (res.ok) {
-        const data = await res.json();
-        setStats(data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch dashboard stats", error);
-    } finally {
-      setLoading(false);
+  const [moduleLaunchers, setModuleLaunchers] = useState<RecentVisitEntry[]>(() => {
+    if (typeof window === "undefined") return [];
+    const frequent = getFrequentVisits({ kind: "module", limit: 8 });
+    const recent = getRecentVisits({ kind: "module", limit: 8 });
+    const merged: RecentVisitEntry[] = [];
+    const seen = new Set<string>();
+    for (const x of [...frequent, ...recent]) {
+      if (merged.length >= 8) break;
+      if (seen.has(x.id)) continue;
+      seen.add(x.id);
+      merged.push(x);
     }
+    return merged;
+  });
+
+  const refreshModuleLaunchers = () => {
+    const frequent = getFrequentVisits({ kind: "module", limit: 8 });
+    const recent = getRecentVisits({ kind: "module", limit: 8 });
+    const merged: RecentVisitEntry[] = [];
+    const seen = new Set<string>();
+
+    for (const x of [...frequent, ...recent]) {
+      if (merged.length >= 8) break;
+      if (seen.has(x.id)) continue;
+      seen.add(x.id);
+      merged.push(x);
+    }
+    setModuleLaunchers(merged);
   };
-
-  useEffect(() => {
-    fetchStats();
-  }, []);
-
-  // Load local visit data
-  useEffect(() => {
-    setRecentVisitedModules(getRecentVisits({ kind: "module", limit: 5 }));
-    setFrequentVisitedModules(getFrequentVisits({ kind: "module", limit: 6 }));
-  }, []);
 
   const openModuleEntry = (entry: RecentVisitEntry) => {
     const moduleUrl =
       typeof entry.meta?.moduleUrl === "string" ? entry.meta.moduleUrl : "";
+
+    recordRecentVisit({
+      id: entry.id,
+      kind: "module",
+      title: entry.title,
+      path: entry.path,
+      meta: entry.meta,
+    });
+    refreshModuleLaunchers();
 
     if (moduleUrl) {
       window.open(moduleUrl, "_blank", "noopener,noreferrer");
@@ -211,266 +212,140 @@ export default function MiddlePage() {
           </div>
         </section>
 
-        {/* 2. Modules / Projects */}
+        {/* 2. Module Launchers */}
         <section className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-6 px-2">
-            <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-                {projectSectionMode === "visited" ? (
-                  <ClockCircleOutlined className="mr-2 text-gray-400" />
-                ) : (
-                  <RocketOutlined className="mr-2 text-gray-400" />
-                )}
-                {projectSectionMode === "visited" ? "最近访问模块" : "最近更新项目"}
-              </h2>
-
-              <div className="inline-flex rounded-full border border-gray-200 bg-white p-0.5 shadow-sm">
-                <button
-                  onClick={() => setProjectSectionMode("visited")}
-                  className={cn(
-                    "px-3 py-1 text-xs font-medium rounded-full transition-colors",
-                    projectSectionMode === "visited"
-                      ? "bg-gray-900 text-white"
-                      : "text-gray-500 hover:text-gray-900",
-                  )}>
-                  最近访问
-                </button>
-                <button
-                  onClick={() => setProjectSectionMode("updated")}
-                  className={cn(
-                    "px-3 py-1 text-xs font-medium rounded-full transition-colors",
-                    projectSectionMode === "updated"
-                      ? "bg-gray-900 text-white"
-                      : "text-gray-500 hover:text-gray-900",
-                  )}>
-                  最近更新
-                </button>
-              </div>
-            </div>
-
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+              常用模块（快捷启动）
+            </h2>
             <div className="flex items-center gap-2">
-              {projectSectionMode === "visited" && (
-                <button
-                  onClick={() => {
-                    clearRecentVisits();
-                    setRecentVisitedModules([]);
-                    setFrequentVisitedModules([]);
-                  }}
-                  className="text-xs font-medium text-gray-400 hover:text-gray-900 transition-colors px-3 py-1 rounded-full hover:bg-gray-100">
-                  清空记录
-                </button>
-              )}
+              <button
+                onClick={() => {
+                  clearRecentVisitsByKind("module");
+                  refreshModuleLaunchers();
+                }}
+                className="text-xs font-medium text-gray-400 hover:text-gray-900 transition-colors px-3 py-1 rounded-full hover:bg-gray-100">
+                清空
+              </button>
               <button
                 onClick={() => router.push("/projectSite")}
                 className="text-xs font-medium text-gray-500 hover:text-gray-900 transition-colors px-3 py-1 rounded-full hover:bg-gray-100">
-                查看项目空间
+                去项目空间
               </button>
             </div>
           </div>
 
           <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] overflow-hidden">
-            {projectSectionMode === "visited" ? (
+            {moduleLaunchers.length > 0 ? (
               <div className="p-6">
-                {frequentVisitedModules.length > 0 && (
-                  <div className="mb-5">
-                    <div className="text-xs font-medium text-gray-400 mb-2">
-                      常用模块（按访问次数）
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {frequentVisitedModules.map((x) => {
-                        const typeName =
-                          typeof x.meta?.typeName === "string"
-                            ? x.meta.typeName
-                            : undefined;
-                        return (
-                        <button
-                          key={x.id}
-                          onClick={() => {
-                            recordRecentVisit({
-                              id: x.id,
-                              kind: "module",
-                              title: x.title,
-                              path: x.path,
-                              meta: x.meta,
-                            });
-                            setRecentVisitedModules(
-                              getRecentVisits({ kind: "module", limit: 5 }),
-                            );
-                            setFrequentVisitedModules(
-                              getFrequentVisits({ kind: "module", limit: 6 }),
-                            );
-                            openModuleEntry(x);
-                          }}
-                          className="px-3 py-1 text-xs font-medium rounded-full bg-gray-50 hover:bg-gray-100 text-gray-700 transition-colors">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {moduleLaunchers.map((x) => {
+                    const rawTypeName =
+                      typeof x.meta?.typeName === "string"
+                        ? x.meta.typeName
+                        : "";
+                    const key = rawTypeName.toLowerCase();
+                    const env = ENV_META[key];
+                    const areaName =
+                      typeof x.meta?.areaName === "string"
+                        ? x.meta.areaName
+                        : "";
+                    const moduleUrl =
+                      typeof x.meta?.moduleUrl === "string"
+                        ? x.meta.moduleUrl
+                        : "";
+
+                    const tip = (
+                      <div className="text-xs">
+                        <div className="font-medium text-gray-900 mb-1">
                           {x.title}
-                          {typeName ? ` · ${typeName}` : ""}
-                        </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {recentVisitedModules.length > 0 ? (
-                  <div className="divide-y divide-gray-50 -mx-6">
-                    {recentVisitedModules.map((x) => {
-                      const typeName =
-                        typeof x.meta?.typeName === "string"
-                          ? x.meta.typeName
-                          : undefined;
-                      const areaName =
-                        typeof x.meta?.areaName === "string"
-                          ? x.meta.areaName
-                          : undefined;
-                      return (
-                        <div
-                          key={x.id}
-                          onClick={() => {
-                            recordRecentVisit({
-                              id: x.id,
-                              kind: "module",
-                              title: x.title,
-                              path: x.path,
-                              meta: x.meta,
-                            });
-                            setRecentVisitedModules(
-                              getRecentVisits({ kind: "module", limit: 5 }),
-                            );
-                            setFrequentVisitedModules(
-                              getFrequentVisits({ kind: "module", limit: 6 }),
-                            );
-                            openModuleEntry(x);
-                          }}
-                          className="group px-6 py-4 hover:bg-gray-50/80 transition-colors cursor-pointer flex items-center gap-5">
-                          <Avatar
-                            shape="square"
-                            size={48}
-                            className="bg-blue-50 text-blue-600 font-semibold border border-blue-100 rounded-xl flex-shrink-0">
-                            {x.title?.[0]?.toUpperCase()}
-                          </Avatar>
-
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-3 mb-1.5">
-                              <h4 className="text-base font-semibold text-gray-900 truncate">
-                                {x.title}
-                              </h4>
-                              {typeName && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">
-                                  {typeName}
-                                </span>
-                              )}
-                              {areaName && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-gray-50 text-gray-500">
-                                  {areaName}
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <p className="text-sm text-gray-500 truncate max-w-[420px]">
-                                上次访问：
-                                {new Date(x.lastVisitedAt).toLocaleString()}（
-                                {x.visitCount} 次）
-                              </p>
-                              <span className="text-xs text-gray-300 font-mono whitespace-nowrap group-hover:text-gray-400 transition-colors">
-                                {new Date(x.lastVisitedAt).toLocaleDateString()}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="pl-4 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                            <ArrowRightOutlined className="text-gray-400" />
-                          </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="p-6 text-center">
-                    <Empty
-                      description="暂无访问记录（从项目空间打开账号抽屉/复制链接/跳转模块后会出现在这里）"
-                      image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    />
-                    <div className="mt-4">
-                      <button
-                        onClick={() => router.push("/projectSite")}
-                        className="text-xs font-medium text-gray-500 hover:text-gray-900 transition-colors px-3 py-1 rounded-full hover:bg-gray-100">
-                        去项目空间
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : loading ? (
-              <div className="p-8 space-y-6">
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="flex gap-4">
-                    <div className="w-12 h-12 bg-gray-100 rounded-xl animate-pulse" />
-                    <div className="flex-1 space-y-3">
-                      <div className="h-4 bg-gray-100 rounded w-1/3 animate-pulse" />
-                      <div className="h-3 bg-gray-100 rounded w-1/2 animate-pulse" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : stats?.recentProjects?.length ? (
-              <div className="divide-y divide-gray-50">
-                {stats.recentProjects.slice(0, 5).map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => {
-                      const path = `/projectSite?classId=${item.classId}&projectId=${item.id}`;
-                      recordRecentVisit({
-                        id: `project:${item.id}`,
-                        kind: "project",
-                        title: item.projectName || `项目 ${item.id}`,
-                        path,
-                        meta: { projectId: item.id, classId: item.classId },
-                      });
-                      router.push(path);
-                    }}
-                    className="group p-6 hover:bg-gray-50/80 transition-colors cursor-pointer flex items-center gap-5">
-                    <Avatar
-                      shape="square"
-                      size={48}
-                      className="bg-blue-50 text-blue-600 font-semibold border border-blue-100 rounded-xl flex-shrink-0">
-                      {item.projectName?.[0]?.toUpperCase()}
-                    </Avatar>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-1.5">
-                        <h4 className="text-base font-semibold text-gray-900 truncate">
-                          {item.projectName}
-                        </h4>
-                        {item.area && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">
-                            {item.area.name}
-                          </span>
+                        {env && (
+                          <div className="text-gray-600 mb-1">
+                            环境：{env.label}
+                          </div>
                         )}
+                        {areaName && (
+                          <div className="text-gray-600 mb-1">
+                            分组：{areaName}
+                          </div>
+                        )}
+                        {moduleUrl && (
+                          <div className="text-gray-600 mb-1 break-all">
+                            URL：{moduleUrl}
+                          </div>
+                        )}
+                        <div className="text-gray-500">
+                          {x.visitCount} 次 ·{" "}
+                          {new Date(x.lastVisitedAt).toLocaleString()}
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-gray-500 truncate max-w-[400px]">
-                          {item.projectDescribe || "暂无描述"}
-                        </p>
-                        <span className="text-xs text-gray-300 font-mono whitespace-nowrap group-hover:text-gray-400 transition-colors">
-                          {new Date(
-                            item.updateTime || item.createTime,
-                          ).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
+                    );
 
-                    <div className="pl-4 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                      <ArrowRightOutlined className="text-gray-400" />
-                    </div>
-                  </div>
-                ))}
+                    return (
+                      <Tooltip
+                        key={x.id}
+                        title={tip}
+                        placement="top"
+                        color="#ffffff"
+                        overlayInnerStyle={{
+                          color: "#111827",
+                          border: "1px solid #e5e7eb",
+                          boxShadow: "0 12px 32px rgba(0,0,0,0.12)",
+                          maxWidth: 420,
+                        }}>
+                        <button
+                          onClick={() => openModuleEntry(x)}
+                          className="group text-left rounded-2xl border border-gray-100 bg-white hover:bg-gray-50/60 hover:border-gray-200 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.06)] transition-all duration-300 p-4 h-[92px] flex flex-col justify-between">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="text-sm font-semibold text-gray-900 line-clamp-2">
+                              {x.title}
+                            </div>
+                            <div className="opacity-0 group-hover:opacity-100 transition-all transform translate-x-1 group-hover:translate-x-0">
+                              <ArrowRightOutlined className="text-gray-400 text-xs" />
+                            </div>
+                          </div>
+
+                          {env ? (
+                            <div
+                              className={cn(
+                                "inline-flex items-center gap-2 text-[10px] font-medium rounded-full border px-2 py-1 w-fit",
+                                env.className,
+                              )}>
+                              <span
+                                className={cn(
+                                  "w-1.5 h-1.5 rounded-full",
+                                  env.dotClassName,
+                                )}
+                              />
+                              {env.label}
+                            </div>
+                          ) : rawTypeName ? (
+                            <div className="inline-flex items-center text-[10px] font-medium rounded-full border border-gray-200 bg-gray-50 text-gray-600 px-2 py-1 w-fit">
+                              {rawTypeName}
+                            </div>
+                          ) : (
+                            <div className="h-[22px]" />
+                          )}
+                        </button>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
               </div>
             ) : (
-              <div className="p-12 flex flex-col items-center justify-center text-gray-400">
+              <div className="p-10 text-center">
                 <Empty
-                  description="暂无最近项目"
+                  description="暂无常用模块（在项目空间里打开账号抽屉/复制链接/跳转模块后会出现在这里）"
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
                 />
+                <div className="mt-4">
+                  <button
+                    onClick={() => router.push("/projectSite")}
+                    className="text-xs font-medium text-gray-500 hover:text-gray-900 transition-colors px-3 py-1 rounded-full hover:bg-gray-100">
+                    去项目空间
+                  </button>
+                </div>
               </div>
             )}
           </div>

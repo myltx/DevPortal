@@ -87,6 +87,16 @@ export const clearRecentVisits = () => {
   localStorage.removeItem(STORAGE_KEYS.RECENT_VISITS);
 };
 
+export const clearRecentVisitsByKind = (kind: RecentVisitKind) => {
+  if (typeof window === "undefined") return;
+  const next = getRecentVisitEntries().filter((x) => x.kind !== kind);
+  if (next.length === 0) {
+    localStorage.removeItem(STORAGE_KEYS.RECENT_VISITS);
+    return;
+  }
+  saveRecentVisitEntries(next);
+};
+
 export const getRecentVisits = (opts?: {
   kind?: RecentVisitKind;
   limit?: number;
