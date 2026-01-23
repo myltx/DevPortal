@@ -259,24 +259,31 @@ export default function MiddlePage() {
             </h2>
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={() => {
                   clearRecentVisitsByKind("module");
                   refreshModuleLaunchers();
                 }}
-                className="text-xs font-medium transition-colors px-3 py-1 rounded-full"
+                className="text-xs font-medium transition-colors px-3 py-1 rounded-full cursor-pointer"
                 style={{ color: "var(--text-muted-2)" }}>
                 清空
               </button>
               <button
+                type="button"
                 onClick={() => router.push("/projectSite")}
-                className="text-xs font-medium transition-colors px-3 py-1 rounded-full"
+                className="text-xs font-medium transition-colors px-3 py-1 rounded-full cursor-pointer"
                 style={{ color: "var(--text-muted)" }}>
                 去项目空间
               </button>
             </div>
           </div>
 
-          <div className="surface-card rounded-2xl overflow-hidden">
+          <div
+            className="rounded-2xl overflow-hidden"
+            style={{
+              background: "var(--surface-2)",
+              border: "1px solid var(--border-color)",
+            }}>
             {moduleLaunchers.length > 0 ? (
               <div className="p-6">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -338,8 +345,9 @@ export default function MiddlePage() {
                           maxWidth: 420,
                         }}>
                         <button
+                          type="button"
                           onClick={() => openModuleEntry(x)}
-                          className="surface-card group text-left rounded-2xl transition-all duration-300 p-4 h-[92px] flex flex-col justify-between">
+                          className="surface-card group text-left rounded-2xl transition-all duration-300 p-4 h-[92px] flex flex-col justify-between cursor-pointer">
                           <div className="flex items-start justify-between gap-2">
                             <div
                               className="text-sm font-semibold line-clamp-2"
@@ -395,8 +403,9 @@ export default function MiddlePage() {
                 />
                 <div className="mt-4">
                   <button
+                    type="button"
                     onClick={() => router.push("/projectSite")}
-                    className="text-xs font-medium transition-colors px-3 py-1 rounded-full"
+                    className="text-xs font-medium transition-colors px-3 py-1 rounded-full cursor-pointer"
                     style={{ color: "var(--text-muted)" }}>
                     去项目空间
                   </button>
