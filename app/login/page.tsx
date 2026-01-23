@@ -35,11 +35,11 @@ const LoginPage: React.FC = () => {
         justifyContent: "center",
         alignItems: "center",
         height: "100vh",
-        background: "#2d3a4b",
+        background: "var(--page-bg)",
       }}>
       <Card
         title="Login Form"
-        style={{ width: 400, background: "rgba(255, 255, 255, 0.9)" }}>
+        style={{ width: 400 }}>
         <Form
           name="login"
           initialValues={{ username: "admin", password: "123456" }} // Mock default

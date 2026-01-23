@@ -210,7 +210,7 @@ export default function MiddlePage() {
                 {app.primary && (
                   <div className="absolute top-0 right-0 p-3 opacity-10">
                     <AppstoreOutlined
-                      style={{ fontSize: "100px", color: "#10b981" }}
+                      style={{ fontSize: "100px", color: "var(--primary)" }}
                     />
                   </div>
                 )}

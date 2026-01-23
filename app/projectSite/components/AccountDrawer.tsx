@@ -450,7 +450,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
           style={{
             whiteSpace: "nowrap",
             cursor: "pointer",
-            color: "#1890ff",
+            color: "var(--primary)",
             textDecoration: "underline",
             textUnderlineOffset: 4,
           }}>
@@ -894,7 +894,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
                           <Tag color="orange">
                             可导入 {importableFromCurrentTextCount} 条
                           </Tag>
-                          <span style={{ color: "#999" }}>
+                          <span style={{ color: "var(--text-muted-2)" }}>
                             仅用于提示/导入，不会修改原文
                           </span>
                         </Space>
@@ -910,7 +910,8 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
                           </Button>
                         </Space>
                       </Space>
-                      <div style={{ marginTop: 12, color: "#999" }}>
+                      <div
+                        style={{ marginTop: 12, color: "var(--text-muted-2)" }}>
                         {extractedFromCurrentText.length ? (
                           <>
                             已从文本中识别出可能的账号/密码条目；如需预览/编辑请点击
@@ -931,7 +932,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
                 ) : (
                   <div
                     style={{
-                      color: "#999",
+                      color: "var(--text-muted-2)",
                       textAlign: "center",
                       padding: "20px",
                     }}>
@@ -974,12 +975,18 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
                       </div>
                     </div>
                   }>
-                  <span style={{ color: "#999", cursor: "help" }}>?</span>
+                  <span style={{ color: "var(--text-muted-2)", cursor: "help" }}>
+                    ?
+                  </span>
                 </Tooltip>
               </Space>
             }
             name="accountInfo"
-            extra={<span style={{ color: "#999" }}>{ACCOUNT_INFO_HINT}</span>}>
+            extra={
+              <span style={{ color: "var(--text-muted-2)" }}>
+                {ACCOUNT_INFO_HINT}
+              </span>
+            }>
             <Input placeholder={`例如：${ACCOUNT_INFO_EXAMPLES.join(" / ")}`} />
           </Form.Item>
           <Form.Item
@@ -1019,7 +1026,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
         }>
         <Space direction="vertical" style={{ width: "100%" }} size={12}>
           <Space wrap>
-            <span style={{ color: "#666" }}>输入方式：</span>
+            <span style={{ color: "var(--text-muted)" }}>输入方式：</span>
             <Radio.Group
               value={importSource}
               onChange={(e) => {
@@ -1052,7 +1059,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
             showIcon
             message="导入策略说明"
             description={
-              <div style={{ color: "#666" }}>
+              <div style={{ color: "var(--text-muted)" }}>
                 仅会新增账号记录，不会覆盖已存在账号的任何字段；已存在的条目会自动标记为“已存在”并跳过导入。
               </div>
             }
@@ -1063,7 +1070,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
             showIcon
             message="账号描述（accountInfo）推荐写法"
             description={
-              <div style={{ color: "#666" }}>
+              <div style={{ color: "var(--text-muted)" }}>
                 {ACCOUNT_INFO_HINT}
                 <div style={{ marginTop: 6 }}>
                   示例：{ACCOUNT_INFO_EXAMPLES.join("、")}
@@ -1099,7 +1106,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
           ) : null}
 
           <Space wrap>
-            <span style={{ color: "#666" }}>
+            <span style={{ color: "var(--text-muted)" }}>
               批次备注（默认写入 remark，可逐行覆盖）：
             </span>
             <Input
@@ -1113,7 +1120,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
               onChange={(e) => setImportAutoFillRemark(e.target.checked)}>
               备注为空时自动填入批次备注
             </Checkbox>
-            <span style={{ color: "#666" }}>筛选：</span>
+            <span style={{ color: "var(--text-muted)" }}>筛选：</span>
             <Radio.Group
               value={importFilter}
               onChange={(e) => setImportFilter(e.target.value)}
@@ -1162,30 +1169,30 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
               description={
                 <div style={{ wordBreak: "break-all" }}>
                   <div>
-                    <span style={{ color: "#666" }}>账号描述：</span>
+                    <span style={{ color: "var(--text-muted)" }}>账号描述：</span>
                     {String(
                       importItems[splitTargetIndex].accountInfo || "",
                     ).trim() || "-"}
                   </div>
                   <div>
-                    <span style={{ color: "#666" }}>账号：</span>
+                    <span style={{ color: "var(--text-muted)" }}>账号：</span>
                     {String(
                       importItems[splitTargetIndex].account || "",
                     ).trim() || "-"}
                   </div>
                   <div>
-                    <span style={{ color: "#666" }}>密码：</span>
+                    <span style={{ color: "var(--text-muted)" }}>密码：</span>
                     {String(
                       importItems[splitTargetIndex].password || "",
                     ).trim() || "-"}
                   </div>
                   <div>
-                    <span style={{ color: "#666" }}>备注：</span>
+                    <span style={{ color: "var(--text-muted)" }}>备注：</span>
                     {String(
                       importItems[splitTargetIndex].remark || "",
                     ).trim() || "-"}
                   </div>
-                  <div style={{ marginTop: 8, color: "#999" }}>
+                  <div style={{ marginTop: 8, color: "var(--text-muted-2)" }}>
                     已自动把上面这条的完整内容带入到下方输入框，你可以直接在下方编辑并换行拆分。
                   </div>
                 </div>
@@ -1215,7 +1222,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
             message="推荐格式（更容易拆分正确）"
             description={
               <div>
-                <div style={{ marginBottom: 8, color: "#666" }}>
+                <div style={{ marginBottom: 8, color: "var(--text-muted)" }}>
                   建议使用 “账号描述: 账号-密码”
                   的方式（用冒号把描述与账号密码分隔开），账号描述建议按 “-”
                   分层，例如：
@@ -1224,8 +1231,8 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
                   style={{
                     margin: 0,
                     padding: 12,
-                    background: "#fafafa",
-                    border: "1px solid rgba(0,0,0,0.06)",
+                    background: "var(--surface-2)",
+                    border: "1px solid var(--border-color)",
                     borderRadius: 6,
                     whiteSpace: "pre-wrap",
                     wordBreak: "break-all",
@@ -1260,7 +1267,7 @@ const AccountDrawer: React.FC<AccountDrawerProps> = ({
             </Checkbox>
           </Space>
 
-          <div style={{ color: "#999" }}>
+          <div style={{ color: "var(--text-muted-2)" }}>
             拆分后的条目仍会按“将导入/已存在/重复/无效”规则标记，你可以在弹窗里继续编辑后再导入。
           </div>
         </Space>
@@ -1306,7 +1313,7 @@ const SmartTextDisplay: React.FC<{ text: string }> = ({ text }) => {
         style={{
           fontWeight: 500,
           margin: "0 4px",
-          color: "#1890ff",
+          color: "var(--primary)",
           cursor: "pointer",
           textDecoration: "underline",
           textUnderlineOffset: 4,
@@ -1331,7 +1338,7 @@ const SmartTextDisplay: React.FC<{ text: string }> = ({ text }) => {
       rel="noopener noreferrer"
       style={{
         margin: "0 4px",
-        color: "#1890ff",
+        color: "var(--primary)",
         textDecoration: "underline",
       }}>
       {url}
@@ -1457,7 +1464,7 @@ const SmartTextDisplay: React.FC<{ text: string }> = ({ text }) => {
                     key={tIdx}
                     style={{
                       whiteSpace: "pre",
-                      color: "#ccc",
+                      color: "var(--text-muted-2)",
                       margin: "0 2px",
                     }}>
                     {token.text}
@@ -1473,7 +1480,7 @@ const SmartTextDisplay: React.FC<{ text: string }> = ({ text }) => {
                     style={{
                       marginLeft: 4,
                       cursor: "pointer",
-                      color: "#1890ff",
+                      color: "var(--primary)",
                     }}
                     onClick={() => handleCopy(token.text)}
                   />,

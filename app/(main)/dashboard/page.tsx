@@ -12,6 +12,7 @@ import {
   Table,
   Tag,
   Space,
+  theme,
 } from "antd";
 import {
   ProjectOutlined,
@@ -57,6 +58,7 @@ interface AuditLog {
 }
 
 const DashboardPage: React.FC = () => {
+  const { token } = theme.useToken();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -91,25 +93,33 @@ const DashboardPage: React.FC = () => {
     {
       title: "项目总数",
       value: stats?.counts.projects || 0,
-      icon: <ProjectOutlined style={{ fontSize: 24, color: "#1890ff" }} />,
+      icon: (
+        <ProjectOutlined style={{ fontSize: 24, color: token.colorInfo }} />
+      ),
       prefix: "个",
     },
     {
       title: "模块总数",
       value: stats?.counts.modules || 0,
-      icon: <AppstoreOutlined style={{ fontSize: 24, color: "#52c41a" }} />,
+      icon: (
+        <AppstoreOutlined
+          style={{ fontSize: 24, color: token.colorSuccess }}
+        />
+      ),
       prefix: "个",
     },
     {
       title: "收录账号",
       value: stats?.counts.accounts || 0,
-      icon: <UserOutlined style={{ fontSize: 24, color: "#722ed1" }} />,
+      icon: (
+        <UserOutlined style={{ fontSize: 24, color: token.colorPrimary }} />
+      ),
       prefix: "个",
     },
     {
       title: "名词定义",
       value: stats?.counts.nouns || 0,
-      icon: <BookOutlined style={{ fontSize: 24, color: "#faad14" }} />,
+      icon: <BookOutlined style={{ fontSize: 24, color: token.colorWarning }} />,
       prefix: "条",
     },
   ];

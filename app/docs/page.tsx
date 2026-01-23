@@ -267,7 +267,8 @@ export default function DocsPage() {
         </div>
         <Divider style={{ margin: "40px 0" }} />
 
-        <Paragraph style={{ textAlign: "center", color: "#999" }}>
+        <Paragraph
+          style={{ textAlign: "center", color: "var(--text-muted-2)" }}>
           © {new Date().getFullYear()} DevPortal Internal System
         </Paragraph>
       </Space>

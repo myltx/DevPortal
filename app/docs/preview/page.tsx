@@ -62,7 +62,7 @@ function PreviewContent() {
             style={{
               margin: "24px 0",
               border: "0",
-              borderTop: "1px solid #eee",
+              borderTop: "1px solid var(--border-color)",
             }}
           />
         );

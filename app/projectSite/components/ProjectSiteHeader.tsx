@@ -121,7 +121,14 @@ const ProjectSiteHeader: React.FC<ProjectSiteHeaderProps> = ({
         </Dropdown>
       </div>
 
-      <div style={{ width: 1, height: 24, background: "#f0f0f0", margin: 0 }} />
+      <div
+        style={{
+          width: 1,
+          height: 24,
+          background: "var(--border-color)",
+          margin: 0,
+        }}
+      />
 
       {/* Filter Form Part */}
       <div style={{ display: "flex", alignItems: "center" }}>
@@ -142,7 +149,9 @@ const ProjectSiteHeader: React.FC<ProjectSiteHeaderProps> = ({
             style={{ marginBottom: 0, marginRight: 16 }}>
             <Input
               placeholder="搜索模块名称..."
-              prefix={<SearchOutlined style={{ color: "rgba(0,0,0,0.25)" }} />}
+              prefix={
+                <SearchOutlined style={{ color: "var(--text-muted-2)" }} />
+              }
               style={{ width: 200 }}
             />
           </Form.Item>
@@ -177,8 +186,6 @@ const ProjectSiteHeader: React.FC<ProjectSiteHeaderProps> = ({
               type="primary"
               style={{
                 marginLeft: 16,
-                background: "#52c41a",
-                borderColor: "#52c41a",
               }}
               icon={<PlusOutlined />}
               onClick={onAdd}>

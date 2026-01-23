@@ -10,6 +10,7 @@ import {
   Typography,
   Radio,
   Divider,
+  theme,
 } from "antd";
 import { SaveOutlined } from "@ant-design/icons";
 import {
@@ -23,6 +24,7 @@ const { Title, Paragraph } = Typography;
 
 export default function SysConfigPage() {
   const [form] = Form.useForm();
+  const { token } = theme.useToken();
   const [loading, setLoading] = useState(false);
   const [version, setVersion] = useState("");
 
@@ -139,7 +141,12 @@ export default function SysConfigPage() {
           <Form.Item label="首页仪表盘排版 (拖拽排序，最多 4 个)">
             {/* 1. Selected List (Draggable) */}
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 12, color: "#999", marginBottom: 8 }}>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: token.colorTextTertiary,
+                  marginBottom: 8,
+                }}>
                 已选模块 ({dashboardApps.length}/4) - 按住拖拽可调整顺序
               </div>
 
@@ -169,9 +176,9 @@ export default function SysConfigPage() {
                       style={{
                         width: 140,
                         height: 90,
-                        border: "1px solid #d9d9d9",
+                        border: `1px solid ${token.colorBorderSecondary}`,
                         borderRadius: 8,
-                        background: "#fff",
+                        background: "var(--surface)",
                         padding: 12,
                         cursor: "move",
                         position: "relative",
@@ -180,7 +187,7 @@ export default function SysConfigPage() {
                         justifyContent: "center",
                         alignItems: "center",
                         userSelect: "none",
-                        boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+                        boxShadow: "var(--shadow-1)",
                       }}>
                       <div
                         style={{
@@ -188,7 +195,7 @@ export default function SysConfigPage() {
                           top: 4,
                           right: 6,
                           cursor: "pointer",
-                          color: "#ff4d4f",
+                          color: token.colorError,
                           padding: 4,
                         }}
                         onClick={() => {
@@ -227,13 +234,13 @@ export default function SysConfigPage() {
                     style={{
                       width: "100%",
                       height: 80,
-                      border: "1px dashed #d9d9d9",
+                      border: `1px dashed ${token.colorBorderSecondary}`,
                       borderRadius: 8,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      color: "#ccc",
-                      background: "#fafafa",
+                      color: token.colorTextTertiary,
+                      background: "var(--surface-2)",
                     }}>
                     暂未选择任何模块（将使用默认配置）
                   </div>
@@ -245,7 +252,12 @@ export default function SysConfigPage() {
 
             {/* 2. Available Pool */}
             <div>
-              <div style={{ fontSize: 12, color: "#999", marginBottom: 8 }}>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: token.colorTextTertiary,
+                  marginBottom: 8,
+                }}>
                 全部可用模块 (点击添加)
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -270,18 +282,20 @@ export default function SysConfigPage() {
                       style={{
                         padding: "6px 16px",
                         background: isSelected
-                          ? "#e6f7ff"
+                          ? token.colorPrimaryBg
                           : disabled
-                            ? "#f5f5f5"
-                            : "#fff",
+                            ? token.colorFillTertiary
+                            : "var(--surface)",
                         border: `1px solid ${
-                          isSelected ? "#1890ff" : "#d9d9d9"
+                          isSelected
+                            ? token.colorPrimaryBorder
+                            : token.colorBorderSecondary
                         }`,
                         borderRadius: 20,
                         cursor:
                           disabled || isSelected ? "not-allowed" : "pointer",
                         opacity: disabled ? 0.5 : 1,
-                        color: isSelected ? "#1890ff" : "rgba(0,0,0,0.85)",
+                        color: isSelected ? token.colorPrimary : token.colorText,
                         fontSize: 13,
                         transition: "all 0.2s",
                         display: "flex",
@@ -337,10 +351,15 @@ export default function SysConfigPage() {
             <Input
               value={version}
               placeholder="正在获取版本..."
-              style={{ maxWidth: 300, background: "#f5f5f5", color: "#666" }}
+              style={{
+                maxWidth: 300,
+                background: token.colorFillTertiary,
+                color: token.colorTextSecondary,
+              }}
               readOnly
             />
-            <div style={{ marginTop: 4, color: "#faad14", fontSize: 12 }}>
+            <div
+              style={{ marginTop: 4, color: token.colorWarning, fontSize: 12 }}>
               ℹ️ 版本号已由服务器 manifest.json 托管，无需手动配置。
             </div>
           </Form.Item>
@@ -352,7 +371,7 @@ export default function SysConfigPage() {
               <span>
                 点击更新提示后跳转的链接。
                 <br />
-                <span style={{ color: "#faad14" }}>
+                <span style={{ color: token.colorWarning }}>
                   留空则默认使用本机地址：/extension/chrome-extension-latest.zip
                 </span>
               </span>

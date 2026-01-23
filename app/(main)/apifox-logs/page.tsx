@@ -202,11 +202,13 @@ const ApifoxLogsPage: React.FC = () => {
             <Typography.Text strong>Raw Response JSON:</Typography.Text>
             <pre
               style={{
-                background: "#f5f5f5",
+                background: "var(--surface-2)",
+                border: "1px solid var(--border-color)",
                 padding: "12px",
                 borderRadius: "4px",
                 fontSize: "12px",
                 marginTop: 8,
+                color: "var(--text-muted)",
               }}>
               {(() => {
                 try {

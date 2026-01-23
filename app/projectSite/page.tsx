@@ -3,15 +3,23 @@ import { Skeleton, Row, Col, Card } from "antd";
 import ProjectSiteContent from "./ProjectSiteContent";
 
 const LoadingSkeleton = () => (
-  <div style={{ padding: 24, display: "flex", gap: 24, height: "100vh" }}>
+  <div
+    style={{
+      padding: 24,
+      display: "flex",
+      gap: 24,
+      height: "100vh",
+      background: "var(--page-bg)",
+    }}>
     {/* Sidebar Skeleton */}
     <div
       style={{
         width: 220,
         flexShrink: 0,
-        background: "#fff",
+        background: "var(--surface)",
         borderRadius: 12,
         padding: 16,
+        border: "1px solid var(--border-color)",
       }}>
       <Skeleton active paragraph={{ rows: 8 }} title={{ width: "60%" }} />
     </div>
@@ -23,7 +31,7 @@ const LoadingSkeleton = () => (
             <Card
               style={{
                 borderRadius: 12,
-                border: "1px solid #f0f0f0",
+                border: "1px solid var(--border-color)",
               }}>
               <Skeleton active avatar paragraph={{ rows: 2 }} />
             </Card>

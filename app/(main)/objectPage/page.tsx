@@ -308,7 +308,7 @@ const ObjectPage: React.FC = () => {
           </Button>
           <Button
             type="primary"
-            style={{ marginLeft: 8, background: "#67C23A" }}
+            style={{ marginLeft: 8 }}
             icon={<PlusOutlined />}
             onClick={() => handleShow("add")}>
             新增

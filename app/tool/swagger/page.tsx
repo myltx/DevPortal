@@ -15,6 +15,7 @@ import {
   Alert,
   Tooltip,
   Select,
+  theme,
 } from "antd";
 import { useRouter } from "next/navigation";
 import {
@@ -30,6 +31,7 @@ const { Title, Text, Paragraph } = Typography;
 
 export default function SwaggerToolPage() {
   const router = useRouter(); // Initialize router
+  const { token } = theme.useToken();
   const [form] = Form.useForm();
   const [webhookForm] = Form.useForm();
 
@@ -113,7 +115,9 @@ export default function SwaggerToolPage() {
           justifyContent: "space-between",
           alignItems: "center",
         }}>
-        <Text strong style={{ color: success ? "#52c41a" : "#ff4d4f" }}>
+        <Text
+          strong
+          style={{ color: success ? token.colorSuccess : token.colorError }}>
           {success ? "Success" : "Error"} Response
         </Text>
         <Button
@@ -132,8 +136,8 @@ export default function SwaggerToolPage() {
           overflow: "auto",
           fontSize: "13px",
           lineHeight: "1.6",
-          background: "#fafafa",
-          color: "#4a4a4a",
+          background: "var(--surface-2)",
+          color: "var(--text-muted)",
           fontFamily:
             "'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace",
         }}>
@@ -604,14 +608,16 @@ export default function SwaggerToolPage() {
                   </Paragraph>
                   <div
                     style={{
-                      background: "#f8f9fa",
+                      background: "var(--surface-2)",
                       padding: "16px 20px",
                       borderRadius: 12,
                       marginBottom: 20,
                       wordBreak: "break-all",
                       fontFamily: "var(--font-mono)",
-                      border: "1px solid #eee",
-                      color: generatedLink ? "#1a1a1a" : "#999",
+                      border: "1px solid var(--border-color)",
+                      color: generatedLink
+                        ? "var(--text-strong)"
+                        : "var(--text-muted-2)",
                     }}>
                     {generatedLink || "等待输入参数..."}
                   </div>
@@ -771,7 +777,7 @@ export default function SwaggerToolPage() {
                                 position: "absolute",
                                 right: 12,
                                 top: 12,
-                                color: "#888",
+                                color: "var(--text-muted-2)",
                                 zIndex: 10,
                               }}
                               onClick={() => copyToClipboard(jenkinsScript)}>
@@ -783,8 +789,9 @@ export default function SwaggerToolPage() {
                               readOnly
                               style={{
                                 fontFamily: "var(--font-mono)",
-                                background: "#2d2d2d",
-                                color: "#ccc",
+                                background: "var(--surface-2)",
+                                color: "var(--text-muted)",
+                                border: "1px solid var(--border-color)",
                                 borderRadius: 12,
                                 padding: "20px",
                               }}
@@ -805,7 +812,7 @@ export default function SwaggerToolPage() {
                                 position: "absolute",
                                 right: 12,
                                 top: 12,
-                                color: "#888",
+                                color: "var(--text-muted-2)",
                                 zIndex: 10,
                               }}
                               onClick={() => copyToClipboard(curlScript)}>
@@ -817,8 +824,9 @@ export default function SwaggerToolPage() {
                               readOnly
                               style={{
                                 fontFamily: "var(--font-mono)",
-                                background: "#2d2d2d",
-                                color: "#ccc",
+                                background: "var(--surface-2)",
+                                color: "var(--text-muted)",
+                                border: "1px solid var(--border-color)",
                                 borderRadius: 12,
                                 padding: "20px",
                               }}

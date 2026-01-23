@@ -16,6 +16,7 @@ import {
   Tag,
   Button,
   Dropdown,
+  theme,
 } from "antd";
 import { useSearchParams } from "next/navigation";
 import {
@@ -59,6 +60,7 @@ type AreaGroup = {
 
 const ProjectSiteContent: React.FC = () => {
   const [formInline] = Form.useForm();
+  const { token } = theme.useToken();
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastRecordedProjectRef = useRef<string>("");
@@ -522,7 +524,7 @@ const ProjectSiteContent: React.FC = () => {
                             alignItems: "center",
                             marginBottom: 16,
                             paddingLeft: 4,
-                            borderLeft: "4px solid #1890ff",
+                            borderLeft: "4px solid var(--primary)",
                           }}>
                           <span
                             style={{
@@ -548,7 +550,7 @@ const ProjectSiteContent: React.FC = () => {
                             const env = envOption.find(
                               (e) => e.value === card.typeName
                             );
-                            const envColor = env ? env.color : "#1890ff";
+                            const envColor = env ? env.color : "var(--primary)";
 
                             const menuItems = [
                               {
@@ -568,14 +570,14 @@ const ProjectSiteContent: React.FC = () => {
                                     okText="确定"
                                     cancelText="取消"
                                     placement="left">
-                                    <span style={{ color: "#ff4d4f" }}>
+                                    <span style={{ color: token.colorError }}>
                                       删除项目
                                     </span>
                                   </Popconfirm>
                                 ),
                                 icon: (
                                   <DeleteOutlined
-                                    style={{ color: "#ff4d4f" }}
+                                    style={{ color: token.colorError }}
                                   />
                                 ),
                               },

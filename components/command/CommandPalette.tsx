@@ -40,7 +40,8 @@ const animatorStyle = {
   background: "var(--background, #fff)",
   color: "var(--foreground, #000)",
   borderRadius: "12px",
-  boxShadow: "0px 6px 20px rgba(0, 0, 0, 0.2)",
+  border: "1px solid var(--border-color)",
+  boxShadow: "var(--shadow-2)",
   overflow: "hidden",
 };
 
@@ -72,7 +73,9 @@ const RenderResults = () => {
             <div
               style={{
                 background: active ? "var(--bg-hover, #f5f5f5)" : "transparent",
-                borderLeft: `2px solid ${active ? "#1890ff" : "transparent"}`,
+                borderLeft: `2px solid ${
+                  active ? "var(--primary)" : "transparent"
+                }`,
                 padding: "12px 24px",
                 display: "flex",
                 alignItems: "center",
@@ -105,7 +108,8 @@ const RenderResults = () => {
                       key={sc}
                       style={{
                         padding: "2px 6px",
-                        background: "rgba(0,0,0,0.05)",
+                        background: "var(--surface-2)",
+                        border: "1px solid var(--border-color)",
                         borderRadius: "4px",
                         fontSize: "10px",
                         fontWeight: 600,

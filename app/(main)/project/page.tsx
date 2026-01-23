@@ -186,11 +186,7 @@ const ProjectPage: React.FC = () => {
           </Button>
           <Button
             type="primary"
-            style={{
-              marginLeft: 8,
-              background: "#52c41a",
-              borderColor: "#52c41a",
-            }}
+            style={{ marginLeft: 8 }}
             onClick={() => handleShow("add")}
             icon={<PlusOutlined />}>
             新增
@@ -235,9 +231,9 @@ const ProjectPage: React.FC = () => {
               }>
               <Row gutter={[8, 8]}>
                 <Col span={12}>
-                  <div style={{ fontSize: 12, color: "#666" }}>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                     <div>标签：</div>
-                    <div style={{ color: "#333" }}>
+                    <div style={{ color: "var(--text-strong)" }}>
                       {Array.isArray(card.label)
                         ? card.label.join(", ")
                         : card.label}
@@ -245,9 +241,9 @@ const ProjectPage: React.FC = () => {
                   </div>
                 </Col>
                 <Col span={12}>
-                  <div style={{ fontSize: 12, color: "#666" }}>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                     <div>类型：</div>
-                    <div style={{ color: "#333" }}>
+                    <div style={{ color: "var(--text-strong)" }}>
                       {getClassName(card.classId!)}
                     </div>
                   </div>
@@ -255,7 +251,8 @@ const ProjectPage: React.FC = () => {
                 <Col span={24}>
                   <Collapse ghost expandIconPosition="end">
                     <Panel header="更多详情" key="1" style={{ padding: 0 }}>
-                      <div style={{ fontSize: 12, color: "#666" }}>
+                      <div
+                        style={{ fontSize: 12, color: "var(--text-muted)" }}>
                         <div>备注：{card.remark}</div>
                         <div>描述：{card.description}</div>
                         <div>

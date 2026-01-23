@@ -6,6 +6,7 @@
   --page-bg: #fafafa;
   --surface: #ffffff;
   --surface-2: #f8fafc;
+  --primary: #10b981;
   --border-color: rgba(0, 0, 0, 0.08);
   --border-color-hover: rgba(0, 0, 0, 0.12);
   --text-strong: #111827;
@@ -36,6 +37,7 @@
   --page-bg: #0b0f14;
   --surface: #111827;
   --surface-2: #151c2b;
+  --primary: #10b981;
   --border-color: rgba(255, 255, 255, 0.14);
   --border-color-hover: rgba(255, 255, 255, 0.22);
   --text-strong: #f3f4f6;
