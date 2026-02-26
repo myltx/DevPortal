@@ -16,6 +16,8 @@ import {
   Tooltip,
   Select,
   theme,
+  Segmented,
+  Table,
 } from "antd";
 import { useRouter } from "next/navigation";
 import {
@@ -24,11 +26,34 @@ import {
   RocketOutlined,
   ReloadOutlined,
   AppstoreOutlined,
-  DiffOutlined,
 } from "@ant-design/icons";
 import * as API from "@/lib/api/project"; // Import API
 
 const { Title, Text, Paragraph } = Typography;
+
+type DiffRow = {
+  key: string;
+  method: string;
+  path: string;
+};
+
+type ChangedRow = DiffRow & {
+  changedFields: string[];
+};
+
+type DiffResult = {
+  summary: {
+    beforeTotal: number;
+    afterTotal: number;
+    added: number;
+    removed: number;
+    changed: number;
+    unchanged: number;
+  };
+  added: DiffRow[];
+  removed: DiffRow[];
+  changed: ChangedRow[];
+};
 
 export default function SwaggerToolPage() {
   const router = useRouter(); // Initialize router
@@ -59,6 +84,14 @@ export default function SwaggerToolPage() {
     success: boolean;
     data: any;
   } | null>(null);
+  const [diffMode, setDiffMode] = useState<"json" | "url">("json");
+  const [beforeJsonText, setBeforeJsonText] = useState("");
+  const [afterJsonText, setAfterJsonText] = useState("");
+  const [beforeDiffUrl, setBeforeDiffUrl] = useState("");
+  const [afterDiffUrl, setAfterDiffUrl] = useState("");
+  const [diffLoading, setDiffLoading] = useState(false);
+  const [diffError, setDiffError] = useState("");
+  const [diffResult, setDiffResult] = useState<DiffResult | null>(null);
 
   const [appConfig, setAppConfig] = useState<{
     jenkinsSecret: string;
@@ -430,6 +463,91 @@ export default function SwaggerToolPage() {
     }
   };
 
+  const diffColumns = [
+    { title: "Method", dataIndex: "method", key: "method", width: 120 },
+    { title: "Path", dataIndex: "path", key: "path" },
+    {
+      title: "变更字段",
+      dataIndex: "changedFields",
+      key: "changedFields",
+      render: (fields?: string[]) =>
+        Array.isArray(fields) && fields.length > 0 ? fields.join(", ") : "-",
+    },
+  ];
+
+  const runDiff = async (before: string, after: string) => {
+    const response = await fetch("/api/tool/swagger-diff", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        before,
+        after,
+      }),
+    });
+
+    const payload = await response.json();
+    if (!response.ok || !payload?.success) {
+      throw new Error(payload?.error || "Diff 对比失败");
+    }
+
+    setDiffResult(payload.data as DiffResult);
+  };
+
+  const handleJsonDiffCompare = async () => {
+    if (!beforeJsonText.trim() || !afterJsonText.trim()) {
+      message.warning("请先填写 before / after JSON");
+      return;
+    }
+
+    setDiffLoading(true);
+    setDiffError("");
+    setDiffResult(null);
+    try {
+      await runDiff(beforeJsonText, afterJsonText);
+      message.success("JSON 对比完成");
+    } catch (error: any) {
+      const text = error?.message || "JSON 对比失败";
+      setDiffError(text);
+      message.error(text);
+    } finally {
+      setDiffLoading(false);
+    }
+  };
+
+  const handleAutoDiffCompare = async () => {
+    if (!beforeDiffUrl.trim() || !afterDiffUrl.trim()) {
+      message.warning("请先填写 before / after 接口地址");
+      return;
+    }
+
+    setDiffLoading(true);
+    setDiffError("");
+    setDiffResult(null);
+    try {
+      const [beforeRes, afterRes] = await Promise.all([
+        fetch(beforeDiffUrl.trim()),
+        fetch(afterDiffUrl.trim()),
+      ]);
+
+      if (!beforeRes.ok || !afterRes.ok) {
+        throw new Error(`接口拉取失败：before(${beforeRes.status}) / after(${afterRes.status})`);
+      }
+
+      const [beforeData, afterData] = await Promise.all([
+        beforeRes.json(),
+        afterRes.json(),
+      ]);
+      await runDiff(JSON.stringify(beforeData), JSON.stringify(afterData));
+      message.success("接口自动对比完成");
+    } catch (error: any) {
+      const text = error?.message || "接口自动对比失败";
+      setDiffError(text);
+      message.error(text);
+    } finally {
+      setDiffLoading(false);
+    }
+  };
+
   const copyToClipboard = (text: string) => {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard
@@ -486,14 +604,6 @@ export default function SwaggerToolPage() {
             icon={<AppstoreOutlined style={{ fontSize: "20px" }} />}
             style={{ position: "absolute", left: 0, height: 40, width: 40 }}
             onClick={() => router.push("/middle")}
-          />
-        </Tooltip>
-        <Tooltip title="打开 Swagger Diff 验证">
-          <Button
-            type="text"
-            icon={<DiffOutlined style={{ fontSize: "20px" }} />}
-            style={{ position: "absolute", right: 0, height: 40, width: 40 }}
-            onClick={() => router.push("/tool/swagger-diff")}
           />
         </Tooltip>
         <div>
@@ -846,6 +956,199 @@ export default function SwaggerToolPage() {
                     ]}
                   />
                 </Form>
+              </Card>
+            ),
+          },
+          {
+            key: "diff",
+            label: (
+              <Space>
+                <ReloadOutlined />
+                Diff 验证
+              </Space>
+            ),
+            children: (
+              <Card
+                bordered={false}
+                style={{
+                  borderRadius: 16,
+                  boxShadow: "0 4px 24px rgba(0,0,0,0.06)",
+                  background: "rgba(255,255,255,0.8)",
+                  backdropFilter: "blur(10px)",
+                }}>
+                <Space direction="vertical" size={16} style={{ width: "100%" }}>
+                  <Alert
+                    type="info"
+                    showIcon
+                    message="本地验证建议"
+                    description="先用 JSON 对比验证规则是否符合预期，再用接口自动对比验证和 swagger-merge 链路一致。"
+                  />
+
+                  <Segmented
+                    options={[
+                      { label: "JSON 对比", value: "json" },
+                      { label: "接口自动对比", value: "url" },
+                    ]}
+                    value={diffMode}
+                    onChange={(value) => setDiffMode(value as "json" | "url")}
+                  />
+
+                  {diffMode === "json" ? (
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 16,
+                      }}>
+                      <div>
+                        <Text strong>Before JSON</Text>
+                        <Input.TextArea
+                          rows={14}
+                          value={beforeJsonText}
+                          onChange={(e) => setBeforeJsonText(e.target.value)}
+                          placeholder="粘贴 before.json"
+                          style={{ marginTop: 8 }}
+                        />
+                      </div>
+                      <div>
+                        <Text strong>After JSON</Text>
+                        <Input.TextArea
+                          rows={14}
+                          value={afterJsonText}
+                          onChange={(e) => setAfterJsonText(e.target.value)}
+                          placeholder="粘贴 after.json"
+                          style={{ marginTop: 8 }}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <Space direction="vertical" style={{ width: "100%" }} size={12}>
+                      <Input
+                        value={beforeDiffUrl}
+                        onChange={(e) => setBeforeDiffUrl(e.target.value)}
+                        placeholder="Before 接口地址，例如 http://localhost:3000/api/tool/swagger-merge?targetUrl=..."
+                      />
+                      <Input
+                        value={afterDiffUrl}
+                        onChange={(e) => setAfterDiffUrl(e.target.value)}
+                        placeholder="After 接口地址，例如 http://localhost:3000/api/tool/swagger-merge?targetUrl=..."
+                      />
+                      <Space>
+                        <Button
+                          onClick={() => setAfterDiffUrl(generatedLink)}
+                          disabled={!generatedLink}>
+                          使用当前生成链接作为 After
+                        </Button>
+                        <Button onClick={() => setBeforeDiffUrl(generatedLink)} disabled={!generatedLink}>
+                          使用当前生成链接作为 Before
+                        </Button>
+                      </Space>
+                    </Space>
+                  )}
+
+                  <Space>
+                    <Button
+                      type="primary"
+                      loading={diffLoading}
+                      onClick={diffMode === "json" ? handleJsonDiffCompare : handleAutoDiffCompare}>
+                      开始对比
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setDiffError("");
+                        setDiffResult(null);
+                        setBeforeJsonText("");
+                        setAfterJsonText("");
+                        setBeforeDiffUrl("");
+                        setAfterDiffUrl("");
+                      }}>
+                      清空
+                    </Button>
+                  </Space>
+
+                  {diffError ? <Alert type="error" showIcon message={diffError} /> : null}
+
+                  {diffResult ? (
+                    <Space direction="vertical" style={{ width: "100%" }} size={12}>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+                          gap: 12,
+                        }}>
+                        <Card size="small">
+                          <Text type="secondary">Before</Text>
+                          <div>{diffResult.summary.beforeTotal}</div>
+                        </Card>
+                        <Card size="small">
+                          <Text type="secondary">After</Text>
+                          <div>{diffResult.summary.afterTotal}</div>
+                        </Card>
+                        <Card size="small">
+                          <Text type="secondary">新增</Text>
+                          <div>{diffResult.summary.added}</div>
+                        </Card>
+                        <Card size="small">
+                          <Text type="secondary">删除</Text>
+                          <div>{diffResult.summary.removed}</div>
+                        </Card>
+                        <Card size="small">
+                          <Text type="secondary">修改</Text>
+                          <div>{diffResult.summary.changed}</div>
+                        </Card>
+                        <Card size="small">
+                          <Text type="secondary">无变化</Text>
+                          <div>{diffResult.summary.unchanged}</div>
+                        </Card>
+                      </div>
+
+                      <Tabs
+                        type="card"
+                        items={[
+                          {
+                            key: "diff-added",
+                            label: `新增 (${diffResult.added.length})`,
+                            children: (
+                              <Table
+                                size="small"
+                                rowKey="key"
+                                columns={diffColumns}
+                                dataSource={diffResult.added}
+                                pagination={{ pageSize: 10 }}
+                              />
+                            ),
+                          },
+                          {
+                            key: "diff-removed",
+                            label: `删除 (${diffResult.removed.length})`,
+                            children: (
+                              <Table
+                                size="small"
+                                rowKey="key"
+                                columns={diffColumns}
+                                dataSource={diffResult.removed}
+                                pagination={{ pageSize: 10 }}
+                              />
+                            ),
+                          },
+                          {
+                            key: "diff-changed",
+                            label: `修改 (${diffResult.changed.length})`,
+                            children: (
+                              <Table
+                                size="small"
+                                rowKey="key"
+                                columns={diffColumns}
+                                dataSource={diffResult.changed}
+                                pagination={{ pageSize: 10 }}
+                              />
+                            ),
+                          },
+                        ]}
+                      />
+                    </Space>
+                  ) : null}
+                </Space>
               </Card>
             ),
           },
