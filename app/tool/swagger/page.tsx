@@ -90,8 +90,10 @@ export default function SwaggerToolPage() {
   const [beforeDiffUrl, setBeforeDiffUrl] = useState("");
   const [afterDiffUrl, setAfterDiffUrl] = useState("");
   const [diffLoading, setDiffLoading] = useState(false);
+  const [diffNotifyLoading, setDiffNotifyLoading] = useState(false);
   const [diffError, setDiffError] = useState("");
   const [diffResult, setDiffResult] = useState<DiffResult | null>(null);
+  const [diffProjectName, setDiffProjectName] = useState("本地测试项目");
 
   const [appConfig, setAppConfig] = useState<{
     jenkinsSecret: string;
@@ -545,6 +547,37 @@ export default function SwaggerToolPage() {
       message.error(text);
     } finally {
       setDiffLoading(false);
+    }
+  };
+
+  const handleMockNotify = async () => {
+    if (!diffResult) {
+      message.warning("请先完成一次 Diff 对比");
+      return;
+    }
+
+    setDiffNotifyLoading(true);
+    try {
+      const res = await fetch("/api/tool/swagger-diff/mock-notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectName: diffProjectName,
+          summary: diffResult.summary,
+          added: diffResult.added,
+          removed: diffResult.removed,
+          changed: diffResult.changed,
+        }),
+      });
+      const payload = await res.json();
+      if (!res.ok || !payload?.success) {
+        throw new Error(payload?.error || "模拟推送失败");
+      }
+      message.success("已发送模拟钉钉通知");
+    } catch (error: any) {
+      message.error(error?.message || "模拟推送失败");
+    } finally {
+      setDiffNotifyLoading(false);
     }
   };
 
@@ -1047,11 +1080,24 @@ export default function SwaggerToolPage() {
                   )}
 
                   <Space>
+                    <Input
+                      style={{ width: 220 }}
+                      placeholder="钉钉通知项目名"
+                      value={diffProjectName}
+                      onChange={(e) => setDiffProjectName(e.target.value)}
+                    />
                     <Button
                       type="primary"
                       loading={diffLoading}
                       onClick={diffMode === "json" ? handleJsonDiffCompare : handleAutoDiffCompare}>
                       开始对比
+                    </Button>
+                    <Button
+                      type="dashed"
+                      loading={diffNotifyLoading}
+                      onClick={handleMockNotify}
+                      disabled={!diffResult}>
+                      对比后推送钉钉（模拟）
                     </Button>
                     <Button
                       onClick={() => {
