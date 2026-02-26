@@ -88,23 +88,12 @@ function buildDiffDetailsMarkdown(diff?: SwaggerDiffResult, maxItems = 20): stri
 
 async function buildDiffContext(params: {
     projectId: string;
-    moduleId?: string | null;
     targetUrl: string;
     apiPrefix?: string | null;
     debugLimit?: string | null;
     timeout?: string | null;
 }): Promise<DiffContext> {
-    const { projectId, moduleId, targetUrl, apiPrefix, debugLimit, timeout } = params;
-    const moduleKey = moduleId || "";
-    const apiPrefixKey = apiPrefix || "";
-    const where = {
-        projectId_moduleKey_targetUrl_apiPrefix: {
-            projectId,
-            moduleKey,
-            targetUrl,
-            apiPrefix: apiPrefixKey,
-        },
-    } as const;
+    const { projectId, targetUrl, apiPrefix, debugLimit, timeout } = params;
 
     try {
         const mergedDoc = await getMergedSwagger({
@@ -124,7 +113,9 @@ async function buildDiffContext(params: {
 
         const specJson = JSON.stringify(mergedDoc);
         const specHash = createHash("sha256").update(specJson).digest("hex");
-        const snapshot = await prisma.apifoxSpecSnapshot.findUnique({ where });
+        const snapshot = await prisma.apifoxSpecSnapshot.findUnique({
+            where: { projectId },
+        });
 
         if (!snapshot) {
             return {
@@ -189,7 +180,6 @@ async function performApifoxSync(params: {
     
     const diffContext = await buildDiffContext({
         projectId,
-        moduleId,
         targetUrl,
         apiPrefix,
         debugLimit,
@@ -249,26 +239,16 @@ async function performApifoxSync(params: {
             const stats = result?.data?.counters || {};
 
             if (diffContext.specJson && diffContext.specHash) {
-                const moduleKey = moduleId || "";
-                const apiPrefixKey = apiPrefix || "";
                 await prisma.apifoxSpecSnapshot.upsert({
-                    where: {
-                        projectId_moduleKey_targetUrl_apiPrefix: {
-                            projectId,
-                            moduleKey,
-                            targetUrl,
-                            apiPrefix: apiPrefixKey,
-                        },
-                    },
+                    where: { projectId },
                     create: {
                         projectId,
-                        moduleKey,
                         targetUrl,
-                        apiPrefix: apiPrefixKey,
                         specHash: diffContext.specHash,
                         specJson: diffContext.specJson,
                     },
                     update: {
+                        targetUrl,
                         specHash: diffContext.specHash,
                         specJson: diffContext.specJson,
                     },

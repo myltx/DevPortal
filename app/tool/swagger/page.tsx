@@ -84,6 +84,11 @@ export default function SwaggerToolPage() {
     success: boolean;
     data: any;
   } | null>(null);
+  const [baselineInitLoading, setBaselineInitLoading] = useState(false);
+  const [baselineInitResult, setBaselineInitResult] = useState<{
+    success: boolean;
+    data: any;
+  } | null>(null);
   const [diffMode, setDiffMode] = useState<"json" | "url">("json");
   const [beforeJsonText, setBeforeJsonText] = useState("");
   const [afterJsonText, setAfterJsonText] = useState("");
@@ -462,6 +467,52 @@ export default function SwaggerToolPage() {
       message.error("Webhook 发送请求失败");
     } finally {
       setWebhookTestLoading(false);
+    }
+  };
+
+  const handleInitBaseline = async () => {
+    const webhookValues = webhookForm.getFieldsValue();
+    const mainValues = form.getFieldsValue();
+
+    const projectId = webhookValues.projectId;
+    const moduleId = webhookValues.webhookModuleId;
+    const targetUrl = webhookValues.webhookTargetUrl || mainValues.targetUrl;
+    const apiPrefix = webhookValues.webhookApiPrefix || mainValues.apiPrefix;
+    const timeout = mainValues.timeout;
+    const debugLimit = mainValues.debugLimit;
+
+    if (!projectId || !targetUrl) {
+      message.warning("初始化基线需要 projectId 和 targetUrl");
+      return;
+    }
+
+    setBaselineInitLoading(true);
+    setBaselineInitResult(null);
+    try {
+      const res = await fetch("/api/tool/swagger-diff/init-baseline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId,
+          moduleId,
+          targetUrl,
+          apiPrefix,
+          timeout,
+          debugLimit,
+        }),
+      });
+      const data = await res.json();
+      setBaselineInitResult({ success: res.ok, data });
+      if (res.ok && data?.success) {
+        message.success("基线初始化成功");
+      } else {
+        message.error(data?.error || "基线初始化失败");
+      }
+    } catch (err: any) {
+      setBaselineInitResult({ success: false, data: { error: err.message } });
+      message.error("基线初始化请求失败");
+    } finally {
+      setBaselineInitLoading(false);
     }
   };
 
@@ -881,6 +932,12 @@ export default function SwaggerToolPage() {
                       <Input size="large" placeholder="默认使用上方配置" />
                     </Form.Item>
                   </div>
+                  <Form.Item
+                    label="Apifox Module ID (可选)"
+                    name="webhookModuleId"
+                    tooltip="用于区分同一项目下不同模块的基线快照">
+                    <Input size="large" placeholder="例如: 1001（可选）" />
+                  </Form.Item>
 
                   <Divider dashed />
 
@@ -894,15 +951,33 @@ export default function SwaggerToolPage() {
                     <Paragraph strong style={{ fontSize: 16, margin: 0 }}>
                       自动化脚本 (Jenkins / cURL)
                     </Paragraph>
-                    <Button
-                      type="default"
-                      icon={<RocketOutlined />}
-                      onClick={handleTestWebhook}
-                      loading={webhookTestLoading}
-                      disabled={!webhookUrl}>
-                      模拟发送测试
-                    </Button>
+                    <Space>
+                      <Button
+                        type="default"
+                        icon={<ReloadOutlined />}
+                        onClick={handleInitBaseline}
+                        loading={baselineInitLoading}>
+                        初始化基线
+                      </Button>
+                      <Button
+                        type="default"
+                        icon={<RocketOutlined />}
+                        onClick={handleTestWebhook}
+                        loading={webhookTestLoading}
+                        disabled={!webhookUrl}>
+                        模拟发送测试
+                      </Button>
+                    </Space>
                   </div>
+
+                  {baselineInitResult && (
+                    <div style={{ marginBottom: 20 }}>
+                      <JsonDisplay
+                        data={baselineInitResult.data}
+                        success={baselineInitResult.success}
+                      />
+                    </div>
+                  )}
 
                   {webhookTestResult && (
                     <div style={{ marginBottom: 20 }}>
