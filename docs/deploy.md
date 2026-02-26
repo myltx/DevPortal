@@ -200,6 +200,19 @@ npx prisma generate
 > 如果你们确定“每次都是全新空库”，理论上可以用 `npx prisma db push` 直接同步结构；
 > 但它没有迁移历史、不利于排查与回溯，所以本项目选择保留 migrations。
 
+## 3.2 Swagger 自动同步上线后校验（新增）
+
+完成部署后，建议执行一次最小校验：
+
+1. 执行迁移并重启服务，确认存在 `apifox_spec_snapshot` 表。
+2. 打开 `Swagger Efficiency Kit -> CI/CD 自动化插件`，点击 `初始化基线`。
+3. 触发一次 Jenkins 自动化推送：
+   1. 第一次通常会建立或覆盖基线。
+   2. 第二次开始应在钉钉中看到 Diff 摘要与接口路径明细。
+4. 如初始化时报错 `Cannot read properties of undefined (reading 'upsert')`，通常是 Prisma Client 未刷新：
+   1. 重新执行 `npx prisma generate`。
+   2. 重启应用或重建容器。
+
 ## 4. (可选) 清理无效的 NVM 环境
 
 由于我们已切换到 Docker 部署，宿主机上之前安装的 NVM 和 Node (因 Glibc 版本过低无法使用) 可以安全清理。
