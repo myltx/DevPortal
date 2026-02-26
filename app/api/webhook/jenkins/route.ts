@@ -59,31 +59,32 @@ function parseIntSafe(input?: string | null): number | undefined {
 function buildDiffSummaryMarkdown(diff?: SwaggerDiffResult): string {
     if (!diff) return "";
     return [
-        `| Diff 项 | 数量 |`,
-        `| :--- | :--- |`,
-        `| 新增 | ${diff.summary.added} |`,
-        `| 删除 | ${diff.summary.removed} |`,
-        `| 修改 | ${diff.summary.changed} |`,
-        `| 无变化 | ${diff.summary.unchanged} |`
+        `| 新增 | 删除 | 修改 | 无变化 | Before 总数 | After 总数 |`,
+        `| :---: | :---: | :---: | :---: | :---: | :---: |`,
+        `| ${diff.summary.added} | ${diff.summary.removed} | ${diff.summary.changed} | ${diff.summary.unchanged} | ${diff.summary.beforeTotal} | ${diff.summary.afterTotal} |`
     ].join("\n");
 }
 
-function buildDiffDetailsMarkdown(diff?: SwaggerDiffResult, maxItems = 20): string {
+function buildDiffRowsMarkdown(typeLabel: string, rows: Array<{ path: string }>, maxItems: number): string[] {
+    return rows.slice(0, maxItems).map((item) => `| ${typeLabel} | ${item.path} |`);
+}
+
+function buildDiffDetailsMarkdown(diff?: SwaggerDiffResult, maxItems = 10): string {
     if (!diff) return "";
-    const lines: string[] = [];
+    const rows = [
+        ...buildDiffRowsMarkdown("🟢新增", diff.added, maxItems),
+        ...buildDiffRowsMarkdown("🔴删除", diff.removed, maxItems),
+        ...buildDiffRowsMarkdown("🟡修改", diff.changed, maxItems),
+    ];
 
-    diff.added.slice(0, maxItems).forEach((item) => {
-        lines.push(`+ ${item.method} ${item.path}`);
-    });
-    diff.removed.slice(0, maxItems).forEach((item) => {
-        lines.push(`- ${item.method} ${item.path}`);
-    });
-    diff.changed.slice(0, maxItems).forEach((item) => {
-        lines.push(`~ ${item.method} ${item.path} (${item.changedFields.join(", ")})`);
-    });
+    if (rows.length === 0) return "";
 
-    if (lines.length === 0) return "";
-    return ["**接口变更明细（最多展示前 20 条）**", ...lines].join("\n");
+    return [
+        `**接口变更明细（每类前 ${maxItems} 条）**`,
+        `| 类型 | 接口路径 |`,
+        `| :---: | :--- |`,
+        ...rows,
+    ].join("\n");
 }
 
 async function buildDiffContext(params: {
@@ -169,11 +170,12 @@ async function performApifoxSync(params: {
     fullExportUrl: string;
     apifoxApiUrl: string;
     importOptions: Record<string, unknown>;
+    simulateOnly?: boolean;
 }) {
     const { 
         projectId, moduleId, targetUrl, apiPrefix, 
         debugLimit, timeout, customProjectName, 
-        fullExportUrl, apifoxApiUrl, importOptions 
+        fullExportUrl, apifoxApiUrl, importOptions, simulateOnly = false
     } = params;
 
     console.log(`[ApifoxSyncTask] Starting background sync for project ${projectId} (${customProjectName || "N/A"})`);
@@ -185,6 +187,60 @@ async function performApifoxSync(params: {
         debugLimit,
         timeout,
     });
+
+    if (simulateOnly) {
+        if (DINGTALK_WEBHOOK) {
+            try {
+                let docUrl = targetUrl || "";
+                try {
+                    if (targetUrl) {
+                        const urlObj = new URL(targetUrl);
+                        docUrl = `${urlObj.origin}/api/doc.html`;
+                    }
+                } catch {
+                    // ignore
+                }
+
+                let diffSection = "";
+                if (diffContext.failed) {
+                    diffSection = `> **Diff 明细生成失败**: ${diffContext.errorMessage || "未知错误（已降级为统计结果）"}`;
+                } else if (diffContext.baseline) {
+                    diffSection = `> **Diff 状态**: 首次基线导入，已记录快照，下次开始输出接口差异。`;
+                } else {
+                    const diffSummary = buildDiffSummaryMarkdown(diffContext.result);
+                    const diffDetails = buildDiffDetailsMarkdown(diffContext.result);
+                    diffSection = [diffSummary, diffDetails].filter(Boolean).join("\n\n");
+                    if (!diffDetails) {
+                        diffSection = [diffSummary, `> **接口变更明细**: 本次未检测到新增/删除/修改`]
+                            .filter(Boolean)
+                            .join("\n\n");
+                    }
+                }
+
+                await sendDingTalkMessage(DINGTALK_WEBHOOK, DINGTALK_SECRET, {
+                    msgtype: "markdown",
+                    markdown: {
+                        title: `${customProjectName || "Apifox"} 模拟同步成功`,
+                        text: [
+                            `### ✅ ${customProjectName || "Apifox"} 接口模拟同步成功`,
+                            `---`,
+                            `**项目 ID**: ${projectId}`,
+                            moduleId ? `**模块 ID**: ${moduleId}` : "",
+                            `**接口文档**: [点击查看](${docUrl})`,
+                            diffSection ? `\n` : "",
+                            diffSection,
+                            `\n**策略**: 智能合并 (Smart Merge)`,
+                            `\n**模式**: 模拟推送（未调用 Apifox，未写入快照）`,
+                            `\n**推送时间**: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`
+                        ].filter(Boolean).join("\n")
+                    }
+                });
+            } catch (error: unknown) {
+                console.error("[ApifoxSyncTask] Simulated DingTalk Notify Error:", getErrorMessage(error));
+            }
+        }
+        return;
+    }
 
     try {
         const payload = {
@@ -385,6 +441,7 @@ export async function POST(request: NextRequest) {
 
     // 3. Extract Params
     const searchParams = request.nextUrl.searchParams;
+    const simulateOnly = searchParams.get("simulateOnly") === "1";
     const projectId = searchParams.get("projectId"); 
     const moduleId = searchParams.get("moduleId");
     const targetUrl = searchParams.get("targetUrl");
@@ -397,7 +454,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Missing required parameters: projectId and targetUrl" }, { status: 400 });
     }
 
-    if (!APIFOX_TOKEN) {
+    if (!simulateOnly && !APIFOX_TOKEN) {
         return NextResponse.json({ error: "Server misconfiguration: APIFOX_ACCESS_TOKEN is missing" }, { status: 500 });
     }
 
@@ -429,7 +486,7 @@ export async function POST(request: NextRequest) {
     performApifoxSync({
         projectId, moduleId, targetUrl, apiPrefix,
         debugLimit, timeout, customProjectName,
-        fullExportUrl, apifoxApiUrl, importOptions
+        fullExportUrl, apifoxApiUrl, importOptions, simulateOnly
     }).catch(e => console.error("[JenkinsWebhook] Async task crash:", e.message));
 
     return NextResponse.json({ 

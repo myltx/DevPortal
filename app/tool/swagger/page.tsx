@@ -447,7 +447,10 @@ export default function SwaggerToolPage() {
     setWebhookTestResult(null);
 
     try {
-      const res = await fetch(webhookUrl, {
+      const simulateUrl = new URL(webhookUrl);
+      simulateUrl.searchParams.set("simulateOnly", "1");
+
+      const res = await fetch(simulateUrl.toString(), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -460,7 +463,7 @@ export default function SwaggerToolPage() {
       });
       const data = await res.json();
       setWebhookTestResult({ success: res.ok, data });
-      if (res.ok) message.success("Webhook 测试发送成功");
+      if (res.ok) message.success("模拟对比通知发送成功（未导入 Apifox）");
       else message.error("Webhook 测试反馈异常");
     } catch (err: any) {
       setWebhookTestResult({ success: false, data: { message: err.message } });
@@ -602,22 +605,28 @@ export default function SwaggerToolPage() {
   };
 
   const handleMockNotify = async () => {
-    if (!diffResult) {
-      message.warning("请先完成一次 Diff 对比");
+    if (!webhookUrl) {
+      message.warning("请先配置 Webhook 参数");
       return;
     }
 
     setDiffNotifyLoading(true);
     try {
-      const res = await fetch("/api/tool/swagger-diff/mock-notify", {
+      const simulateUrl = new URL(webhookUrl);
+      simulateUrl.searchParams.set("simulateOnly", "1");
+      if (diffProjectName.trim()) {
+        simulateUrl.searchParams.set("projectName", diffProjectName.trim());
+      }
+
+      const res = await fetch(simulateUrl.toString(), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-jenkins-token": appConfig.jenkinsSecret,
+        },
         body: JSON.stringify({
-          projectName: diffProjectName,
-          summary: diffResult.summary,
-          added: diffResult.added,
-          removed: diffResult.removed,
-          changed: diffResult.changed,
+          status: "SUCCESS",
+          debug: true,
         }),
       });
       const payload = await res.json();
@@ -965,7 +974,7 @@ export default function SwaggerToolPage() {
                         onClick={handleTestWebhook}
                         loading={webhookTestLoading}
                         disabled={!webhookUrl}>
-                        模拟发送测试
+                        模拟对比通知（不导入）
                       </Button>
                     </Space>
                   </div>
@@ -1171,8 +1180,8 @@ export default function SwaggerToolPage() {
                       type="dashed"
                       loading={diffNotifyLoading}
                       onClick={handleMockNotify}
-                      disabled={!diffResult}>
-                      对比后推送钉钉（模拟）
+                      disabled={!webhookUrl}>
+                      模拟自动推送（统一链路）
                     </Button>
                     <Button
                       onClick={() => {
