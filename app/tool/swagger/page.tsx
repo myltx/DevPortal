@@ -24,6 +24,7 @@ import {
   RocketOutlined,
   ReloadOutlined,
   AppstoreOutlined,
+  DiffOutlined,
 } from "@ant-design/icons";
 import * as API from "@/lib/api/project"; // Import API
 
@@ -485,6 +486,14 @@ export default function SwaggerToolPage() {
             icon={<AppstoreOutlined style={{ fontSize: "20px" }} />}
             style={{ position: "absolute", left: 0, height: 40, width: 40 }}
             onClick={() => router.push("/middle")}
+          />
+        </Tooltip>
+        <Tooltip title="打开 Swagger Diff 验证">
+          <Button
+            type="text"
+            icon={<DiffOutlined style={{ fontSize: "20px" }} />}
+            style={{ position: "absolute", right: 0, height: 40, width: 40 }}
+            onClick={() => router.push("/tool/swagger-diff")}
           />
         </Tooltip>
         <div>

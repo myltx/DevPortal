@@ -166,3 +166,19 @@ model ApifoxSyncLog {
 
   @@map("apifox_sync_log")
 }
+
+model ApifoxSpecSnapshot {
+  id        Int      @id @default(autoincrement())
+  projectId String   @map("project_id")
+  moduleKey String   @default("") @map("module_key")
+  targetUrl String   @map("target_url")
+  apiPrefix String   @default("") @map("api_prefix")
+  specHash  String   @map("spec_hash")
+  specJson  String   @map("spec_json") @db.LongText
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([projectId, moduleKey, targetUrl, apiPrefix], map: "uk_apifox_spec_snapshot_key")
+  @@index([projectId, moduleKey, createdAt], map: "idx_apifox_spec_snapshot_project")
+  @@map("apifox_spec_snapshot")
+}
