@@ -29,22 +29,34 @@ type Payload = {
   changed?: DiffRow[];
 };
 
-function buildDiffDetails(payload: Payload, maxItems = 20): string {
-  const lines: string[] = [];
-  (payload.added || []).slice(0, maxItems).forEach((item) => {
-    lines.push(`+ ${item.method} ${item.path}`);
-  });
-  (payload.removed || []).slice(0, maxItems).forEach((item) => {
-    lines.push(`- ${item.method} ${item.path}`);
-  });
-  (payload.changed || []).slice(0, maxItems).forEach((item) => {
-    const fields =
-      Array.isArray(item.changedFields) && item.changedFields.length > 0
-        ? ` (${item.changedFields.join(", ")})`
-        : "";
-    lines.push(`~ ${item.method} ${item.path}${fields}`);
-  });
-  return lines.join("\n");
+function formatRows(
+  rows: DiffRow[],
+  typeLabel: string,
+  maxItems: number,
+): string {
+  return rows
+    .slice(0, maxItems)
+    .map((item) => `| ${typeLabel} | ${item.path} |`)
+    .join("\n");
+}
+
+function buildDiffDetails(payload: Payload, maxItems = 10): string {
+  const rows: string[] = [];
+  const addedRows = payload.added || [];
+  const removedRows = payload.removed || [];
+  const changedRows = payload.changed || [];
+
+  rows.push(...(formatRows(addedRows, "🟢新增", maxItems).split("\n").filter(Boolean)));
+  rows.push(...(formatRows(removedRows, "🔴删除", maxItems).split("\n").filter(Boolean)));
+  rows.push(...(formatRows(changedRows, "🟡修改", maxItems).split("\n").filter(Boolean)));
+
+  if (rows.length === 0) return "";
+
+  return [
+    `| 类型 | 接口路径 |`,
+    `| :---: | :--- |`,
+    ...rows,
+  ].join("\n");
 }
 
 export async function POST(request: NextRequest) {
@@ -67,16 +79,10 @@ export async function POST(request: NextRequest) {
     const projectName = payload.projectName?.trim() || "本地模拟";
     const summary = payload.summary;
     const detailText = buildDiffDetails(payload);
-
-    const table = [
-      `| Diff 项 | 数量 |`,
-      `| :--- | :--- |`,
-      `| 新增 | ${summary.added || 0} |`,
-      `| 删除 | ${summary.removed || 0} |`,
-      `| 修改 | ${summary.changed || 0} |`,
-      `| 无变化 | ${summary.unchanged || 0} |`,
-      `| Before 总数 | ${summary.beforeTotal || 0} |`,
-      `| After 总数 | ${summary.afterTotal || 0} |`,
+    const summaryTable = [
+      `| 新增 | 删除 | 修改 | 无变化 | Before 总数 | After 总数 |`,
+      `| :---: | :---: | :---: | :---: | :---: | :---: |`,
+      `| ${summary.added || 0} | ${summary.removed || 0} | ${summary.changed || 0} | ${summary.unchanged || 0} | ${summary.beforeTotal || 0} | ${summary.afterTotal || 0} |`,
     ].join("\n");
 
     await sendDingTalkMessage(DINGTALK_WEBHOOK, DINGTALK_SECRET, {
@@ -86,8 +92,9 @@ export async function POST(request: NextRequest) {
         text: [
           `### 🧪 ${projectName} Diff 模拟推送`,
           `---`,
-          table,
-          detailText ? `\n**接口变更明细（最多展示前 20 条）**\n${detailText}` : "",
+          `**摘要**`,
+          summaryTable,
+          detailText ? `**接口变更明细（每类前 10 条）**\n${detailText}` : "",
           `\n> 说明：这是本地模拟通知，不会写快照，也不会触发 Apifox 导入。`,
           `\n发送时间：${new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}`,
         ]
