@@ -87,6 +87,119 @@ function buildDiffDetailsMarkdown(diff?: SwaggerDiffResult, maxItems = 10): stri
     ].join("\n");
 }
 
+function buildLegacyStatsMarkdown(stats: {
+    endpointCreated?: number;
+    endpointUpdated?: number;
+    endpointIgnored?: number;
+    schemaCreated?: number;
+    schemaUpdated?: number;
+    schemaIgnored?: number;
+}): string {
+    return [
+        `| 类型 | 新增 | 修改 | 无变化 |`,
+        `| :--- | :--- | :--- | :--- |`,
+        `| 接口/文档 | ${stats.endpointCreated || 0} | ${stats.endpointUpdated || 0} | ${stats.endpointIgnored || 0} |`,
+        `| 数据模型 | ${stats.schemaCreated || 0} | ${stats.schemaUpdated || 0} | ${stats.schemaIgnored || 0} |`
+    ].join("\n");
+}
+
+function buildDocUrl(targetUrl: string): string {
+    try {
+        const urlObj = new URL(targetUrl);
+        return `${urlObj.origin}/api/doc.html`;
+    } catch {
+        return targetUrl;
+    }
+}
+
+function buildDiffSuccessSection(diff?: SwaggerDiffResult): string {
+    const diffSummary = buildDiffSummaryMarkdown(diff);
+    const diffDetails = buildDiffDetailsMarkdown(diff);
+    if (!diffDetails) {
+        return [diffSummary, `> **接口变更明细**: 本次未检测到新增/删除/修改`]
+            .filter(Boolean)
+            .join("\n\n");
+    }
+    return [diffSummary, diffDetails].filter(Boolean).join("\n\n");
+}
+
+function buildFallbackSection(params: {
+    diffContext: DiffContext;
+    stats: {
+        endpointCreated?: number;
+        endpointUpdated?: number;
+        endpointIgnored?: number;
+        schemaCreated?: number;
+        schemaUpdated?: number;
+        schemaIgnored?: number;
+    };
+    errors?: Array<{ message: string }>;
+}): string {
+    const { diffContext, stats, errors = [] } = params;
+    const tableStats = buildLegacyStatsMarkdown(stats);
+    const fallbackReason = diffContext.failed
+        ? `> **Diff 明细生成失败**: ${diffContext.errorMessage || "未知错误（已降级为统计结果）"}`
+        : `> **Diff 状态**: 首次基线导入，已记录快照，下次开始输出接口差异。`;
+    const errorText = errors.length > 0
+        ? `\n\n> [!CAUTION]\n> **导入异常**: ${errors.map((e) => e.message).join("; ")}`
+        : "";
+    return [tableStats, fallbackReason, errorText].filter(Boolean).join("\n\n");
+}
+
+async function sendSyncSuccessNotification(params: {
+    projectId: string;
+    moduleId?: string | null;
+    targetUrl: string;
+    customProjectName?: string | null;
+    diffContext: DiffContext;
+    stats: {
+        endpointCreated?: number;
+        endpointUpdated?: number;
+        endpointIgnored?: number;
+        schemaCreated?: number;
+        schemaUpdated?: number;
+        schemaIgnored?: number;
+    };
+    errors?: Array<{ message: string }>;
+    simulateOnly?: boolean;
+}): Promise<void> {
+    const {
+        projectId,
+        moduleId,
+        targetUrl,
+        customProjectName,
+        diffContext,
+        stats,
+        errors = [],
+        simulateOnly = false,
+    } = params;
+    const docUrl = buildDocUrl(targetUrl);
+    const titlePrefix = customProjectName || "Apifox";
+    const isDiffSuccess = !diffContext.failed && !diffContext.baseline;
+    const mainSection = isDiffSuccess
+        ? buildDiffSuccessSection(diffContext.result)
+        : buildFallbackSection({ diffContext, stats, errors });
+
+    await sendDingTalkMessage(DINGTALK_WEBHOOK, DINGTALK_SECRET, {
+        msgtype: "markdown",
+        markdown: {
+            title: simulateOnly ? `${titlePrefix} 模拟同步成功` : `${titlePrefix} 同步成功`,
+            text: [
+                `### ✅ ${titlePrefix} 接口${simulateOnly ? "模拟" : ""}同步成功`,
+                `---`,
+                `**项目 ID**: ${projectId}`,
+                moduleId ? `**模块 ID**: ${moduleId}` : "",
+                `**接口文档**: [点击查看](${docUrl})`,
+                mainSection ? `\n` : "",
+                mainSection,
+                `\n**策略**: 智能合并 (Smart Merge)`,
+                simulateOnly ? `\n**模式**: 模拟推送（未调用 Apifox，未写入快照）` : "",
+                `\n**推送时间**: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`
+            ].filter(Boolean).join("\n")
+        }
+    });
+}
+
 async function buildDiffContext(params: {
     projectId: string;
     targetUrl: string;
@@ -191,49 +304,22 @@ async function performApifoxSync(params: {
     if (simulateOnly) {
         if (DINGTALK_WEBHOOK) {
             try {
-                let docUrl = targetUrl || "";
-                try {
-                    if (targetUrl) {
-                        const urlObj = new URL(targetUrl);
-                        docUrl = `${urlObj.origin}/api/doc.html`;
-                    }
-                } catch {
-                    // ignore
-                }
-
-                let diffSection = "";
-                if (diffContext.failed) {
-                    diffSection = `> **Diff 明细生成失败**: ${diffContext.errorMessage || "未知错误（已降级为统计结果）"}`;
-                } else if (diffContext.baseline) {
-                    diffSection = `> **Diff 状态**: 首次基线导入，已记录快照，下次开始输出接口差异。`;
-                } else {
-                    const diffSummary = buildDiffSummaryMarkdown(diffContext.result);
-                    const diffDetails = buildDiffDetailsMarkdown(diffContext.result);
-                    diffSection = [diffSummary, diffDetails].filter(Boolean).join("\n\n");
-                    if (!diffDetails) {
-                        diffSection = [diffSummary, `> **接口变更明细**: 本次未检测到新增/删除/修改`]
-                            .filter(Boolean)
-                            .join("\n\n");
-                    }
-                }
-
-                await sendDingTalkMessage(DINGTALK_WEBHOOK, DINGTALK_SECRET, {
-                    msgtype: "markdown",
-                    markdown: {
-                        title: `${customProjectName || "Apifox"} 模拟同步成功`,
-                        text: [
-                            `### ✅ ${customProjectName || "Apifox"} 接口模拟同步成功`,
-                            `---`,
-                            `**项目 ID**: ${projectId}`,
-                            moduleId ? `**模块 ID**: ${moduleId}` : "",
-                            `**接口文档**: [点击查看](${docUrl})`,
-                            diffSection ? `\n` : "",
-                            diffSection,
-                            `\n**策略**: 智能合并 (Smart Merge)`,
-                            `\n**模式**: 模拟推送（未调用 Apifox，未写入快照）`,
-                            `\n**推送时间**: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`
-                        ].filter(Boolean).join("\n")
-                    }
+                const simulatedStats = {
+                    endpointCreated: diffContext.result?.summary.added || 0,
+                    endpointUpdated: diffContext.result?.summary.changed || 0,
+                    endpointIgnored: diffContext.result?.summary.unchanged || 0,
+                    schemaCreated: 0,
+                    schemaUpdated: 0,
+                    schemaIgnored: 0,
+                };
+                await sendSyncSuccessNotification({
+                    projectId,
+                    moduleId,
+                    targetUrl,
+                    customProjectName,
+                    diffContext,
+                    stats: simulatedStats,
+                    simulateOnly: true,
                 });
             } catch (error: unknown) {
                 console.error("[ApifoxSyncTask] Simulated DingTalk Notify Error:", getErrorMessage(error));
@@ -330,51 +416,14 @@ async function performApifoxSync(params: {
                 try {
                     const stats = result?.data?.counters || {};
                     const errors = result?.data?.errors || [];
-                    let docUrl = targetUrl || "";
-                    try { if (targetUrl) { const urlObj = new URL(targetUrl); docUrl = `${urlObj.origin}/api/doc.html`; } } catch { /* Ignore */ }
-
-                    const tableStats = [
-                        `| 类型 | 新增 | 修改 | 无变化 |`,
-                        `| :--- | :--- | :--- | :--- |`,
-                        `| 接口/文档 | ${stats.endpointCreated || 0} | ${stats.endpointUpdated || 0} | ${stats.endpointIgnored || 0} |`,
-                        `| 数据模型 | ${stats.schemaCreated || 0} | ${stats.schemaUpdated || 0} | ${stats.schemaIgnored || 0} |`
-                    ].join("\n");
-
-                    let errorText = "";
-                    if (errors.length > 0) {
-                        errorText = `\n\n> [!CAUTION]\n> **导入异常**: ${errors.map((e) => e.message).join("; ")}`;
-                    }
-
-                    let diffSection = "";
-                    if (diffContext.failed) {
-                        diffSection = `> **Diff 明细生成失败**: ${diffContext.errorMessage || "未知错误（已降级为统计结果）"}`;
-                    } else if (diffContext.baseline) {
-                        diffSection = `> **Diff 状态**: 首次基线导入，已记录快照，下次开始输出接口差异。`;
-                    } else {
-                        const diffSummary = buildDiffSummaryMarkdown(diffContext.result);
-                        const diffDetails = buildDiffDetailsMarkdown(diffContext.result);
-                        diffSection = [diffSummary, diffDetails].filter(Boolean).join("\n\n");
-                    }
-
-                    await sendDingTalkMessage(DINGTALK_WEBHOOK, DINGTALK_SECRET, {
-                        msgtype: "markdown",
-                        markdown: {
-                            title: `${customProjectName || "Apifox"} 同步成功`,
-                            text: [
-                                `### ✅ ${customProjectName || "Apifox"} 接口同步成功`,
-                                `---`,
-                                `**项目 ID**: ${projectId}`,
-                                moduleId ? `**模块 ID**: ${moduleId}` : "",
-                                `**接口文档**: [点击查看](${docUrl})`,
-                                `\n`,
-                                tableStats,
-                                diffSection ? `\n` : "",
-                                diffSection,
-                                errorText,
-                                `\n**策略**: 智能合并 (Smart Merge)`,
-                                `\n**推送时间**: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`
-                            ].filter(Boolean).join("\n")
-                        }
+                    await sendSyncSuccessNotification({
+                        projectId,
+                        moduleId,
+                        targetUrl,
+                        customProjectName,
+                        diffContext,
+                        stats,
+                        errors,
                     });
                 } catch (error: unknown) { console.error("[ApifoxSyncTask] DingTalk Notify Error:", getErrorMessage(error)); }
             }
