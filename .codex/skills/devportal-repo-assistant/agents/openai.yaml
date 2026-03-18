@@ -1,0 +1,4 @@
+interface:
+  display_name: "DevPortal 仓库助手"
+  short_description: "面向 DevPortal 仓库的开发与提交流程助手"
+  default_prompt: "使用 $devportal-repo-assistant 在这个仓库执行修改、校验并输出变更说明。"
