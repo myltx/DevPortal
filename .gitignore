@@ -43,6 +43,8 @@ yarn-error.log*
 next-env.d.ts
 
 /app/generated/prisma
+/docs/.vitepress/cache
+/docs/.vitepress/dist
 
 # Docker artifacts
 *.tar

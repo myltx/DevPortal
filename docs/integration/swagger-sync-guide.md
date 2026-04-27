@@ -116,9 +116,20 @@ graph TD
 
 1. 原因：服务进程仍在使用旧 Prisma Client（常见于只更新代码未重启）。
 2. 对策：
-   1. 执行 `npx prisma generate`。
+   1. 执行 `pnpm exec prisma generate`。
    2. 重启应用进程（或重建容器）。
    3. 确认数据库已应用迁移并存在 `apifox_spec_snapshot` 表。
+
+### Q5: 为什么自动同步显示“接口修改”，而手动导入显示“无变化”？
+
+这是预期行为。
+
+DevPortal 的 Swagger 聚合代理服务 (`/api/swagger/public-export`) 会对上游原始文档做结构优化与标准化处理，包括：
+
+1. 响应码重排序：将 `200`、`40001`、`40003` 等关键状态码置顶，优化文档阅读体验。
+2. Tag 命名空间：自动为接口 Tag 增加 Group 前缀，避免多服务聚合时出现 Tag 冲突。
+
+这一处理会让生成后的 JSON 与上游原始文档存在结构差异，因此 Apifox 会将其识别为 `Update`。这说明文档已经被 DevPortal 成功处理并接管，并不代表同步异常。
 
 ---
 

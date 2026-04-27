@@ -6,7 +6,7 @@
 
 采用“本地构建 + Docker 打包”策略：
 
-- 在宿主机先执行 `npm run build` 生成 `.next`（避免在 Mac Apple Silicon 上用 buildx/QEMU 进行 `next build`）
+- 在宿主机先执行 `pnpm build` 生成 `.next`（避免在 Mac Apple Silicon 上用 buildx/QEMU 进行 `next build`）
 - Docker 镜像内只做两件事：
   - 安装 Linux x64 生产依赖（确保原生二进制依赖平台正确）
   - 复制 `.next`/`public` 并 `next start` 运行
@@ -15,7 +15,7 @@
 
 简单的服务编排，映射端口 3001。
 
-## 3. DEPLOY.md
+## 3. guide/deploy.md
 
 更新为 Docker 操作指南：
 

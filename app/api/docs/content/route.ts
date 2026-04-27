@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import { resolveDocRoute } from "@/lib/docs-manifest";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -11,15 +12,22 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // 限制只能读取 docs 目录下的 md 文件，防止路径穿越攻击
-    const safeFile = path.basename(file);
-    
-    // Special Mapping: Read extension manual directly from source
-    let filePath;
-    if (safeFile === "extension.md") {
-      filePath = path.join(process.cwd(), "chrome-extension", "README.md");
-    } else {
-      filePath = path.join(process.cwd(), "docs", safeFile);
+    const resolvedRoute = resolveDocRoute(file).replace(/^\/+/, "");
+    const normalizedRoute = path.posix.normalize(resolvedRoute);
+
+    if (
+      !normalizedRoute ||
+      normalizedRoute.startsWith("../") ||
+      normalizedRoute.includes("\0")
+    ) {
+      return NextResponse.json({ error: "Invalid file path" }, { status: 400 });
+    }
+
+    const docsRoot = path.resolve(process.cwd(), "docs");
+    const filePath = path.resolve(docsRoot, normalizedRoute);
+
+    if (filePath !== docsRoot && !filePath.startsWith(`${docsRoot}${path.sep}`)) {
+      return NextResponse.json({ error: "Invalid file path" }, { status: 400 });
     }
 
     if (!fs.existsSync(filePath)) {

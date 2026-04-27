@@ -4,6 +4,7 @@ import React, { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Typography, Card, Button, Spin, Empty, Breadcrumb, Space } from "antd";
 import { ArrowLeftOutlined, FileTextOutlined } from "@ant-design/icons";
+import { resolveDocRoute } from "@/lib/docs-manifest";
 
 const { Title, Paragraph } = Typography;
 
@@ -11,13 +12,17 @@ function PreviewContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const fileName = searchParams.get("file");
+  const normalizedFileName = fileName ? resolveDocRoute(fileName) : "";
   const [content, setContent] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setLoading(true);
+    setError(null);
+
     if (fileName) {
-      fetch(`/api/docs/content?file=${fileName}`)
+      fetch(`/api/docs/content?file=${encodeURIComponent(fileName)}`)
         .then((res) => res.json())
         .then((data) => {
           if (data.error) {
@@ -28,7 +33,11 @@ function PreviewContent() {
         })
         .catch(() => setError("网络请求失败"))
         .finally(() => setLoading(false));
+      return;
     }
+
+    setError("缺少文档文件参数");
+    setLoading(false);
   }, [fileName]);
 
   const renderContent = (text: string) => {
@@ -85,7 +94,7 @@ function PreviewContent() {
           <Breadcrumb.Item>
             <a onClick={() => router.push("/docs")}>技术文档</a>
           </Breadcrumb.Item>
-          <Breadcrumb.Item>{fileName}</Breadcrumb.Item>
+          <Breadcrumb.Item>{normalizedFileName || fileName}</Breadcrumb.Item>
         </Breadcrumb>
       </div>
 
@@ -93,7 +102,7 @@ function PreviewContent() {
         title={
           <Space>
             <FileTextOutlined />
-            <span>{fileName}</span>
+            <span>{normalizedFileName || fileName}</span>
           </Space>
         }
         extra={

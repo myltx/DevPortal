@@ -20,6 +20,7 @@ import {
   DownloadOutlined,
 } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
+import { DOC_CARD_ENTRIES, createDocPreviewHref } from "@/lib/docs-manifest";
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -201,69 +202,16 @@ export default function DocsPage() {
             gridTemplateColumns: "1fr 1fr 1fr",
             gap: 16,
           }}>
-          <Card
-            hoverable
-            size="small"
-            title="🚀 快速入门 (部署)"
-            onClick={() => router.push("/docs/preview?file=deploy.md")}>
-            <Text type="secondary">
-              了解 Docker、Vercel、直接 Node.js 部署的差异与数据库初始化流程。
-            </Text>
-          </Card>
-          <Card
-            hoverable
-            size="small"
-            title="⚙️ 环境配置说明"
-            onClick={() => router.push("/docs/preview?file=env-setup.md")}>
-            <Text type="secondary">详尽的 .env 变量含义及上线 CheckList。</Text>
-          </Card>
-          <Card
-            hoverable
-            size="small"
-            title="🔄 Swagger 同步指南"
-            onClick={() =>
-              router.push("/docs/preview?file=swagger-sync-guide.md")
-            }>
-            <Text type="secondary">
-              针对微服务架构的自动同步策略与排错技巧。
-            </Text>
-          </Card>
-          <Card
-            hoverable
-            size="small"
-            title="✨ 功能模块详解"
-            onClick={() => router.push("/docs/preview?file=features.md")}>
-            <Text type="secondary">
-              深入了解项目管理、对象定义及团队导航等核心能力。
-            </Text>
-          </Card>
-          <Card
-            hoverable
-            size="small"
-            title="🧩 插件安装手册"
-            onClick={() => router.push("/docs/preview?file=extension.md")}>
-            <Text type="secondary">
-              Chrome 扩展的详细安装步骤与 Zero-Config 更新机制说明。
-            </Text>
-          </Card>
-          <Card
-            hoverable
-            size="small"
-            title="⌨️ 快捷键说明"
-            onClick={() => router.push("/docs/preview?file=shortcuts.md")}>
-            <Text type="secondary">
-              掌握 Cmd+K 等全局快捷键，提升系统操作效率。
-            </Text>
-          </Card>
-          <Card
-            hoverable
-            size="small"
-            title="📅 版本迭代规划"
-            onClick={() => router.push("/docs/preview?file=roadmap.md")}>
-            <Text type="secondary">
-              查看 DevPortal 的未来功能路线图与开发计划。
-            </Text>
-          </Card>
+          {DOC_CARD_ENTRIES.map((item) => (
+            <Card
+              key={item.filePath}
+              hoverable
+              size="small"
+              title={item.title}
+              onClick={() => router.push(createDocPreviewHref(item.filePath))}>
+              <Text type="secondary">{item.description}</Text>
+            </Card>
+          ))}
         </div>
         <Divider style={{ margin: "40px 0" }} />
 

@@ -6,7 +6,7 @@
 
 > [!NOTE]
 > 当前 `Dockerfile` **不会在容器里执行 `next build`**，而是直接复制已生成的 `.next-prod` 构建产物到容器内的 `.next`。
-> 因此无论你选择“离线镜像包部署”还是“服务器端 docker build”，都必须先在本地完成 `npm run build:prod`（或直接运行 `npm run docker:pack`）。
+> 因此无论你选择“离线镜像包部署”还是“服务器端 docker build”，都必须先在本地完成 `pnpm build:prod`（或直接运行 `pnpm docker:pack`）。
 
 ## A. 部署方式总览
 
@@ -44,7 +44,7 @@
   - 实际上 `NEXT_PUBLIC_*` 属于构建时注入，必须重新构建并重新部署镜像。
 - 误以为 `docker compose up -d` 一定会切到新版本。
   - 如果新镜像没有真正 `load` 成功，容器可能只是基于旧镜像重建。
-- 误以为 `npx prisma generate` 就等于“数据库已经更新”。
+- 误以为 `pnpm exec prisma generate` 就等于“数据库已经更新”。
   - 它只生成 Prisma Client，不会自动执行数据库迁移。
 
 #### Vercel 方案常见误区
@@ -60,9 +60,9 @@
 
 #### 直接 Node.js 部署常见误区
 
-- 误以为“本地能跑 `npm run dev`，服务器就能跑 `npm run start`”。
+- 误以为“本地能跑 `pnpm dev`，服务器就能跑 `pnpm start`”。
   - 生产环境还涉及 Node 版本、系统库、进程守护、反向代理和日志管理。
-- 误以为直接上传代码后执行 `npm install && npm run build` 就结束了。
+- 误以为直接上传代码后执行 `pnpm install && pnpm build` 就结束了。
   - 还需要 `.env`、数据库迁移、静态资源、重启策略和异常恢复方案。
 
 ## B. Vercel 部署说明（评估用）
@@ -112,7 +112,7 @@ Vercel **可以作为可选部署方式**，但更适合下面的条件：
 如果你确实要跳过 Docker，至少要满足以下条件：
 
 - 服务器系统能兼容当前 Node 版本
-- 能稳定执行 `npm install`、`npm run build`
+- 能稳定执行 `pnpm install`、`pnpm build`
 - 已准备进程守护（如 `pm2` / `systemd`）
 - 已准备反向代理（如 Nginx）
 - 已明确数据库迁移和日志管理方式
@@ -143,7 +143,7 @@ docker compose version
 ## 2. 部署步骤
 
 1.  **推荐方式：离线镜像包部署（最稳定）**:
-    - 在本地执行 `npm run docker:pack` 生成 `dev-portal.tar`（不会影响本地开发用的 `.next`）。
+    - 在本地执行 `pnpm docker:pack` 生成 `dev-portal.tar`（不会影响本地开发用的 `.next`）。
     - 上传到服务器（放到同一个目录）：`dev-portal.tar` + `docker-compose.prod.yml`（可改名为 `docker-compose.yml`）+ `.env` + 可选 `server-deploy.sh`。
     - 服务器侧（不使用脚本时）执行：
       ```bash
@@ -158,7 +158,7 @@ docker compose version
       ```
 
 2.  **备选方式：服务器端 docker build（不推荐）**:
-    - 你仍然需要先在本地执行 `npm run build:prod`，并将生成的目录 **保持为 `.next-prod`（不要改名）** 一起上传到服务器。
+    - 你仍然需要先在本地执行 `pnpm build:prod`，并将生成的目录 **保持为 `.next-prod`（不要改名）** 一起上传到服务器。
     - 然后在服务器目录中运行 `docker compose up -d --build`。
     - 注意：如果你修改的是 `NEXT_PUBLIC_*`（例如 `NEXT_PUBLIC_DEFAULT_APPS`），它属于“构建时注入”，仅改服务器 `.env` 不会让前端生效，必须重新打包镜像。
 
@@ -247,7 +247,7 @@ docker image prune -f
 如果你修改的是 `NEXT_PUBLIC_*`（例如 `NEXT_PUBLIC_DEFAULT_APPS`），它属于 **构建时注入**：
 
 - 仅在服务器修改 `.env` 不会改变已打包进镜像的前端内容；
-- 需要重新在本地执行 `npm run docker:pack` 并上传新的 `dev-portal.tar` 再更新。
+- 需要重新在本地执行 `pnpm docker:pack` 并上传新的 `dev-portal.tar` 再更新。
 
 ## 3. 常用命令
 
@@ -276,7 +276,7 @@ docker image prune -f
 ## 3.1 Prisma 数据库迁移（强烈建议保留）
 
 > [!IMPORTANT]
-> `npx prisma generate` **只会生成 Prisma Client（类型/代码）**，不会建表/加字段/删字段。
+> `pnpm exec prisma generate` **只会生成 Prisma Client（类型/代码）**，不会建表/加字段/删字段。
 > 真正让数据库结构“从 0 变成可用”，需要跑迁移（migrations）。
 
 ### 开发环境（本地）
@@ -285,15 +285,15 @@ docker image prune -f
 
 ```bash
 # 生成并应用迁移（会连接数据库）
-npx prisma migrate dev
+pnpm exec prisma migrate dev
 
 # 如果遇到 Prisma Client 字段不一致（例如提示 Unknown argument），可手动再生成一次
-npx prisma generate
+pnpm exec prisma generate
 ```
 
 > [!NOTE]
-> 如果你本地正在跑 `npm run dev`，改完 schema 后仍然报 “Unknown argument xxx”，通常是旧 Prisma Client/旧 dev 进程未刷新：
-> 先停掉 `npm run dev` 再重新启动即可。
+> 如果你本地正在跑 `pnpm dev`，改完 schema 后仍然报 “Unknown argument xxx”，通常是旧 Prisma Client/旧 dev 进程未刷新：
+> 先停掉 `pnpm dev` 再重新启动即可。
 
 ### 生产/服务器（Docker）
 
@@ -301,14 +301,14 @@ npx prisma generate
 
 ```bash
 # 只会应用 prisma/migrations 中尚未执行的迁移（不会生成新迁移）
-npx prisma migrate deploy
+pnpm exec prisma migrate deploy
 
 # 确保 Prisma Client 与 schema 一致
-npx prisma generate
+pnpm exec prisma generate
 ```
 
 > [!TIP]
-> 如果你们确定“每次都是全新空库”，理论上可以用 `npx prisma db push` 直接同步结构；
+> 如果你们确定“每次都是全新空库”，理论上可以用 `pnpm exec prisma db push` 直接同步结构；
 > 但它没有迁移历史、不利于排查与回溯，所以本项目选择保留 migrations。
 
 ## 3.2 Swagger 自动同步上线后校验（新增）
@@ -321,7 +321,7 @@ npx prisma generate
    1. 第一次通常会建立或覆盖基线。
    2. 第二次开始应在钉钉中看到 Diff 摘要与接口路径明细。
 4. 如初始化时报错 `Cannot read properties of undefined (reading 'upsert')`，通常是 Prisma Client 未刷新：
-   1. 重新执行 `npx prisma generate`。
+   1. 重新执行 `pnpm exec prisma generate`。
    2. 重启应用或重建容器。
 
 ## 4. (可选) 清理无效的 NVM 环境
@@ -395,8 +395,8 @@ _(注意：需要本地也安装 Docker)_
 1.  **一键构建并打包**:
 
     ```bash
-    npm run docker:pack
-    # 该命令会自动运行 npm run build:prod 并打包成 dev-portal.tar
+    pnpm docker:pack
+    # 该命令会自动运行 pnpm build:prod 并打包成 dev-portal.tar
     # 且不会影响您本地正在运行的开发环境 (.next)
     ```
 
@@ -528,9 +528,9 @@ graph TD
 
     subgraph Local ["💻 本地环境 (Mac M-Chip)"]
         direction TB
-        Code[Source Code] --> |1. npm run build:prod| NextDist[.next-prod 文件夹]:::artifact
+        Code[Source Code] --> |1. pnpm build:prod| NextDist[.next-prod 文件夹]:::artifact
         NextDist --> |2. COPY| DockerBuild["Docker Build (x86)"]
-        Pkg[package.json] --> |3. npm ci --prod| DockerBuild
+        Pkg[package.json] --> |3. pnpm install --prod --frozen-lockfile| DockerBuild
         DockerBuild --> |4. docker save| TarFile[dev-portal.tar]:::artifact
     end
 
@@ -554,14 +554,14 @@ graph TD
 ### 构建流程图解
 
 1.  **本地编译 (Local Build)**:
-    - 在您的 Mac 上利用原生 CPU 性能执行 `npm run build:prod`。
+    - 在您的 Mac 上利用原生 CPU 性能执行 `pnpm build:prod`。
     - **产出**: `.next-prod` 文件夹（包含通用的 JS/CSS/HTML 产物）。
-    - **隔离**: 此过程**不影响**您本地 `.next` 目录（即不影响 `npm run dev`）。
+    - **隔离**: 此过程**不影响**您本地 `.next` 目录（即不影响 `pnpm dev`）。
     - _注意：此时本地的 `node_modules` 是 Mac 版的，不会被打包。_
 
 2.  **Docker 依赖安装 (Container Install)**:
     - Docker 构建时，会自动忽略本地的 `node_modules`。
-    - 在容器内部（Linux x86 环境）执行 `npm ci --only=production`。
+    - 在容器内部（Linux x86 环境）执行 `pnpm install --prod --frozen-lockfile`。
     - **产出**: 纯正的 Linux 版 `node_modules`（完美支持 Sharp, Prisma 等原生库）。
 
 3.  **产物注入 (Injection)**:

@@ -9,49 +9,43 @@
 ### 1. 安装与启动
 
 ```bash
-npm install
+pnpm install
 cp .env.example .env   # 配置数据库与密钥
-npm run dev
+pnpm dev
 ```
 
 ### 2. 初始化数据库 (Prisma)
 
 ```bash
-npx prisma migrate dev --name init
-npx prisma generate
+pnpm exec prisma migrate dev --name init
+pnpm exec prisma generate
 ```
 
 ---
 
-## 📖 核心文档目录
+## 📖 文档入口
 
-我们已将会员手册与技术细节拆分为以下专题，请点击查阅：
+项目文档正文统一维护在 `docs/` 目录，并同时供主站 `/docs` 与静态文档站使用。
 
-### 🚀 [快速入门 (安装与部署)](./docs/deploy.md)
+### 🚀 [文档总览](./docs/index.md)
 
-了解 Docker、Vercel、直接 Node.js 等部署方式的适用场景、差异、数据库迁移与生产上线流程。
+查看部署、环境配置、功能说明、集成指南与插件使用手册。
 
-### ⚙️ [环境配置指南](./docs/env-setup.md)
+### ⚙️ [部署指南](./docs/guide/deploy.md)
 
-详细的 `.env` 变量说明以及生产环境上线 CheckList (包含内网网关、Apifox 云端拉取等配置)。
+了解 Docker、Vercel、直接 Node.js 部署的适用场景、差异、数据库迁移与生产上线流程。
 
-### 🔄 [Swagger 聚合与自动同步手册](./docs/swagger-sync-guide.md)
+### 🧩 [功能模块详解](./docs/usage/features.md)
+
+了解项目、分类、名词定义、团队导航与 Swagger 工具的核心能力。
+
+### 🔄 [Swagger 聚合与自动同步手册](./docs/integration/swagger-sync-guide.md)
 
 针对微服务架构的自动同步策略、Jenkins 接入及钉钉监控配置。
 
-### 🧩 [功能模块详解](./docs/features.md)
+### 🧩 [Chrome 插件安装指南](./docs/extension.md)
 
-了解项目、分类、名词定义、团队导航的核心能力。
-
-### ⌨️ [快捷键与命令面板](./docs/shortcuts.md)
-
-提升效率的高阶技巧：`Cmd + K` 命令面板说明。
-
----
-
-## 🧩 [Chrome 插件安装指南](./chrome-extension/README.md)
-
-配套浏览扩展，实现账号密码自动匹配。
+配套浏览扩展，实现账号密码自动匹配与版本更新。
 
 ---
 
