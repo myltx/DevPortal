@@ -2,7 +2,7 @@ import { createSwaggerSpec } from "next-swagger-doc";
 
 export const getApiDocs = async () => {
   const spec = createSwaggerSpec({
-    apiFolder: "app/api", // Define which folder to scan for JSDoc
+    apiFolder: "src/app/api", // Define which folder to scan for JSDoc
     definition: {
       openapi: "3.0.0",
       info: {
