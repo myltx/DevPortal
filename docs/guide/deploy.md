@@ -209,7 +209,7 @@ docker compose version
 
 4.  **验证**:
     ```bash
-    docker compose ps
+    docker compose -f deploy/docker/docker-compose.prod.yml ps
     ```
     状态应为 `Up`。访问 `http://服务器IP:3001` 即可。
 
@@ -285,24 +285,24 @@ docker image prune -f
 
 - **查看日志**:
   ```bash
-  docker compose logs -f
+  docker compose -f deploy/docker/docker-compose.prod.yml logs -f
   ```
 - **重启服务**:
   ```bash
-  docker compose restart
+  docker compose -f deploy/docker/docker-compose.prod.yml restart
   ```
 - **停止服务**:
   ```bash
-  docker compose down
+  docker compose -f deploy/docker/docker-compose.prod.yml down
   ```
 - **更新代码后重新部署**:
   ```bash
   # 方式 A（离线镜像包）：上传新的 dev-portal.tar 后
   docker load -i dev-portal.tar
-  docker compose up -d --force-recreate
+  docker compose -f deploy/docker/docker-compose.prod.yml up -d --force-recreate
 
   # 方式 B（服务器端 build）：拉取/更新代码后
-  # docker compose up -d --build
+  # docker compose -f deploy/docker/docker-compose.yml up -d --build
   ```
 
 ## 3.1 Prisma 数据库迁移（强烈建议保留）
@@ -452,7 +452,7 @@ _(注意：需要本地也安装 Docker)_
 
     ```bash
     # 在项目根目录执行
-    docker buildx build --platform linux/amd64 -f deploy/docker/Dockerfile -t dev-portal:latest .
+    docker buildx build --platform linux/amd64 --load -f deploy/docker/Dockerfile -t dev-portal:latest .
     ```
 
 2.  **导出镜像**:
@@ -475,24 +475,11 @@ _(注意：需要本地也安装 Docker)_
     docker load -i dev-portal.tar
     ```
 
-5.  **修改配置启动**:
-    编辑服务器上的 `deploy/docker/docker-compose.yml`，注释掉 `build` 部分，直接使用镜像：
-    ```yaml
-    version: "3"
-    services:
-      dev-portal:
-        image: dev-portal:latest # <--- 使用导入的镜像
-        # build:                  # <--- 注释掉构建配置
-        #   context: ../..         # <--- 注释掉
-        #   dockerfile: deploy/docker/Dockerfile # <--- 注释掉
-        container_name: dev-portal
-        restart: always
-        ports:
-          - "3001:3001"
-        environment:
-          - NODE_ENV=production
+5.  **使用生产 compose 启动**:
+    服务器侧直接使用已经准备好的 `deploy/docker/docker-compose.prod.yml`，无需再手工注释 `build` 配置：
+    ```bash
+    docker compose -f deploy/docker/docker-compose.prod.yml up -d --force-recreate
     ```
-    然后运行 `docker compose -f deploy/docker/docker-compose.yml up -d` 即可。
 
 ### 🚀 极简运维 (推荐)
 
@@ -523,7 +510,7 @@ chmod +x server-deploy.sh
 - 备份内容（尽力而为，缺少就跳过）：
   - `dev-portal.tar`（如果当前目录存在，会复制一份进去）
   - `image.tar`（如果服务器上存在 `dev-portal:latest` 镜像，会 `docker save` 备份一份）
-  - `.env` 与 `docker-compose*.yml`
+  - `.env` 与 `deploy/docker/docker-compose*.yml`
 - 空间占用：`dev-portal.tar` 与 `image.tar` 体积通常同量级（都可能比较大），因此默认只保留最近 1 份备份。
 - 保留策略：脚本内置 `BACKUP_KEEP=1`，每次备份后会自动清理旧备份（只会清理 `./backups/` 下符合时间戳格式的目录，不会影响容器、数据库或其他文件）。
 
@@ -538,14 +525,10 @@ chmod +x server-deploy.sh
 2.  **重启服务 (加载新镜像)**:
 
     ```bash
-    # 停止并删除旧容器
-    docker compose down
-
-    # 启动新容器
-    docker compose up -d
+    docker compose -f deploy/docker/docker-compose.prod.yml up -d --force-recreate
     ```
 
-    _(注：必须执行 down 再 up，或者使用 `docker compose up -d --force-recreate`，否则 Docker 可能会认为容器没变而不更新)_
+    _(注：核心是让容器基于新加载的镜像强制重建；`--force-recreate` 比手工 `down` 再 `up` 更直接，也更不容易漏掉 compose 文件路径。)_
 
 ## 7. (附录) 技术原理：为什么这样快且稳？
 

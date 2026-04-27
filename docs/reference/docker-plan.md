@@ -1,5 +1,9 @@
 # Docker 部署方案
 
+> [!NOTE]
+> **状态说明（2026-04）**：本文档为早期 Docker 草案，部分路径和运行方式已经过时，例如文中的 `web/Dockerfile`、`.next`、`web/docker-compose.yml`。
+> 当前请以 [docs/guide/deploy.md](../guide/deploy.md) 和 `deploy/docker/` 下的实际文件为准。
+
 由于服务器 OS 过旧无法满足 Node 20 的 Glibc 依赖，采用 Docker 容器化部署。
 
 ## 1. web/Dockerfile
