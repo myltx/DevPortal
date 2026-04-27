@@ -29,7 +29,7 @@ npx prisma generate
 
 ### 🚀 [快速入门 (安装与部署)](./docs/deploy.md)
 
-了解如何使用 Docker 容器化部署、数据库迁移以及生产环境上线流程。
+了解 Docker、Vercel、直接 Node.js 等部署方式的适用场景、差异、数据库迁移与生产上线流程。
 
 ### ⚙️ [环境配置指南](./docs/env-setup.md)
 

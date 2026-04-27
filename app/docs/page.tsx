@@ -207,7 +207,7 @@ export default function DocsPage() {
             title="🚀 快速入门 (部署)"
             onClick={() => router.push("/docs/preview?file=deploy.md")}>
             <Text type="secondary">
-              了解 Docker 容器化部署及数据库初始化流程。
+              了解 Docker、Vercel、直接 Node.js 部署的差异与数据库初始化流程。
             </Text>
           </Card>
           <Card
