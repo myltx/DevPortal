@@ -137,7 +137,7 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             padding: "0 16px",
             lineHeight: "32px",
           }}>
-          云滃公共管理
+          DevPortal 管理台
         </div>
         {/* <div
           style={{

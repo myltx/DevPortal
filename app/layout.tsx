@@ -4,8 +4,8 @@ import StyledComponentsRegistry from "@/lib/AntdRegistry";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 
 export const metadata: Metadata = {
-  title: "云滃公共配置",
-  description: "云滃公共配置",
+  title: "DevPortal 开发者门户",
+  description: "DevPortal 开发者门户",
 };
 
 import CommandPalette from "@/components/command/CommandPalette";
