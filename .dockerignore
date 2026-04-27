@@ -5,24 +5,14 @@ Dockerfile
 node_modules
 npm-debug.log
 README.md
-!.next/standalone
-!.next/static
-!.next/server
-!.next/BUILD_ID
-!.next/routes-manifest.json
-!.next/prerender-manifest.json
-!.next/required-server-files.json
-!.next/trace
-
-# Explicitly ensure cache is ignored (redundant but safe)
-.next/cache
-
-
-# Explicitly ensure cache is ignored (redundant but safe)
+.next
 .next/cache
 .next/dev
 .next-prod/cache
 .next-prod/dev
+docs/.vitepress
+dev-portal.tar
+*.tar
 
 
 .git

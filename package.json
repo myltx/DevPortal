@@ -16,7 +16,7 @@
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
     "cleanup:apifox-logs": "node scripts/cleanup-apifox-logs.js",
-    "docker:build:server": "rm -rf .next-prod && pnpm build:prod && docker buildx build --platform linux/amd64 -t dev-portal:latest .",
+    "docker:build:server": "rm -rf .next-prod && pnpm build:prod && docker buildx build --platform linux/amd64 --load -t dev-portal:latest .",
     "docker:save": "docker save -o dev-portal.tar dev-portal:latest",
     "docker:pack": "pnpm docker:build:server && pnpm docker:save",
     "docker:dev": "docker compose up -d --build",

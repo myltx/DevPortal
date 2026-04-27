@@ -5,8 +5,23 @@
 > **我们已切换为 Docker 容器化部署方案**。这可以完美避开系统环境不兼容的问题。
 
 > [!NOTE]
-> 当前 `Dockerfile` **不会在容器里执行 `next build`**，而是直接复制已生成的 `.next-prod` 构建产物到容器内的 `.next`。
+> 当前 `Dockerfile` **不会在容器里执行 `next build`**，而是直接复制本地生成的 `.next-prod/standalone` 运行时产物，并额外复制 `.next-prod/static`。
 > 因此无论你选择“离线镜像包部署”还是“服务器端 docker build”，都必须先在本地完成 `pnpm build:prod`（或直接运行 `pnpm docker:pack`）。
+>
+> 同时，Docker 构建会在中间层单独生成 Linux 版本的 Prisma / sharp 原生运行时文件，再只把这些必要目录复制到最终镜像中，因此最终镜像会明显小于“容器内完整安装依赖”的旧方案。
+>
+> 使用 `docker compose` 的 `env_file` 读取 `.env` 时，请不要把值写成 `KEY="value"` 这种带双引号的形式，尤其是 `DATABASE_URL`。
+> 例如要写成 `DATABASE_URL=mysql://user:pass@host:3306/db`，否则某些运行时会把双引号也当成值的一部分，进而导致 Prisma 认为连接串不是以 `mysql://` 开头。
+
+> [!TIP]
+> 本仓库当前默认采用的是 **“Mac/本机构建 Next 产物 + Docker 内补齐 Linux 原生依赖”** 策略。
+> 这样做的主要原因是：在 Apple Silicon Mac 上直接使用 `docker buildx --platform linux/amd64` 执行 `next build`，通常会落到 QEMU 跨架构模拟，构建速度慢、稳定性也较差。
+>
+> 如果你是开源使用者，请不要把这条策略理解为唯一标准答案：
+>
+> - 如果你和本项目一样，主要在 **Mac Apple Silicon** 上离线打包并发布到 **Linux AMD64** 服务器，建议保留当前方案。
+> - 如果你有 **Linux CI/CD**、原生 **AMD64 构建机**，或可以直接在目标 Linux 环境完成构建，通常更建议改回“Linux 原生构建 standalone，再直接复制产物”的标准做法，维护成本会更低。
+> - 如果你更看重“实现简单、尽量少碰打包细节”，也可以回退到“镜像内完整安装生产依赖并使用 `pnpm start`”的保守方案，只是镜像体积会更大。
 
 ## A. 部署方式总览
 
@@ -46,6 +61,24 @@
   - 如果新镜像没有真正 `load` 成功，容器可能只是基于旧镜像重建。
 - 误以为 `pnpm exec prisma generate` 就等于“数据库已经更新”。
   - 它只生成 Prisma Client，不会自动执行数据库迁移。
+- 误以为当前仓库的 Docker 打包方式适合所有机器和团队。
+  - 实际上这套方案是针对 “Mac Apple Silicon 本地构建 + Linux AMD64 运行” 这一特定组合优化的；如果你有 Linux 原生构建环境，完全可以简化。
+
+### A.4 开源使用者如何选择构建策略
+
+如果你不是本项目原始部署环境，而是基于开源仓库自行部署，建议先根据自己的机器和交付方式选择构建策略：
+
+| 构建策略 | 适用场景 | 优点 | 代价 / 风险 |
+| :--- | :--- | :--- | :--- |
+| 当前默认：本地构建 `.next-prod/standalone` + Docker 内补齐 Linux 原生依赖 | Apple Silicon Mac 本地打包，目标服务器为 Linux AMD64，且希望保留离线 `tar` 分发 | 避开 Mac 上 `buildx/QEMU` 执行 `next build` 的性能和稳定性问题；最终镜像较小 | Dockerfile 依赖 `standalone` 与 `pnpm` 内部结构，后续升级 `Next.js` / `Prisma` / `sharp` 时要重点回归 |
+| 标准方案：Linux 原生构建 standalone 后直接装箱 | 有 Linux CI/CD、AMD64 构建机、或可以在目标 Linux 上原生构建 | 结构最标准、维护成本最低、后续升级最稳 | 需要额外准备 Linux 构建环境 |
+| 保守方案：镜像内完整安装生产依赖并用 `pnpm start` 运行 | 更看重实现直观，接受更大的镜像和 tar | 逻辑最简单，对 `standalone` 内部结构依赖最低 | 镜像与离线包更大，启动和运行时更重 |
+
+建议：
+
+- 优先看你的 **构建机器架构**，再看你的 **交付方式**。
+- 如果你长期维护这个仓库，并且会频繁升级依赖，优先考虑 Linux 原生构建方案。
+- 如果你只是需要快速在 Mac 上打一个可离线分发的 Linux 镜像，当前默认方案更省事。
 
 #### Vercel 方案常见误区
 
@@ -515,7 +548,7 @@ chmod +x server-deploy.sh
 
 ## 7. (附录) 技术原理：为什么这样快且稳？
 
-为了解决 Mac Apple Silicon (ARM) 模拟 Linux (x86) 构建慢且易崩溃的问题，我们采用了 **“本地构建 + 注入 (Native Injection)”** 策略。
+为了解决 Mac Apple Silicon (ARM) 模拟 Linux (x86) 构建慢且易崩溃的问题，我们采用了 **“本地构建 standalone + Docker 内补齐 Linux 原生依赖”** 策略。
 
 ### 核心流程可视化
 
@@ -529,8 +562,8 @@ graph TD
     subgraph Local ["💻 本地环境 (Mac M-Chip)"]
         direction TB
         Code[Source Code] --> |1. pnpm build:prod| NextDist[.next-prod 文件夹]:::artifact
-        NextDist --> |2. COPY| DockerBuild["Docker Build (x86)"]
-        Pkg[package.json] --> |3. pnpm install --prod --frozen-lockfile| DockerBuild
+        NextDist --> |2. COPY standalone + static| DockerBuild["Docker Build (x86)"]
+        Pkg[package.json / prisma] --> |3. 仅生成 Linux Prisma / sharp 运行时依赖| DockerBuild
         DockerBuild --> |4. docker save| TarFile[dev-portal.tar]:::artifact
     end
 
@@ -555,18 +588,27 @@ graph TD
 
 1.  **本地编译 (Local Build)**:
     - 在您的 Mac 上利用原生 CPU 性能执行 `pnpm build:prod`。
-    - **产出**: `.next-prod` 文件夹（包含通用的 JS/CSS/HTML 产物）。
+    - **产出**: `.next-prod` 文件夹（包含 `standalone`、`static` 以及通用的 JS/CSS/HTML 产物）。
     - **隔离**: 此过程**不影响**您本地 `.next` 目录（即不影响 `pnpm dev`）。
-    - _注意：此时本地的 `node_modules` 是 Mac 版的，不会被打包。_
+    - _注意：此时构建产物中的原生依赖仍然带有宿主机平台特征，不能直接假设适用于 Linux。_
 
-2.  **Docker 依赖安装 (Container Install)**:
-    - Docker 构建时，会自动忽略本地的 `node_modules`。
-    - 在容器内部（Linux x86 环境）执行 `pnpm install --prod --frozen-lockfile`。
-    - **产出**: 纯正的 Linux 版 `node_modules`（完美支持 Sharp, Prisma 等原生库）。
+2.  **Docker 原生依赖生成 (Container Native Deps)**:
+    - Docker 构建时，不会重新执行 `next build`。
+    - 它会在 Linux x86 环境中单独执行依赖安装与 `prisma generate`，提取 Linux 版的 Prisma / sharp 运行时文件。
+    - **产出**: 仅包含 Linux 原生运行时所需的依赖目录，而不是完整重建整个应用。
 
-3.  **产物注入 (Injection)**:
-    - 最后将第 1 步生成的 `.next-prod` 文件夹复制进容器（自动重命名为 `.next`）。
-    - 结果：获得了一个既包含最新代码，又拥有正确底层依赖的完美镜像。
+3.  **运行时装箱 (Runtime Packaging)**:
+    - 最终镜像复制第 1 步生成的 `.next-prod/standalone` 与 `.next-prod/static`。
+    - 然后用第 2 步生成的 Linux 原生运行时文件替换构建产物中的宿主机版本。
+    - 结果：获得一个既包含最新业务代码、又能在 Linux 上正确运行 Prisma / sharp 的镜像。
+
+### 7.1 这不是唯一方案
+
+对于开源使用者，请将本节理解为“当前仓库默认策略的设计原因”，而不是唯一的部署标准：
+
+- 如果你直接在 Linux AMD64 环境构建，本节这套“补齐 Linux 原生依赖”的额外复杂度通常可以省掉。
+- 如果你更看重可维护性而不是镜像大小，也可以回到 `pnpm start` 的传统方案。
+- 如果你修改了 `Next.js`、`Prisma`、`sharp` 版本，建议重新验证 Docker 打包流程，而不要假设当前 Dockerfile 永远无需调整。
 
 ## 8. 公司内网部署与分发指南
 

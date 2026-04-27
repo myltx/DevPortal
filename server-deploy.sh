@@ -130,13 +130,13 @@ function set_env_kv() {
     awk -v k="$key" -v v="$value" '
       BEGIN { found=0 }
       $0 ~ ("^" k "=") {
-        print k "=\"" v "\""
+        print k "=" v
         found=1
         next
       }
       { print }
       END {
-        if (found==0) print k "=\"" v "\""
+        if (found==0) print k "=" v
       }
     ' "$file" > "$tmp" && mv "$tmp" "$file"
 }
