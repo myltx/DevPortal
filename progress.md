@@ -53,24 +53,47 @@
   - `findings.md`
   - `progress.md`
 
+### Phase 4: Testing & Verification
+- **Status:** complete
+- Actions taken:
+  - 迁移 `Dockerfile`、`docker-compose*.yml`、`ecosystem.config.js`、`server-deploy.sh` 到 `deploy/`
+  - 为根目录补充 `server-deploy.sh` 与 `ecosystem.config.js` 包装入口
+  - 校验 `bash -n deploy/scripts/server-deploy.sh`
+  - 校验 `node -e "require('./ecosystem.config.js')"` 的 `cwd` 指向项目根目录
+  - 校验 `docker compose -f deploy/docker/*.yml config`
+  - 重新执行 `npm run build:prod`
+- Files created/modified:
+  - `deploy/docker/Dockerfile`
+  - `deploy/docker/docker-compose.yml`
+  - `deploy/docker/docker-compose.prod.yml`
+  - `deploy/docker/docker-compose.standalone.yml`
+  - `deploy/pm2/ecosystem.config.js`
+  - `deploy/scripts/server-deploy.sh`
+  - `server-deploy.sh`
+  - `ecosystem.config.js`
+  - `package.json`
+  - `docs/guide/deploy.md`
+
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|
-| 规划初始化 | 创建计划文件 | 生成 3 个计划文件并记录当前阶段 | 已完成 | ✓ |
-| OpenAPI 生成 | `npm run gen:openapi` | 成功生成 `public/openapi.json` | 通过 | ✓ |
-| 标准构建 | `npm run build` | `src/app` 迁移后仍可完成 Next.js 构建 | 首轮因 `api/doc` 相对路径失败，修复后通过 | ✓ |
-| 生产构建 | `npm run build:prod` | `src/app` 迁移后仍可完成 `.next-prod` 构建 | 首轮因 `api/doc` 相对路径失败，修复后通过 | ✓ |
+| PM2 包装入口 | `node -e "const cfg=require('./ecosystem.config.js'); console.log(cfg.apps[0].cwd)"` | 输出项目根目录 | 通过 | ✓ |
+| 部署脚本语法 | `bash -n deploy/scripts/server-deploy.sh` | 无语法错误 | 通过 | ✓ |
+| 开发 compose 配置 | `docker compose -f deploy/docker/docker-compose.yml config` | 正确展开上下文、Dockerfile 和 env_file | 通过 | ✓ |
+| 生产 compose 配置 | `docker compose -f deploy/docker/docker-compose.prod.yml config` | 正确展开生产 compose | 通过 | ✓ |
+| standalone compose 配置 | `docker compose -f deploy/docker/docker-compose.standalone.yml config` | 不再出现变量替换空值问题 | 修复后通过 | ✓ |
+| 生产构建 | `npm run build:prod` | 目录重构后仍可完成 `.next-prod` 构建 | 通过 | ✓ |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
 |-----------|-------|---------|------------|
-| 2026-04-27 | `build` / `build:prod` 因 `src/app/api/doc/route.ts` 的 `public/openapi.json` 相对路径失效而失败 | 1 | 将路径修正为 `../../../../public/openapi.json` 后重新验证 |
+| 2026-04-27 | `docker-compose.standalone.yml` 迁移后因 `${DATABASE_URL}` / `${MYSQL_ROOT_PASSWORD}` 依赖旧位置 `.env` 而出现替换空值问题 | 1 | 改为依赖 `env_file` 注入，移除需要在 compose 解析期展开的变量项 |
 
 ## 5-Question Reboot Check
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 5，准备整理交付结果 |
-| Where am I going? | 汇总 PR-2 改动、验证和剩余风险 |
-| What's the goal? | 完成运行时代码向 `src/` 的迁移并保持主构建链路可用 |
-| What have I learned? | 主要回归点来自脚本硬编码路径和相对路径随目录加深而失效 |
-| What have I done? | 已完成目录迁移、配置同步和两轮构建验证 |
+| Where am I? | Phase 5，准备整理 PR-3 交付结果 |
+| Where am I going? | 汇总 deploy 目录收口、兼容层和验证结果 |
+| What's the goal? | 完成部署入口向 `deploy/` 的迁移并保留根目录兼容用法 |
+| What have I learned? | compose 文件迁移的核心风险是 build context、env_file 路径和变量替换时机 |
+| What have I done? | 已完成 deploy 目录迁移、兼容包装层和结构级验证 |

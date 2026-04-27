@@ -13,6 +13,8 @@ README.md
 docs/.vitepress
 dev-portal.tar
 *.tar
+/artifacts
+/backups
 
 
 .git

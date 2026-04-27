@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.7
+
 # Strategy: Pre-build on Host (Native Speed), then package the standalone runtime.
 # This avoids QEMU crashing during 'next build' on Mac Silicon and keeps the final image small.
 
@@ -5,14 +7,22 @@ FROM node:20-bullseye-slim AS native-deps
 
 WORKDIR /app
 
+# Prime the pnpm store from the lockfile first so unrelated package.json edits
+# do not always invalidate the expensive network/download step.
+COPY pnpm-lock.yaml ./
+
+RUN corepack enable && corepack prepare pnpm@8.14.0 --activate
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+  pnpm fetch --frozen-lockfile --store-dir /pnpm/store
+
 # Install only in the builder stage so we can regenerate Linux-native runtime binaries
 # without shipping the full dependency tree in the final image.
-COPY package.json pnpm-lock.yaml ./
+COPY package.json ./
 COPY prisma ./prisma
 COPY scripts/build/prepare-runtime-deps.sh ./scripts/build/prepare-runtime-deps.sh
 
-RUN corepack enable && corepack prepare pnpm@8.14.0 --activate
-RUN pnpm install --frozen-lockfile
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+  pnpm install --frozen-lockfile --offline --store-dir /pnpm/store
 RUN pnpm exec prisma generate
 RUN sh ./scripts/build/prepare-runtime-deps.sh export /app/node_modules /runtime-deps
 RUN rm -rf /root/.cache/prisma

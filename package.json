@@ -16,11 +16,11 @@
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
     "cleanup:apifox-logs": "node scripts/ops/cleanup-apifox-logs.mjs",
-    "docker:build:server": "rm -rf .next-prod && pnpm build:prod && docker buildx build --platform linux/amd64 --load -t dev-portal:latest .",
+    "docker:build:server": "rm -rf .next-prod && pnpm build:prod && docker buildx build --platform linux/amd64 --load -f deploy/docker/Dockerfile -t dev-portal:latest .",
     "docker:save": "mkdir -p artifacts/docker && docker save -o artifacts/docker/dev-portal.tar dev-portal:latest",
     "docker:pack": "pnpm docker:build:server && pnpm docker:save",
-    "docker:dev": "docker compose up -d --build",
-    "docker:stop": "docker compose down",
+    "docker:dev": "docker compose -f deploy/docker/docker-compose.yml up -d --build",
+    "docker:stop": "docker compose -f deploy/docker/docker-compose.yml down",
     "extension:pack": "node scripts/build/pack-extension.mjs"
   },
   "dependencies": {

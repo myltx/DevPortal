@@ -1,7 +1,7 @@
-# Task Plan: PR-2 src 目录迁移
+# Task Plan: PR-3 部署入口收拢
 
 ## Goal
-将 `app/`、`components/`、`lib/`、`services/`、`types/` 迁移到 `src/` 下，并同步修正 TypeScript/Next.js/ESLint 配置，确保现有导入风格和主要构建链路继续可用。
+将 `Dockerfile`、`docker-compose*.yml`、`ecosystem.config.js`、`server-deploy.sh` 收拢到 `deploy/` 下，并通过根目录兼容包装层保持现有操作习惯和部署链路可用。
 
 ## Current Phase
 Phase 5
@@ -21,16 +21,16 @@ Phase 5
 - **Status:** complete
 
 ### Phase 3: Implementation
-- [x] Move runtime directories into `src/`
-- [x] Update path aliases and include/exclude config
-- [x] Fix script/config references impacted by the move
+- [x] Move deploy/runtime ops files into `deploy/`
+- [x] Add root compatibility wrappers where needed
+- [x] Fix compose, PM2 and deploy script paths after the move
 - **Status:** complete
 
 ### Phase 4: Testing & Verification
-- [x] Run `npm run gen:openapi`
-- [x] Run `npm run build`
+- [x] Run compose config validation
+- [x] Run shell/config syntax validation
 - [x] Run `npm run build:prod`
-- [x] Review runtime-sensitive routes after the move
+- [x] Review deployment-facing command paths after the move
 - **Status:** complete
 
 ### Phase 5: Delivery
@@ -41,20 +41,20 @@ Phase 5
 
 ## Key Questions
 1. `src/app` 迁移后，哪些脚本或配置仍然硬编码依赖根目录 `app/api`？
-2. `@/*` 路径别名切到 `./src/*` 后，是否还存在需要保留根目录解析的文件？
+2. 部署文件迁移到 `deploy/` 后，哪些命令仍需要根目录兼容入口才能避免打断现有习惯？
 
 ## Decisions Made
 | Decision | Rationale |
 |----------|-----------|
-| PR-2 只做 `src/` 迁移，不做 feature 化聚合 | 降低风险，避免把目录移动和职责重组耦合在同一批改动 |
-| 保持 `@/xxx` 导入风格不变，只调整 `tsconfig` 别名 | 让应用层文件尽量无需批量重写 import |
-| `docs/`、`chrome-extension/`、`public/`、`prisma/` 继续留在根目录 | 这几类目录当前被运行时、构建链路或框架约定直接依赖 |
+| 实际文件移入 `deploy/`，根目录只保留 `server-deploy.sh` 与 `ecosystem.config.js` 包装入口 | 兼顾“收根目录”与“不中断老命令” |
+| `docker compose` 文件移动后，统一把 `build.context` 调回项目根目录 | 避免 compose 文件所在目录变化导致 Docker 构建上下文错误 |
+| `server-deploy.sh` 改为基于脚本位置推导项目根目录 | 让脚本从根目录包装调用或直接从 `deploy/scripts/` 调用都能正常工作 |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
 |-------|---------|------------|
-| `src/app/api/doc/route.ts` 仍引用迁移前的 `public/openapi.json` 相对路径，导致 `build`/`build:prod` 失败 | 1 | 将相对路径从 `../../../public/openapi.json` 修正为 `../../../../public/openapi.json` |
+| `docker-compose.standalone.yml` 移入 `deploy/docker/` 后，`${DATABASE_URL}` / `${MYSQL_ROOT_PASSWORD}` 不再从根目录 `.env` 自动替换 | 1 | 改为依赖 `env_file` 注入，并去掉需要解析失败的变量展开项 |
 
 ## Notes
-- 本次改动命中全局 architect-review 硬触发：关键构建配置变更 + 跨多个业务目录迁移。
-- 必须保留回滚简单性，尽量让变更集中在目录移动和配置同步。
+- 本次改动命中全局 architect-review 硬触发：关键构建配置变更。
+- 必须保留回滚简单性，尽量让变更集中在目录移动、兼容层和路径同步。

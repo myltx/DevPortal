@@ -4,12 +4,12 @@ services:
   dev-portal:
     container_name: dev-portal
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
     restart: always
     ports:
       - "3001:3001"
     env_file:
-      - .env
+      - ../../.env
     environment:
       - NODE_ENV=production

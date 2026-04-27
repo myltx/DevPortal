@@ -154,12 +154,11 @@ Vercel **可以作为可选部署方式**，但更适合下面的条件：
 
 ## 0. 文件说明（建议必读）
 
-- `docker-compose.yml`：偏开发/本机使用（可能包含 `build:`）。
-- `docker-compose.prod.yml`：偏服务器使用（应为 `image: dev-portal:latest`，配合离线镜像包部署）。
-- 在服务器上你可以：
-  - **方案 A（推荐）**：把 `docker-compose.prod.yml` 改名为 `docker-compose.yml`，之后直接 `docker compose up -d ...`。
-  - **方案 B**：保留 `docker-compose.prod.yml`，每次都用 `-f docker-compose.prod.yml` 指定。
-- `server-deploy.sh`：部署辅助脚本（会优先查找 `dev-portal.tar`，也兼容 `artifacts/docker/dev-portal.tar`，并执行更新/重建）。
+- `deploy/docker/docker-compose.yml`：偏开发/本机使用（包含 `build:`）。
+- `deploy/docker/docker-compose.prod.yml`：偏服务器使用（应为 `image: dev-portal:latest`，配合离线镜像包部署）。
+- `deploy/docker/Dockerfile`：Docker 构建文件。构建时请显式使用 `-f deploy/docker/Dockerfile`，并保持项目根目录 `.` 作为上下文。
+- `deploy/pm2/ecosystem.config.js`：PM2 生产启动配置。根目录保留 `ecosystem.config.js` 兼容包装入口。
+- `deploy/scripts/server-deploy.sh`：实际部署脚本；根目录保留 `server-deploy.sh` 兼容包装入口。脚本会优先查找根目录旧 compose 文件，也兼容 `deploy/docker/*.yml` 与 `artifacts/docker/dev-portal.tar`。
 
 ## 1. 前置要求
 
@@ -177,11 +176,11 @@ docker compose version
 
 1.  **推荐方式：离线镜像包部署（最稳定）**:
     - 在本地执行 `pnpm docker:pack` 生成 `artifacts/docker/dev-portal.tar`（不会影响本地开发用的 `.next`）。
-    - 上传到服务器时，建议将该文件放到部署目录并命名为 `dev-portal.tar`，再配合 `docker-compose.prod.yml`（可改名为 `docker-compose.yml`）+ `.env` + 可选 `server-deploy.sh` 一起使用。
+    - 上传到服务器时，建议保持以下结构：镜像包放在项目根目录，compose 文件放在 `deploy/docker/`，再配合根目录 `.env` 与可选的 `server-deploy.sh` 一起使用。
     - 服务器侧（不使用脚本时）执行：
       ```bash
       docker load -i dev-portal.tar
-      docker compose -f docker-compose.yml up -d --force-recreate
+      docker compose -f deploy/docker/docker-compose.prod.yml up -d --force-recreate
       ```
     - 服务器侧（使用脚本时）执行：
       ```bash
@@ -192,18 +191,18 @@ docker compose version
 
 2.  **备选方式：服务器端 docker build（不推荐）**:
     - 你仍然需要先在本地执行 `pnpm build:prod`，并将生成的目录 **保持为 `.next-prod`（不要改名）** 一起上传到服务器。
-    - 然后在服务器目录中运行 `docker compose up -d --build`。
+    - 然后在服务器项目根目录中运行 `docker compose -f deploy/docker/docker-compose.yml up -d --build`。
     - 注意：如果你修改的是 `NEXT_PUBLIC_*`（例如 `NEXT_PUBLIC_DEFAULT_APPS`），它属于“构建时注入”，仅改服务器 `.env` 不会让前端生效，必须重新打包镜像。
 
 3.  **构建并启动（仅当你不使用 server-deploy.sh 时）**:
-    进入包含 `docker-compose.yml` 的目录并运行：
+    进入项目根目录并运行：
 
     ```bash
-    # 方式 1: 如果文件名是 docker-compose.yml (标准)
-    docker compose up -d
+    # 开发 / 本机构建
+    docker compose -f deploy/docker/docker-compose.yml up -d
 
-    # 方式 2: 如果文件名是 docker-compose.prod.yml (未重命名)
-    docker compose -f docker-compose.prod.yml up -d
+    # 生产 / 离线镜像包
+    docker compose -f deploy/docker/docker-compose.prod.yml up -d
     ```
 
     _(如果是第一次运行，构建过程可能需要几分钟)_
@@ -436,11 +435,12 @@ _(注意：需要本地也安装 Docker)_
 2.  **上传文件**:
     您需要上传可以通过离线部署的 **两个核心文件**：
     - `artifacts/docker/dev-portal.tar` (镜像包)
-    - `docker-compose.prod.yml` (**生产环境专用配置**，请在服务器上重命名为 `docker-compose.yml`)
+    - `deploy/docker/docker-compose.prod.yml` (**生产环境专用配置**)
 
     ```bash
+    ssh root@your-server-ip "mkdir -p /root/project/deploy/docker"
     scp artifacts/docker/dev-portal.tar root@your-server-ip:/root/project/dev-portal.tar
-    scp docker-compose.prod.yml root@your-server-ip:/root/project/docker-compose.yml
+    scp deploy/docker/docker-compose.prod.yml root@your-server-ip:/root/project/deploy/docker/docker-compose.prod.yml
     ```
 
 ### 方式 B: 手动执行命令
@@ -452,7 +452,7 @@ _(注意：需要本地也安装 Docker)_
 
     ```bash
     # 在项目根目录执行
-    docker buildx build --platform linux/amd64 -t dev-portal:latest .
+    docker buildx build --platform linux/amd64 -f deploy/docker/Dockerfile -t dev-portal:latest .
     ```
 
 2.  **导出镜像**:
@@ -476,15 +476,15 @@ _(注意：需要本地也安装 Docker)_
     ```
 
 5.  **修改配置启动**:
-    编辑服务器上的 `docker-compose.yml`，注释掉 `build` 部分，直接使用镜像：
+    编辑服务器上的 `deploy/docker/docker-compose.yml`，注释掉 `build` 部分，直接使用镜像：
     ```yaml
     version: "3"
     services:
       dev-portal:
         image: dev-portal:latest # <--- 使用导入的镜像
         # build:                  # <--- 注释掉构建配置
-        #   context: .            # <--- 注释掉
-        #   dockerfile: Dockerfile # <--- 注释掉
+        #   context: ../..         # <--- 注释掉
+        #   dockerfile: deploy/docker/Dockerfile # <--- 注释掉
         container_name: dev-portal
         restart: always
         ports:
@@ -492,7 +492,7 @@ _(注意：需要本地也安装 Docker)_
         environment:
           - NODE_ENV=production
     ```
-    然后运行 `docker compose up -d` 即可。
+    然后运行 `docker compose -f deploy/docker/docker-compose.yml up -d` 即可。
 
 ### 🚀 极简运维 (推荐)
 
@@ -569,7 +569,7 @@ graph TD
     end
 
     TarFile --> |5. scp 上传| ServerEnv
-    Config[docker-compose.prod.yml] --> |5. scp 上传| ServerEnv
+    Config[deploy/docker/docker-compose.prod.yml] --> |5. scp 上传| ServerEnv
 
     subgraph ServerEnv ["☁️ 生产服务器 (Linux)"]
         direction TB
