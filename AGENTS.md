@@ -15,7 +15,7 @@
 - `npm run start`: 启动生产包。
 - `npm run lint`: 运行 ESLint（Next.js + TypeScript 规则）。
 - `npm run gen:openapi`: 手动生成 OpenAPI 产物。
-- `npm run docker:pack`: 本地打包镜像并导出 `dev-portal.tar`。
+- `npm run docker:pack`: 本地打包镜像并导出 `artifacts/docker/dev-portal.tar`。
 
 ## Coding Style & Naming Conventions
 - 语言与框架：TypeScript + React（Next.js App Router）。

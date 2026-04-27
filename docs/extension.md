@@ -45,6 +45,8 @@ pnpm extension:pack
    - `chrome-extension-v{version}.zip` (版本存档)
    - `chrome-extension-latest.zip` (**最新版永久链接**)
 
+同时，脚本还会额外复制一份到 `artifacts/extension/`，方便本地归档与发版留存，而不会再把 zip 直接堆在仓库根目录。
+
 ### 3. 在线更新机制 (Zero Config)
 
 插件内置了版本自检功能，当你将生成的文件部署到服务器后：

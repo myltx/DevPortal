@@ -9,12 +9,12 @@ WORKDIR /app
 # without shipping the full dependency tree in the final image.
 COPY package.json pnpm-lock.yaml ./
 COPY prisma ./prisma
-COPY scripts/prepare-runtime-deps.sh ./scripts/prepare-runtime-deps.sh
+COPY scripts/build/prepare-runtime-deps.sh ./scripts/build/prepare-runtime-deps.sh
 
 RUN corepack enable && corepack prepare pnpm@8.14.0 --activate
 RUN pnpm install --frozen-lockfile
 RUN pnpm exec prisma generate
-RUN sh ./scripts/prepare-runtime-deps.sh export /app/node_modules /runtime-deps
+RUN sh ./scripts/build/prepare-runtime-deps.sh export /app/node_modules /runtime-deps
 RUN rm -rf /root/.cache/prisma
 
 FROM node:20-bullseye-slim
@@ -31,7 +31,7 @@ RUN adduser --system --uid 1001 nextjs
 COPY --chown=nextjs:nodejs .next-prod/standalone ./
 COPY --chown=nextjs:nodejs .next-prod/static ./.next-prod/static
 COPY --from=native-deps --chown=nextjs:nodejs /runtime-deps /runtime-deps
-COPY --from=native-deps --chown=nextjs:nodejs /app/scripts/prepare-runtime-deps.sh /usr/local/bin/prepare-runtime-deps.sh
+COPY --from=native-deps --chown=nextjs:nodejs /app/scripts/build/prepare-runtime-deps.sh /usr/local/bin/prepare-runtime-deps.sh
 
 # Replace host-native binaries inside standalone's pnpm store with Linux-native runtime files.
 RUN sh /usr/local/bin/prepare-runtime-deps.sh inject /app/node_modules /runtime-deps \

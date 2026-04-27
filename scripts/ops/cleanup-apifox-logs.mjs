@@ -1,6 +1,4 @@
-/* eslint-disable no-console */
-
-const { PrismaClient } = require("@prisma/client");
+import { PrismaClient } from "@prisma/client";
 
 function getCleanupEnabled() {
   const raw = process.env.DEVPORTAL_APIFOX_LOG_CLEANUP_ENABLED;
@@ -95,4 +93,3 @@ main().catch((e) => {
   console.error("[cleanup-apifox-logs] failed:", e);
   process.exitCode = 1;
 });
-

@@ -1,9 +1,15 @@
-const fs = require("fs");
-const path = require("path");
-const readline = require("readline");
-const { execSync } = require("child_process");
+import fs from "fs";
+import path from "path";
+import readline from "readline";
+import { execSync } from "child_process";
+import { fileURLToPath } from "url";
 
-const MANIFEST_PATH = path.join(__dirname, "../chrome-extension/manifest.json");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const ROOT_DIR = path.join(__dirname, "../..");
+const MANIFEST_PATH = path.join(ROOT_DIR, "chrome-extension", "manifest.json");
+const PUBLIC_EXTENSION_DIR = path.join(ROOT_DIR, "public", "extension");
+const ARTIFACT_EXTENSION_DIR = path.join(ROOT_DIR, "artifacts", "extension");
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -12,6 +18,19 @@ const rl = readline.createInterface({
 
 function askQuestion(query) {
   return new Promise((resolve) => rl.question(query, resolve));
+}
+
+function ensureDir(dirPath) {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
+}
+
+function copyArchive(fileName) {
+  fs.copyFileSync(
+    path.join(PUBLIC_EXTENSION_DIR, fileName),
+    path.join(ARTIFACT_EXTENSION_DIR, fileName),
+  );
 }
 
 async function main() {
@@ -44,29 +63,30 @@ async function main() {
   // 3. Package (Zip)
   console.log("\n📦 Packaging extension...");
   try {
-    const rootDir = path.join(__dirname, "..");
-    const outputDir = path.join(rootDir, "public", "extension");
-
-    // Ensure output dir exists
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
+    ensureDir(PUBLIC_EXTENSION_DIR);
+    ensureDir(ARTIFACT_EXTENSION_DIR);
 
     const zipFileName = `chrome-extension-v${finalVersion}.zip`;
     // Command: cd chrome-extension && zip -r ../public/extension/filename.zip . -x "*.DS_Store"
     const cmd = `cd chrome-extension && zip -r ../public/extension/${zipFileName} . -x "*.DS_Store"`;
 
-    execSync(cmd, { cwd: rootDir, stdio: "inherit" });
+    execSync(cmd, { cwd: ROOT_DIR, stdio: "inherit" });
 
-    // Create 'latest' copy
+    // Create 'latest' copy for runtime download
     const latestFileName = "chrome-extension-latest.zip";
     fs.copyFileSync(
-      path.join(outputDir, zipFileName),
-      path.join(outputDir, latestFileName),
+      path.join(PUBLIC_EXTENSION_DIR, zipFileName),
+      path.join(PUBLIC_EXTENSION_DIR, latestFileName),
     );
+
+    // Keep a clean archive outside the repo root's top-level.
+    copyArchive(zipFileName);
+    copyArchive(latestFileName);
 
     console.log(`✅ Successfully created public/extension/${zipFileName}`);
     console.log(`✅ Successfully updated public/extension/${latestFileName}`);
+    console.log(`✅ Archive copied to artifacts/extension/${zipFileName}`);
+    console.log(`✅ Archive copied to artifacts/extension/${latestFileName}`);
     console.log(`🔗 Download URL (Versioned): /extension/${zipFileName}`);
     console.log(`🔗 Download URL (Latest):    /extension/${latestFileName}`);
   } catch (error) {

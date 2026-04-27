@@ -1,7 +1,6 @@
-/* eslint-disable no-console */
-const path = require("path");
-const fs = require("fs/promises");
-const { createSwaggerSpec } = require("next-swagger-doc");
+import path from "path";
+import fs from "fs/promises";
+import { createSwaggerSpec } from "next-swagger-doc";
 
 async function main() {
   const spec = createSwaggerSpec({
@@ -25,4 +24,3 @@ main().catch((err) => {
   console.error("[openapi] failed:", err);
   process.exit(1);
 });
-

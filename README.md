@@ -21,6 +21,12 @@ pnpm exec prisma migrate dev --name init
 pnpm exec prisma generate
 ```
 
+### 3. 常用产物位置
+
+- Docker 离线镜像包：`artifacts/docker/dev-portal.tar`
+- Chrome 扩展运行时下载包：`public/extension/`
+- Chrome 扩展归档包：`artifacts/extension/`
+
 ---
 
 ## 📖 文档入口

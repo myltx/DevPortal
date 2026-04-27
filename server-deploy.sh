@@ -15,6 +15,7 @@ fi
 
 # Configuration
 IMAGE_TAR="dev-portal.tar"
+IMAGE_TAR_CANDIDATES=("dev-portal.tar" "artifacts/docker/dev-portal.tar")
 IMAGE_NAME="dev-portal:latest"
 CONTAINER_NAME="dev-portal"
 BACKUP_DIR="backups"
@@ -68,14 +69,31 @@ function detect_compose_file() {
     return 0
 }
 
+function resolve_image_tar() {
+    local candidate
+    for candidate in "${IMAGE_TAR_CANDIDATES[@]}"; do
+        if [ -f "$candidate" ]; then
+            IMAGE_TAR="$candidate"
+            return 0
+        fi
+    done
+
+    IMAGE_TAR="dev-portal.tar"
+    return 1
+}
+
 # Detect Compose File
 detect_compose_file || exit 1
+resolve_image_tar || true
 info "当前工作目录：$(pwd)"
 info "将使用 Compose 文件：$COMPOSE_FILE"
+if [ -f "$IMAGE_TAR" ]; then
+    info "检测到镜像包：$IMAGE_TAR"
+fi
 
 # Functions
 function load_image() {
-    if [ -f "$IMAGE_TAR" ]; then
+    if resolve_image_tar; then
         info "从 $IMAGE_TAR 加载镜像..."
         if ! docker load -i "$IMAGE_TAR"; then
             error "镜像加载失败（常见原因：磁盘空间不足或 tar 包损坏）。"
@@ -90,7 +108,7 @@ function load_image() {
         warn "docker load 已执行，但未找到镜像：$IMAGE_NAME（tar 内可能没有该 tag）。"
         return 1
     else
-        error "未找到 $IMAGE_TAR！"
+        error "未找到镜像包！已检查：${IMAGE_TAR_CANDIDATES[*]}"
         return 1
     fi
 }
@@ -185,11 +203,13 @@ function backup_current_bundle() {
     info "开始备份（目录：$dir）..."
 
     # Backup the incoming tar bundle itself (best effort)
-    if [ -f "$IMAGE_TAR" ]; then
-        cp -f "$IMAGE_TAR" "$dir/$IMAGE_TAR"
-        info "已备份安装包：$IMAGE_TAR"
+    if resolve_image_tar; then
+        local tar_backup_name
+        tar_backup_name=$(basename "$IMAGE_TAR")
+        cp -f "$IMAGE_TAR" "$dir/$tar_backup_name"
+        info "已备份安装包：$IMAGE_TAR -> $dir/$tar_backup_name"
     else
-        warn "未找到安装包 $IMAGE_TAR，跳过安装包备份"
+        warn "未找到安装包（已检查：${IMAGE_TAR_CANDIDATES[*]}），跳过安装包备份"
     fi
 
     # Backup env/compose/script (best effort)

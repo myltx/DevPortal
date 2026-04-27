@@ -155,11 +155,11 @@ Vercel **可以作为可选部署方式**，但更适合下面的条件：
 ## 0. 文件说明（建议必读）
 
 - `docker-compose.yml`：偏开发/本机使用（可能包含 `build:`）。
-- `docker-compose.prod.yml`：偏服务器使用（应为 `image: dev-portal:latest`，配合 `dev-portal.tar` 离线部署）。
+- `docker-compose.prod.yml`：偏服务器使用（应为 `image: dev-portal:latest`，配合离线镜像包部署）。
 - 在服务器上你可以：
   - **方案 A（推荐）**：把 `docker-compose.prod.yml` 改名为 `docker-compose.yml`，之后直接 `docker compose up -d ...`。
   - **方案 B**：保留 `docker-compose.prod.yml`，每次都用 `-f docker-compose.prod.yml` 指定。
-- `server-deploy.sh`：部署辅助脚本（会在当前目录查找 `dev-portal.tar`、compose、`.env` 并执行更新/重建）。
+- `server-deploy.sh`：部署辅助脚本（会优先查找 `dev-portal.tar`，也兼容 `artifacts/docker/dev-portal.tar`，并执行更新/重建）。
 
 ## 1. 前置要求
 
@@ -176,8 +176,8 @@ docker compose version
 ## 2. 部署步骤
 
 1.  **推荐方式：离线镜像包部署（最稳定）**:
-    - 在本地执行 `pnpm docker:pack` 生成 `dev-portal.tar`（不会影响本地开发用的 `.next`）。
-    - 上传到服务器（放到同一个目录）：`dev-portal.tar` + `docker-compose.prod.yml`（可改名为 `docker-compose.yml`）+ `.env` + 可选 `server-deploy.sh`。
+    - 在本地执行 `pnpm docker:pack` 生成 `artifacts/docker/dev-portal.tar`（不会影响本地开发用的 `.next`）。
+    - 上传到服务器时，建议将该文件放到部署目录并命名为 `dev-portal.tar`，再配合 `docker-compose.prod.yml`（可改名为 `docker-compose.yml`）+ `.env` + 可选 `server-deploy.sh` 一起使用。
     - 服务器侧（不使用脚本时）执行：
       ```bash
       docker load -i dev-portal.tar
@@ -280,7 +280,7 @@ docker image prune -f
 如果你修改的是 `NEXT_PUBLIC_*`（例如 `NEXT_PUBLIC_DEFAULT_APPS`），它属于 **构建时注入**：
 
 - 仅在服务器修改 `.env` 不会改变已打包进镜像的前端内容；
-- 需要重新在本地执行 `pnpm docker:pack` 并上传新的 `dev-portal.tar` 再更新。
+- 需要重新在本地执行 `pnpm docker:pack`，并上传新的镜像包（本地默认位于 `artifacts/docker/dev-portal.tar`）再更新。
 
 ## 3. 常用命令
 
@@ -429,17 +429,17 @@ _(注意：需要本地也安装 Docker)_
 
     ```bash
     pnpm docker:pack
-    # 该命令会自动运行 pnpm build:prod 并打包成 dev-portal.tar
+    # 该命令会自动运行 pnpm build:prod 并打包成 artifacts/docker/dev-portal.tar
     # 且不会影响您本地正在运行的开发环境 (.next)
     ```
 
 2.  **上传文件**:
     您需要上传可以通过离线部署的 **两个核心文件**：
-    - `dev-portal.tar` (镜像包)
+    - `artifacts/docker/dev-portal.tar` (镜像包)
     - `docker-compose.prod.yml` (**生产环境专用配置**，请在服务器上重命名为 `docker-compose.yml`)
 
     ```bash
-    scp dev-portal.tar root@your-server-ip:/root/project/
+    scp artifacts/docker/dev-portal.tar root@your-server-ip:/root/project/dev-portal.tar
     scp docker-compose.prod.yml root@your-server-ip:/root/project/docker-compose.yml
     ```
 
@@ -458,14 +458,15 @@ _(注意：需要本地也安装 Docker)_
 2.  **导出镜像**:
 
     ```bash
-    docker save -o dev-portal.tar dev-portal:latest
+    mkdir -p artifacts/docker
+    docker save -o artifacts/docker/dev-portal.tar dev-portal:latest
     ```
 
 3.  **上传到服务器**:
 
     ```bash
     # 使用 scp 或其他工具
-    scp dev-portal.tar root@your-server-ip:/root/
+    scp artifacts/docker/dev-portal.tar root@your-server-ip:/root/dev-portal.tar
     ```
 
 4.  **服务器导入**:
@@ -495,7 +496,7 @@ _(注意：需要本地也安装 Docker)_
 
 ### 🚀 极简运维 (推荐)
 
-我们为您准备了 `server-deploy.sh` 脚本，将它与 `dev-portal.tar` 一起上传到服务器，然后执行：
+我们为您准备了 `server-deploy.sh` 脚本，将它与镜像包一起上传到服务器，然后执行：
 
 ```bash
 chmod +x server-deploy.sh
@@ -564,7 +565,7 @@ graph TD
         Code[Source Code] --> |1. pnpm build:prod| NextDist[.next-prod 文件夹]:::artifact
         NextDist --> |2. COPY standalone + static| DockerBuild["Docker Build (x86)"]
         Pkg[package.json / prisma] --> |3. 仅生成 Linux Prisma / sharp 运行时依赖| DockerBuild
-        DockerBuild --> |4. docker save| TarFile[dev-portal.tar]:::artifact
+        DockerBuild --> |4. docker save| TarFile[artifacts/docker/dev-portal.tar]:::artifact
     end
 
     TarFile --> |5. scp 上传| ServerEnv
