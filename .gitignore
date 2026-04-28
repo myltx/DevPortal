@@ -44,6 +44,7 @@ next-env.d.ts
 
 /app/generated/prisma
 /docs/.vitepress/cache
+/docs/.vitepress/.temp
 /docs/.vitepress/dist
 
 # Docker artifacts

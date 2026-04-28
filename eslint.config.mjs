@@ -15,6 +15,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     ".docker_temp_*/**",
     "*.tar",
+    "docs/.vitepress/.temp/**",
+    "docs/.vitepress/dist/**",
+    "docs/.vitepress/cache/**",
   ]),
 ]);
 
